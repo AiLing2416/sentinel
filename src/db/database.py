@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS connections (
     notes         TEXT DEFAULT '',
     last_connected TEXT,
     created_at    TEXT NOT NULL,
+    agent_forwarding INTEGER DEFAULT 0,
     sort_order    INTEGER DEFAULT 0
 );
 
@@ -140,6 +141,10 @@ class Database:
         cols = [col["name"] for col in self._conn.execute("PRAGMA table_info(connections)").fetchall()]
         if "os_id" not in cols:
             self._conn.execute("ALTER TABLE connections ADD COLUMN os_id TEXT")
+            self._conn.commit()
+
+        if "agent_forwarding" not in cols:
+            self._conn.execute("ALTER TABLE connections ADD COLUMN agent_forwarding INTEGER DEFAULT 0")
             self._conn.commit()
 
     @property

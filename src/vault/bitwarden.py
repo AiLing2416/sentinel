@@ -478,6 +478,20 @@ class BitwardenBackend(VaultBackend):
             logger.error(f"Failed to retrieve SSH key from Bitwarden: {e}")
             raise
 
+    async def get_totp_code(self, item_id: str) -> str | None:
+        """Retrieve TOTP code for a specific item."""
+        if not await self.is_unlocked():
+            raise RuntimeError("Vault is locked")
+            
+        try:
+            # Bitwarden CLI has a specific 'get totp' command
+            code = await self._run_bw(["get", "totp", item_id])
+            return code.strip() if code else None
+        except Exception as e:
+            # It might fail if no TOTP is configured for the item
+            logger.debug(f"Failed to get TOTP for {item_id}: {e}")
+            return None
+
     async def store_connection_config(self, config: dict) -> str:
         """Bitwarden sync of configs is a bonus Phase 4 feature."""
         raise NotImplementedError("Syncing configs to Bitwarden notes is not yet implemented.")

@@ -24,11 +24,13 @@ class SentinelSSHClient(asyncssh.SSHClient):
         connection: Connection,
         ui_callbacks: dict[str, Callable],
         password_provider: Callable[[], str | None] | None = None,
+        **kwargs: Any
     ) -> None:
         super().__init__()
         self._conn = connection
         self._ui_callbacks = ui_callbacks
         self._password_provider = password_provider
+        self._totp_provider = kwargs.get("totp_provider")
 
     def validate_host_public_key(
         self, host: str, addr: str, port: int, key: asyncssh.SSHKey
@@ -78,33 +80,49 @@ class SentinelSSHClient(asyncssh.SSHClient):
     ) -> list[str]:
         """Handle keyboard-interactive authentication challenges."""
         # Many servers (like Alpine/Dropbear) use keyboard-interactive instead of password auth.
-        # We'll just ask for the password if this happens.
-        cb = self._ui_callbacks.get("ask_password")
-        if not cb or not prompts:
-            return []
-            
+        # We also want to support OTP/TOTP prompts here.
         results = []
         for prompt, echo in prompts:
-            # Try pre-provided password first (e.g. from Vault or previous entry)
-            if self._password_provider:
-                import inspect
-                if inspect.iscoroutinefunction(self._password_provider):
-                    pwd = await self._password_provider()
-                else:
-                    pwd = self._password_provider()
+            p_lower = prompt.lower()
+            
+            # 1. Handle Password prompts
+            if "password" in p_lower:
+                if self._password_provider:
+                    import inspect
+                    pwd = await self._password_provider() if inspect.iscoroutinefunction(self._password_provider) else self._password_provider()
+                    if pwd is not None:
+                        results.append(pwd)
+                        continue
                 
-                if pwd is not None:
-                    results.append(pwd)
+                # Manual entry via UI
+                cb = self._ui_callbacks.get("ask_password")
+                if cb:
+                    res = await call_ui_async(cb, self._conn)
+                    if res is None: raise asyncio.CancelledError("User cancelled password input")
+                    with res: results.append(res.get_str())
                     continue
 
-            # Usually it's just one prompt for "Password: "
-            # Use the server's prompt text if possible
-            res = await call_ui_async(cb, self._conn)
-            if res is None:
-                raise asyncio.CancelledError("User cancelled password input")
+            # 2. Handle OTP / Verification code prompts (often for 2FA)
+            elif any(x in p_lower for x in ["verification code", "totp", "otp", "code:", "multi-factor"]):
+                if self._totp_provider:
+                    import inspect
+                    code = await self._totp_provider() if inspect.iscoroutinefunction(self._totp_provider) else self._totp_provider()
+                    if code:
+                        logger.info(f"Using OTP from provider for prompt: {prompt}")
+                        results.append(code)
+                        continue
                 
-            with res:
-                results.append(res.get_str())
+                # Manual entry via UI
+                # We reuse password dialog for secret input if no specific OTP dialog exists
+                cb = self._ui_callbacks.get("ask_password")
+                if cb:
+                    res = await call_ui_async(cb, self._conn)
+                    if res is None: raise asyncio.CancelledError("User cancelled OTP input")
+                    with res: results.append(res.get_str())
+                    continue
+
+            # 3. Fallback for other prompts
+            results.append("")
                 
         return results
 

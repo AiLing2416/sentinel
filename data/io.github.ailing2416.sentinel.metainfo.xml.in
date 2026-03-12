@@ -25,9 +25,15 @@
       <image>https://raw.githubusercontent.com/ailing2416/sentinel/main/data/screenshots/main.png</image>
     </screenshot>
   </screenshots>
-  <url type="homepage">https://github.com/ailing2416/sentinel</url>
-  <url type="bugtracker">https://github.com/ailing2416/sentinel/issues</url>
   <url type="vcs-browser">https://github.com/ailing2416/sentinel</url>
+  <recommends>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </recommends>
+  <requires>
+    <id>com.bitwarden.desktop</id>
+  </requires>
   <content_rating type="oars-1.1" />
   <releases>
     <release version="0.1.0" date="2026-03-12" />

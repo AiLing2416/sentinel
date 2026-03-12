@@ -145,6 +145,7 @@ class Connection:
     notes: str = ""
     last_connected: datetime | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    agent_forwarding: bool = False
     sort_order: int = 0
 
     def validate(self) -> None:
@@ -173,6 +174,7 @@ class Connection:
             "notes": self.notes,
             "last_connected": self.last_connected.isoformat() if self.last_connected else None,
             "created_at": self.created_at.isoformat(),
+            "agent_forwarding": int(self.agent_forwarding),
             "sort_order": self.sort_order,
         }
 
@@ -202,6 +204,7 @@ class Connection:
                 if data.get("created_at")
                 else datetime.now(timezone.utc)
             ),
+            agent_forwarding=bool(data.get("agent_forwarding", 0)),
             sort_order=data.get("sort_order", 0),
         )
 

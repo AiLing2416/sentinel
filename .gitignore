@@ -49,11 +49,15 @@ htmlcov/
 *.swp
 *.swo
 
+# Flatpak
+.flatpak-builder/
+build-dir/
+repo/
+
 # Project specific
 test_*.py
 test_*.sh
 generate_icons.py
+apply_manual_icon.py
 Sentinel.svg
-update_manual_icons.py
-apply_final_icons.py
-generate_sentinel_icons.py
+# (...Other script ignores...)

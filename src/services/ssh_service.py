@@ -15,7 +15,7 @@ import datetime
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Any
+from typing import Callable, Any, Sequence
 from enum import Enum
 
 import asyncssh
@@ -92,6 +92,15 @@ class SSHService:
         shell = shutil.which("bash") or shutil.which("sh") or "/bin/sh"
         return LocalCommand(argv=[shell])
 
+    async def _get_connection_by_id(self, conn_id: str) -> Connection | None:
+        """Fetch connection from database by ID."""
+        db = Database()
+        db.open()
+        try:
+            return db.get_connection(conn_id)
+        finally:
+            db.close()
+
     async def connect_and_start_session(
         self,
         conn: Connection,
@@ -99,8 +108,13 @@ class SSHService:
         output_cb: Callable[[bytes], None],
         exit_cb: Callable[[int], None],
         status_cb: Callable[[str], None] | None = None,
+        _tunnel: Any = None,
+        _depth: int = 0
     ) -> Any:
         """Establish asyncssh connection and start a PTY process."""
+        if _depth > 5:
+            raise ValueError("ProxyJump recursion limit reached (max 5 jumps)")
+
         def set_status(msg: str):
             if status_cb:
                 call_ui_sync(status_cb, msg)
@@ -143,7 +157,26 @@ class SSHService:
                 "connect_timeout": 30,
                 "gss_auth": False,
                 "agent_path": None, # Explicitly disable agent to prevent background hangs
+                "agent_forwarding": conn.agent_forwarding,
+                "keepalive_interval": 60,
+                "keepalive_count_max": 3,
+                "tunnel": _tunnel,
             }
+
+            # ── Jump Host setup ─────────────────────────────────────────
+            if conn.jump_host_id and not _tunnel:
+                jump_conn = await self._get_connection_by_id(conn.jump_host_id)
+                if jump_conn:
+                    set_status(f"Connecting to jump host: {jump_conn.display_name or jump_conn.hostname}…")
+                    # Recursive call to get the tunnel connection
+                    # Note: We don't start a session on the jump host, just establish connection
+                    jump_ssh_conn, _ = await self.connect_and_start_session(
+                        jump_conn, ui_callbacks, lambda x: None, lambda x: None, 
+                        status_cb=status_cb, _depth=_depth + 1
+                    )
+                    kwargs["tunnel"] = jump_ssh_conn
+                else:
+                    logger.warning(f"Jump host ID {conn.jump_host_id} not found in database.")
 
             # ── Auth setup ─────────────────────────────────────────
             password_provider: Any = None
@@ -220,6 +253,11 @@ class SSHService:
                             kwargs["password"] = _v_pwd
                             password_provider = lambda: _v_pwd
                             kwargs["preferred_auth"] = ["password", "keyboard-interactive"]
+                        
+                        # Add TOTP provider if supported by backend
+                        if hasattr(vault, 'get_totp_code'):
+                            kwargs["totp_provider"] = lambda: vault.get_totp_code(item_id)
+
                 except Exception as e:
                     logger.error(f"Vault retrieval failed: {e}")
                     raise
@@ -228,7 +266,11 @@ class SSHService:
 
             def client_factory() -> BoundClient:
                 nonlocal client_instance
-                client_instance = BoundClient(conn, ui_callbacks, password_provider=password_provider)
+                client_instance = BoundClient(
+                    conn, ui_callbacks, 
+                    password_provider=password_provider,
+                    totp_provider=kwargs.get("totp_provider")
+                )
                 return client_instance
             
             kwargs["client_factory"] = client_factory
@@ -242,6 +284,11 @@ class SSHService:
                     logger.info(f"Connected to {conn.hostname}!")
                     break
                 except (Exception, asyncio.CancelledError) as e:
+                    # Clean up tunnel if handshake fails
+                    if kwargs.get("tunnel"):
+                        kwargs["tunnel"].close()
+                        await kwargs["tunnel"].wait_closed()
+
                     if client_instance and client_instance.server_key:
                         k = client_instance.server_key
                         accepted = await call_ui_async(
@@ -266,6 +313,10 @@ class SSHService:
                         
                     # Re-raise to be caught by outer handler
                     raise e
+
+            # Return connection if we are just tunneling
+            if _depth > 0:
+                return connection, None
         except asyncio.CancelledError:
             if "on_cancelled" in ui_callbacks:
                 call_ui_sync(ui_callbacks["on_cancelled"])
@@ -287,6 +338,9 @@ class SSHService:
         bridge = SessionBridge(session, output_cb, exit_cb)
         bridge._conn_ref = connection 
         call_ui_sync(ui_callbacks["on_connected"], bridge)
+        
+        # Apply Port Forwarding rules
+        await self._apply_forward_rules(connection, conn.id)
         
         # Background tasks...
         async def background_tasks():
@@ -493,6 +547,42 @@ class SSHService:
     def register_session(self, conn_id: str) -> SessionInfo:
         self._sessions[conn_id] = SessionInfo(conn_id, SessionState.CONNECTING, started_at=time.time())
         return self._sessions[conn_id]
+
+    async def _apply_forward_rules(self, connection: asyncssh.SSHClientConnection, connection_id: str) -> None:
+        """Read forward rules from DB and apply them to the established connection."""
+        from models.forward_rule import ForwardRule, ForwardType
+        db = Database()
+        db.open()
+        try:
+            rows = db._conn.execute(
+                "SELECT * FROM forward_rules WHERE connection_id = ? AND enabled = 1",
+                (connection_id,)
+            ).fetchall()
+            rules = [ForwardRule.from_dict(dict(r)) for r in rows]
+        finally:
+            db.close()
+
+        for rule in rules:
+            try:
+                if rule.type == ForwardType.LOCAL:
+                    await connection.start_local_forward(
+                        rule.bind_address, rule.bind_port,
+                        rule.remote_host, rule.remote_port
+                    )
+                    logger.info(f"Local forward started: {rule.bind_address}:{rule.bind_port} -> {rule.remote_host}:{rule.remote_port}")
+                elif rule.type == ForwardType.REMOTE:
+                    await connection.start_remote_forward(
+                        rule.bind_address, rule.bind_port,
+                        rule.remote_host, rule.remote_port
+                    )
+                    logger.info(f"Remote forward started: {rule.bind_address}:{rule.bind_port} -> {rule.remote_host}:{rule.remote_port}")
+                elif rule.type == ForwardType.DYNAMIC:
+                    await connection.start_dynamic_forward(
+                        rule.bind_address, rule.bind_port
+                    )
+                    logger.info(f"Dynamic (SOCKS) forward started: {rule.bind_address}:{rule.bind_port}")
+            except Exception as e:
+                logger.error(f"Failed to apply forward rule {rule.id}: {e}")
 
     def update_session_state(self, conn_id: str, state: SessionState, pid: int | None = None, error: str | None = None) -> None:
         if conn_id in self._sessions:
