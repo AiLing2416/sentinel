@@ -1,0 +1,38 @@
+name: Flatpak Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  flatpak-build:
+    name: Build Flatpak
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:gnome-47
+      options: --privileged
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Sentinel
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: sentinel.flatpak
+          manifest-path: flatpak/io.github.ailing2416.sentinel.yml
+          repository-name: sentinel-repo
+          repository-url: https://github.com/AiLing2416/sentinel
+          branch: main
+          cache: true
+          # We need to ensure we have the runtime and SDK
+          # The bilelmoussaoui image usually has standard runtimes
+          # but we might need to install specific ones if not present
+
+      - name: Upload Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-flatpak
+          path: sentinel.flatpak
