@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: bilelmoussaoui/flatpak-github-actions:gnome-47
-      options: --privileged
 
     steps:
       - uses: actions/checkout@v4
@@ -23,9 +22,6 @@ jobs:
         with:
           bundle: sentinel.flatpak
           manifest-path: flatpak/io.github.ailing2416.sentinel.yml
-          repository-name: sentinel-repo
-          repository-url: https://github.com/AiLing2416/sentinel
-          branch: main
           cache: true
           # We need to ensure we have the runtime and SDK
           # The bilelmoussaoui image usually has standard runtimes
