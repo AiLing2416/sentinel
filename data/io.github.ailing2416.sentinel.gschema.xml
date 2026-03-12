@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="sentinel">
+  <schema id="io.github.ailing2416.sentinel" path="/io/github/ailing2416/sentinel/">
+    <key name="window-width" type="i">
+      <default>1000</default>
+      <summary>Window width</summary>
+    </key>
+    <key name="window-height" type="i">
+      <default>700</default>
+      <summary>Window height</summary>
+    </key>
+    <key name="window-maximized" type="b">
+      <default>false</default>
+      <summary>Window maximized state</summary>
+    </key>
+    <key name="active-vault" type="s">
+      <default>'bitwarden'</default>
+      <summary>Active password manager backend</summary>
+    </key>
+    <key name="vault-folder-id" type="s">
+      <default>''</default>
+      <summary>Preferred folder ID in Bitwarden</summary>
+    </key>
+  </schema>
+</schemalist>

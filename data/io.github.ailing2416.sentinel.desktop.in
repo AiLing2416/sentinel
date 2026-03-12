@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Sentinel
+Comment=Secure GNOME SSH connection manager
+Exec=sentinel
+Icon=io.github.ailing2416.sentinel
+Terminal=false
+Type=Application
+Categories=GNOME;GTK;System;TerminalEmulator;Network;
+StartupNotify=true
+SingleMainWindow=true
+X-Purism-FormFactor=Workstation;Mobile;

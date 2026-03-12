@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.ailing2416.sentinel</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Sentinel</name>
+  <summary>Secure GNOME SSH connection manager</summary>
+  <description>
+    <p>
+      Sentinel is a native GNOME SSH connection manager focused on security and aesthetics.
+      It integrates with password managers like Bitwarden to keep your credentials safe.
+    </p>
+    <ul>
+      <li>Native libadwaita UI</li>
+      <li>Bitwarden vault integration</li>
+      <li>Secure memory handling for credentials</li>
+      <li>Integrated VTE terminal with multi-tab support</li>
+      <li>SFTP file browser with drag-and-drop</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.ailing2416.sentinel.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main Window</caption>
+      <image>https://raw.githubusercontent.com/ailing2416/sentinel/main/data/screenshots/main.png</image>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/ailing2416/sentinel</url>
+  <url type="bugtracker">https://github.com/ailing2416/sentinel/issues</url>
+  <url type="vcs-browser">https://github.com/ailing2416/sentinel</url>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.1.0" date="2026-03-12" />
+  </releases>
+  <developer_name>ailing2416</developer_name>
+  <update_contact>ailing2416@github.com</update_contact>
+</component>

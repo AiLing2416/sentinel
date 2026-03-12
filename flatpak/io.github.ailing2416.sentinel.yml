@@ -1,0 +1,31 @@
+app-id: io.github.ailing2416.sentinel
+runtime: org.gnome.Platform
+runtime-version: '45'
+sdk: org.gnome.Sdk
+command: sentinel
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=home
+  - --talk-name=org.freedesktop.secrets
+  - --talk-name=org.gtk.vfs.*
+  - --system-talk-name=org.freedesktop.NetworkManager
+
+modules:
+  - name: python3-asyncssh
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}" --prefix=${FLATPAK_DEST} asyncssh
+    sources:
+      - type: shell
+        commands:
+          - pip3 download asyncssh aiosqlite cryptography
+
+  - name: sentinel
+    buildsystem: meson
+    sources:
+      - type: dir
+        path: ..

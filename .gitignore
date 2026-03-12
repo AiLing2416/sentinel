@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+
+# Build system
+_build/
+builddir/
+meson-logs/
+meson-private/
+compile_commands.json
+
+# Binaries and large files
+bin/
+*.db
+*.log
+
+# Icons / choices
+icon_choices/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.benchmarks/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+test_*.py
+test_*.sh
+generate_icons.py
+Sentinel.svg
+update_manual_icons.py
+apply_final_icons.py
+generate_sentinel_icons.py
