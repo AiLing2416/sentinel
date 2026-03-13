@@ -448,13 +448,22 @@ class BitwardenBackend(VaultBackend):
             # 3. Check attachments
             if not key_data:
                 attachments = item.get("attachments", [])
+                candidates = []
                 for att in attachments:
                     fn = att.get("fileName", "").lower()
                     if fn in ["id_rsa", "id_ed25519", "id_ecdsa"] or fn.endswith(".pem") or fn.endswith(".key") or "ssh" in fn:
-                         try:
-                            key_data = await self._run_bw_raw(["get", "attachment", att["id"], "--itemid", item_id])
+                        candidates.append(att)
+
+                if candidates:
+                    tasks = [
+                        self._run_bw_raw(["get", "attachment", att["id"], "--itemid", item_id])
+                        for att in candidates
+                    ]
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    for res in results:
+                        if isinstance(res, (bytes, bytearray)):
+                            key_data = res
                             break
-                         except Exception: pass
 
             # 4. Fallback to notes
             if not key_data:
