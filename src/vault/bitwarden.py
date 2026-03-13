@@ -78,6 +78,8 @@ class BitwardenBackend(VaultBackend):
 
         env = os.environ.copy()
         if self._session_token:
+            # Environment variables must be strings, so we use unsafe_get_str().
+            # Bitwarden CLI relies on this env var for authentication.
             env["BW_SESSION"] = self._session_token.unsafe_get_str()
         else:
             # Mask sensitive commands
@@ -106,16 +108,17 @@ class BitwardenBackend(VaultBackend):
 
         return stdout
 
-    async def login(self, email: str, password: SecureBytes | str, method: int | None = None, code: str | None = None) -> bool:
+    async def login(self, email: str, password: SecureBytes | str, method: int | None = None, code: SecureBytes | str | None = None) -> bool:
         """Log in to Bitwarden securely. Password passed via stdin."""
         try:
             args = ["login", email, "--raw", "--nointeraction"]
             if method is not None:
                 args.extend(["--method", str(method)])
             if code:
-                args.extend(["--code", code])
+                _code = code.unsafe_get_str() if isinstance(code, SecureBytes) else code
+                args.extend(["--code", _code])
                 
-            pwd_bytes = password.unsafe_get_bytes() if isinstance(password, SecureBytes) else password.encode()
+            pwd_input = password.get_view() if isinstance(password, SecureBytes) else password.encode()
             
             process = await asyncio.create_subprocess_exec(
                 self._cli_path,
@@ -125,7 +128,7 @@ class BitwardenBackend(VaultBackend):
                 stderr=asyncio.subprocess.PIPE,
             )
             
-            stdout, stderr = await process.communicate(input=pwd_bytes)
+            stdout, stderr = await process.communicate(input=pwd_input)
             
             if process.returncode != 0:
                 err_msg = stderr.decode().strip()
@@ -157,7 +160,7 @@ class BitwardenBackend(VaultBackend):
                 return False
 
             # Prepare password input
-            pwd_bytes = master_password.unsafe_get_bytes() if isinstance(master_password, SecureBytes) else master_password.encode()
+            pwd_input = master_password.get_view() if isinstance(master_password, SecureBytes) else master_password.encode()
             
             # Use --raw to get only the token on stdout
             process = await asyncio.create_subprocess_exec(
@@ -168,7 +171,7 @@ class BitwardenBackend(VaultBackend):
                 stderr=asyncio.subprocess.PIPE,
             )
 
-            stdout, stderr = await process.communicate(input=pwd_bytes)
+            stdout, stderr = await process.communicate(input=pwd_input)
 
             if process.returncode != 0:
                 err_msg = stderr.decode().strip()

@@ -30,7 +30,7 @@ class VaultBackend(ABC):
         ...
 
     @abstractmethod
-    async def login(self, email: str, password: SecureBytes | str, method: int | None = None, code: str | None = None) -> bool:
+    async def login(self, email: str, password: SecureBytes | str, method: int | None = None, code: SecureBytes | str | None = None) -> bool:
         """Log in to the vault provider. Returns True on success."""
         ...
 
