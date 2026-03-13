@@ -43,6 +43,7 @@ class SentinelApplication(Adw.Application):
             ("quit", self._on_quit, ["<primary>q"]),
             ("about", self._on_about, None),
             ("new-connection", self._on_new_connection, ["<primary>n"]),
+            ("app_settings", self._on_app_settings, None),
             ("vault_settings", self._on_vault_settings, None),
         ]
         for name, callback, accels in actions:
@@ -75,6 +76,14 @@ class SentinelApplication(Adw.Application):
         win = self.props.active_window
         if win and hasattr(win, "show_connection_editor"):
             win.show_connection_editor()
+
+    def _on_app_settings(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
+        from views.app_settings_dialog import AppSettingsWindow
+        win = self.props.active_window
+        settings_win = AppSettingsWindow(app=self)
+        settings_win.set_transient_for(win)
+        settings_win.set_modal(False)
+        settings_win.present()
 
     def _on_vault_settings(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
         from views.vault_settings_dialog import VaultManagerWindow

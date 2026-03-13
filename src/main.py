@@ -20,8 +20,35 @@ gi.require_version("Adw", "1")
 from application import SentinelApplication  # noqa: E402
 
 
+def _setup_language() -> None:
+    import gettext
+    import locale
+    from db.database import Database
+
+    db = Database()
+    db.open()
+    lang_code = db.get_meta("app_language", "")
+    db.close()
+
+    domain = 'sentinel'
+    localedir = os.path.join(_src_dir, '..', 'build', 'po')
+
+    if lang_code:
+        os.environ['LANGUAGE'] = lang_code
+        try:
+            locale.setlocale(locale.LC_ALL, f"{lang_code}.UTF-8")
+        except locale.Error:
+            pass
+
+    # Initialize gettext for Python side
+    gettext.bindtextdomain(domain, localedir)
+    gettext.textdomain(domain)
+    # The C components (like GLib/Gtk) will automatically pick up the LANGUAGE env var
+
+
 def main() -> int:
     """Launch the Sentinel application."""
+    _setup_language()
     app = SentinelApplication()
     ret = app.run(sys.argv)
 

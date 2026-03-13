@@ -64,6 +64,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         # Menu
         menu_btn = Gtk.MenuButton(icon_name="open-menu-symbolic", tooltip_text="Menu")
         menu_model = Gio.Menu()
+        menu_model.append("App Settings", "app.app_settings")
         menu_model.append("Vault Settings", "app.vault_settings")
         menu_model.append("About Sentinel", "app.about")
         menu_model.append("Quit", "app.quit")
