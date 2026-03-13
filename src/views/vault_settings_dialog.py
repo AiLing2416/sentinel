@@ -682,7 +682,7 @@ class VaultManagerWindow(Adw.Window):
                 if not self._login_pwd:
                      raise RuntimeError("Login password missing for 2FA")
                 
-                success = await self._vault.login(self._login_email, self._login_pwd, method=method_id, code=code_sb.unsafe_get_str())
+                success = await self._vault.login(self._login_email, self._login_pwd, method=method_id, code=code_sb)
                 code_sb.clear()
                 
                 if success:

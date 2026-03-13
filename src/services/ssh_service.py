@@ -137,15 +137,14 @@ class SSHService:
                 except asyncssh.KeyImportError as e:
                     logger.info(f"Key import needs passphrase: {e}")
                     pwd = await ask_passphrase()
-                    _pwd_str = pwd.unsafe_get_str()
                     try:
-                        keys = asyncssh.read_private_key(key_path, _pwd_str)
+                        # asyncssh.read_private_key accepts bytes-like for passphrase
+                        keys = asyncssh.read_private_key(key_path, pwd.get_view())
                         _loaded_keys.append(keys)
                     except Exception as final_e:
                         raise ValueError(f"AuthenticationFailedError: {final_e}") from None
                     finally:
                         pwd.clear()
-                        _pwd_str = ""
 
             # Connection parameters
             kwargs: dict[str, Any] = {
@@ -193,6 +192,7 @@ class SSHService:
                 password_provider = lambda: _pwd_str
                 # We can't clear pw yet if password_provider is used later
                 # so we let GC handle it or clear it after connect.
+                # Note: asyncssh usually requires a string for password.
                 kwargs["preferred_auth"] = ["password", "keyboard-interactive"]
 
             elif conn.auth_method in (AuthMethod.KEY, AuthMethod.KEY_PASSPHRASE):
@@ -236,7 +236,7 @@ class SSHService:
                         # import_private_key accepts bytes-like, so memoryview works
                         private_key = asyncssh.import_private_key(
                             key_material.private_key_pem.get_view(),
-                            key_material.passphrase.unsafe_get_str() if key_material.passphrase else None
+                            key_material.passphrase.get_view() if key_material.passphrase else None
                         )
                         kwargs["client_keys"] = [private_key]
                         # Material is in key_material (SecureBytes), will clear on GC
@@ -407,17 +407,14 @@ class SSHService:
                 except asyncssh.KeyImportError as e:
                     logger.info(f"Key import needs passphrase: {e}")
                     pwd = await ask_passphrase()
-                    _pwd_str = pwd.unsafe_get_str()
                     try:
-                        keys = asyncssh.read_private_key(key_path, _pwd_str)
+                        keys = asyncssh.read_private_key(key_path, pwd.get_view())
                         _loaded_keys.append(keys)
                         # We will set auth_info["key_passphrase"] later
                         _key_pass_sb = pwd
                     except Exception as final_e:
                         pwd.clear()
                         raise ValueError(f"AuthenticationFailedError: {final_e}") from None
-                    finally:
-                        _pwd_str = ""
                     # Do NOT clear pwd here, it's saved in _key_pass_sb
 
             kwargs: dict[str, Any] = {
@@ -443,6 +440,7 @@ class SSHService:
                 kwargs["password"] = _pwd_str
                 auth_info["password"] = pw  # Store SecureBytes directly
                 password_provider = lambda: _pwd_str
+                # Note: asyncssh usually requires a string for password.
                 kwargs["preferred_auth"] = ["password", "keyboard-interactive"]
             elif conn.auth_method in (AuthMethod.KEY, AuthMethod.KEY_PASSPHRASE):
                 if _loaded_keys:
@@ -475,7 +473,7 @@ class SSHService:
                         # import_private_key accepts bytes-like
                         private_key = asyncssh.import_private_key(
                             key_material.private_key_pem.get_view(),
-                            key_material.passphrase.unsafe_get_str() if key_material.passphrase else None
+                            key_material.passphrase.get_view() if key_material.passphrase else None
                         )
                         kwargs["client_keys"] = [private_key]
                         

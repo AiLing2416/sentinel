@@ -36,20 +36,36 @@ class SecureBytes:
     def unsafe_get_bytes(self) -> bytes:
         """Get the protected data as bytes.
         WARNING: This creates a copy in Python memory which cannot be wiped.
+        Use get_view() instead whenever possible.
         """
         return bytes(self._buf)
 
     def unsafe_get_str(self) -> str:
         """Get the protected data as string.
         WARNING: This creates a copy in Python memory which cannot be wiped.
+        Use get_view() instead whenever possible.
         """
         return self._buf.decode("utf-8")
 
     def get_view(self) -> memoryview:
         """Get a memoryview of the protected buffer.
         When clear() is called, the content of this view will also be zeroed.
+        This is the preferred way to access data for subprocesses or asyncssh.
         """
         return memoryview(self._buf)
+
+    def __bytes__(self) -> bytes:
+        """Prevent accidental conversion to bytes."""
+        raise TypeError(
+            "Implicit conversion of SecureBytes to bytes is disabled for security. "
+            "Use get_view() or unsafe_get_bytes() if absolutely necessary."
+        )
+
+    def __str__(self) -> str:
+        return "********"
+
+    def __repr__(self) -> str:
+        return f"<SecureBytes len={len(self._buf)} at {hex(id(self))}>"
 
     def __len__(self) -> int:
         return len(self._buf)
