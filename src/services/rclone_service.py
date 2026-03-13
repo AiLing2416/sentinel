@@ -1,12 +1,7 @@
 import asyncio
 import logging
 import os
-import stat
 import tempfile
-import urllib.request
-import zipfile
-import io
-import shutil
 from pathlib import Path
 
 import re
