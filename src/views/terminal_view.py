@@ -106,6 +106,20 @@ class TerminalTab(Gtk.Box):
             
         self._terminal.connect("window-title-changed", self._on_title_changed)
 
+        # Key controller for copy/paste
+        key_ctrl = Gtk.EventControllerKey.new()
+        key_ctrl.connect("key-pressed", self._on_terminal_key_pressed)
+        self._terminal.add_controller(key_ctrl)
+
+        # Auto-copy on selection
+        self._terminal.connect("selection-changed", self._on_selection_changed)
+
+        # Right-click to paste
+        click_gesture = Gtk.GestureClick.new()
+        click_gesture.set_button(Gdk.BUTTON_SECONDARY)
+        click_gesture.connect("pressed", self._on_terminal_right_click)
+        self._terminal.add_controller(click_gesture)
+
         # Scrolled container
         scroll = Gtk.ScrolledWindow(vexpand=True, hexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
         scroll.set_child(self._terminal)
@@ -280,6 +294,25 @@ class TerminalTab(Gtk.Box):
 
     def _on_title_changed(self, terminal: Vte.Terminal) -> None:
         pass
+
+    def _on_selection_changed(self, terminal: Vte.Terminal) -> None:
+        if terminal.get_has_selection():
+            terminal.copy_clipboard_format(Vte.Format.TEXT)
+
+    def _on_terminal_right_click(self, gesture: Gtk.GestureClick, n_press: int, x: float, y: float) -> None:
+        self._terminal.paste_clipboard()
+        gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+
+    def _on_terminal_key_pressed(self, controller: Gtk.EventControllerKey, keyval: int, keycode: int, state: Gdk.ModifierType) -> bool:
+        # Check for Ctrl+Shift+C
+        if keyval in (Gdk.KEY_C, Gdk.KEY_c) and (state & Gdk.ModifierType.CONTROL_MASK) and (state & Gdk.ModifierType.SHIFT_MASK):
+            self._terminal.copy_clipboard_format(Vte.Format.TEXT)
+            return True
+        # Check for Ctrl+Shift+V
+        if keyval in (Gdk.KEY_V, Gdk.KEY_v) and (state & Gdk.ModifierType.CONTROL_MASK) and (state & Gdk.ModifierType.SHIFT_MASK):
+            self._terminal.paste_clipboard()
+            return True
+        return False
 
     def copy_clipboard(self) -> None:
         self._terminal.copy_clipboard_format(Vte.Format.TEXT)
