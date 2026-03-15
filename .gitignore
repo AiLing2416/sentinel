@@ -60,4 +60,6 @@ test_*.sh
 generate_icons.py
 apply_manual_icon.py
 Sentinel.svg
-# (...Other script ignores...)
+# Documentation
+*.md
+!README.md
