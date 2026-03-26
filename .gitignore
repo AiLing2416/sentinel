@@ -63,3 +63,7 @@ Sentinel.svg
 # Documentation
 *.md
 !README.md
+
+# Generated
+messages.mo
+sentinel.flatpak
