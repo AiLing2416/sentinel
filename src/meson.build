@@ -1,4 +1,4 @@
-pkgdatadir = get_option('datadir') / meson.project_name()
+pkgdatadir = get_option('prefix') / get_option('datadir') / meson.project_name()
 mod_py = import('python')
 python = mod_py.find_installation('python3')
 pythondir = python.get_install_dir()

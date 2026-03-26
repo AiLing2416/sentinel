@@ -81,13 +81,6 @@ class SentinelApplication(Adw.Application):
         if win and hasattr(win, "show_connection_editor"):
             win.show_connection_editor()
 
-    def _on_app_settings(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
-        from views.app_settings_dialog import AppSettingsWindow
-        win = self.props.active_window
-        settings_win = AppSettingsWindow(app=self)
-        settings_win.set_transient_for(win)
-        settings_win.set_modal(False)
-        settings_win.present()
 
     def _on_vault_settings(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
         from views.vault_settings_dialog import VaultManagerWindow

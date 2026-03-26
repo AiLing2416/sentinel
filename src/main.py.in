@@ -28,38 +28,38 @@ else:
 def _setup_language() -> None:
     import gettext
     import locale
-    from db.database import Database
-
-    db = Database()
-    db.open()
-    lang_code = db.get_meta("app_language", "")
-    db.close()
+    # We no longer read from DB to follow GNOME/Flatpak standards
+    lang_code = os.environ.get("LANGUAGE", "")
 
     domain = 'sentinel'
     localedir = os.path.join(pkgdatadir, 'locale') if not pkgdatadir.startswith('@') else os.path.join(_src_dir, '..', 'build', 'locale')
 
-    # Load customized UI language configuration
-    if lang_code:
-        os.environ['LANGUAGE'] = lang_code
-        try:
-            # Create a static Translation object for the requested language
-            t = gettext.translation(domain, localedir, languages=[lang_code], fallback=True)
-            # Monkey-patch the global gettext module to bypass all system/portal restrictions!
-            gettext.gettext = t.gettext
-            
-            # Optionally attempt to set the C locale as well
-            locale.setlocale(locale.LC_ALL, "")
-            locale.setlocale(locale.LC_ALL, f"{lang_code}.UTF-8")
-        except Exception:
-            pass
+    print(f"DEBUG_I18N: lang_code environment = '{lang_code}'", flush=True)
+    print(f"DEBUG_I18N: localedir = '{localedir}'", flush=True)
 
+    # 1. Initialize the default system locale
+    try:
+        locale.setlocale(locale.LC_ALL, "")
+    except locale.Error as e:
+        print(f"DEBUG_I18N: setlocale empty error: {e}", flush=True)
+
+    # Initialize gettext for Python side
+    gettext.bindtextdomain(domain, localedir)
+    gettext.textdomain(domain)
+    
+    # Verify Python side before importing application
+    test_trans = gettext.gettext("Settings")
+    print(f"DEBUG_I18N: Global gettext('Settings') test: '{test_trans}'", flush=True)
+    
     # Initialize gettext for C side (GTK/GLib)
     if hasattr(locale, 'bindtextdomain'):
         try:
             locale.bindtextdomain(domain, localedir)
             locale.textdomain(domain)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"DEBUG_I18N: locale.bindtextdomain error: {e}", flush=True)
+    
+    # The C components (like GLib/Gtk) will automatically pick up the LANGUAGE env var early on
     
     # The C components (like GLib/Gtk) will automatically pick up the LANGUAGE env var early on
 
