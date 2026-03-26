@@ -1,37 +1,43 @@
 name: Release Build
 
 on:
+  push:
+    tags:
+      - 'v*'
   release:
     types: [published, created]
   workflow_dispatch:
-
 
 jobs:
   release-build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    container:
-      image: bilelmoussaoui/flatpak-github-actions:gnome-47
-      options: --privileged
-
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Build Sentinel
+      - name: Install Flatpak Builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak-builder
+
+      - name: Build Sentinel Flatpak
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           bundle: sentinel.flatpak
           manifest-path: flatpak/io.github.ailing2416.sentinel.yml
           cache: true
+          # Restore runtimes if needed
+          restore-cache: true
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
         with:
           files: sentinel.flatpak
           tag_name: ${{ github.event.release.tag_name || github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-
-
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
