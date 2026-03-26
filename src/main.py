@@ -12,15 +12,6 @@ import logging
 _src_dir = os.path.dirname(os.path.abspath(__file__))
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
-
-import gi
-
-gi.require_version("Gtk", "4.0")
-gi.require_version("Adw", "1")
-
-from application import SentinelApplication  # noqa: E402
-
-
 def _setup_language() -> None:
     import gettext
     import locale
@@ -38,6 +29,12 @@ def _setup_language() -> None:
         # Fallback: system-installed location
         localedir = os.path.join(_src_dir, '..', 'build', 'po')
 
+    # 1. Initialize the default system locale to ensure we are not in the "C" locale.
+    try:
+        locale.setlocale(locale.LC_ALL, "")
+    except locale.Error:
+        pass
+
     if lang_code:
         os.environ['LANGUAGE'] = lang_code
         try:
@@ -48,9 +45,20 @@ def _setup_language() -> None:
     # Initialize gettext for Python side
     gettext.bindtextdomain(domain, localedir)
     gettext.textdomain(domain)
-    # The C components (like GLib/Gtk) will automatically pick up the LANGUAGE env var
+    
+    # Initialize gettext for C side (GTK/GLib)
+    if hasattr(locale, 'bindtextdomain'):
+        locale.bindtextdomain(domain, localedir)
+        locale.textdomain(domain)
+    # The C components (like GLib/Gtk) will automatically pick up the LANGUAGE env var early on
 
+# ALWAYS SETUP LANGUAGE FIRST, BEFORE IMPORTING GTK OR LIBADWAITA
+_setup_language()
 
+import gi
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+from application import SentinelApplication  # noqa: E402
 def main() -> int:
     """Launch the Sentinel application."""
     # Configure logging to show INFO and higher by default for development
@@ -73,7 +81,6 @@ def main() -> int:
     except Exception as _ve:
         logger.warning("Local vault startup failed: %s", _ve)
 
-    _setup_language()
     app = SentinelApplication()
     ret = app.run(sys.argv)
 

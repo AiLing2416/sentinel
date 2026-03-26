@@ -24,13 +24,6 @@ else:
     if module_dir not in sys.path:
         sys.path.insert(0, module_dir)
 
-import gi
-
-gi.require_version("Gtk", "4.0")
-gi.require_version("Adw", "1")
-
-from application import SentinelApplication  # noqa: E402
-
 
 def _setup_language() -> None:
     import gettext
@@ -70,6 +63,16 @@ def _setup_language() -> None:
     
     # The C components (like GLib/Gtk) will automatically pick up the LANGUAGE env var early on
 
+# ALWAYS SETUP LANGUAGE FIRST, BEFORE IMPORTING GTK OR LIBADWAITA
+_setup_language()
+
+import gi
+
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+
+from application import SentinelApplication  # noqa: E402
+
 
 
 def main() -> int:
@@ -94,7 +97,6 @@ def main() -> int:
     except Exception as _ve:
         logger.warning("Local vault startup failed: %s", _ve)
 
-    _setup_language()
     app = SentinelApplication()
     ret = app.run(sys.argv)
 
