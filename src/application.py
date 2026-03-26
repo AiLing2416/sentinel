@@ -37,6 +37,36 @@ class SentinelApplication(Adw.Application):
 
     def do_startup(self) -> None:
         Adw.Application.do_startup(self)
+        
+        # GNOME 40+ flatpak portals overwrite the language cache of gettext 
+        # based on XDG_DESKTOP_PORTAL dbus startup settings when do_startup runs.
+        # Re-apply our loaded user settings to prevent UI reverting to English.
+        import os, locale, gettext
+        from db.database import Database
+        db = Database()
+        db.open()
+        lang_code = db.get_meta("app_language", "")
+        db.close()
+        
+        if lang_code:
+            os.environ['LANGUAGE'] = lang_code
+            try:
+                locale.setlocale(locale.LC_ALL, "")
+            except locale.Error:
+                pass
+            
+            domain = 'sentinel'
+            path = os.path.dirname(os.path.abspath(__file__))
+            localedir = os.path.join(path, "..", "share", "sentinel", "locale")
+            if not os.path.isdir(localedir):
+                localedir = os.path.join(path, '..', '..', 'build', 'locale')
+            
+            gettext.bindtextdomain(domain, localedir)
+            gettext.textdomain(domain)
+            if hasattr(locale, 'bindtextdomain'):
+                locale.bindtextdomain(domain, localedir)
+                locale.textdomain(domain)
+
         self._load_css()
 
     # ── Actions ───────────────────────────────────────────────
