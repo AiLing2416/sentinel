@@ -38,29 +38,28 @@ def _setup_language() -> None:
     domain = 'sentinel'
     localedir = os.path.join(pkgdatadir, 'locale') if not pkgdatadir.startswith('@') else os.path.join(_src_dir, '..', 'build', 'locale')
 
-    # 1. Initialize the default system locale to ensure we are not in the "C" locale.
-    # If we stay in "C", GNU gettext completely ignores the LANGUAGE environment variable.
-    try:
-        locale.setlocale(locale.LC_ALL, "")
-    except locale.Error:
-        pass
-
+    # Load customized UI language configuration
     if lang_code:
-        print(f"DEBUG_LANG: Loaded app_language from DB = {lang_code}", flush=True)
         os.environ['LANGUAGE'] = lang_code
         try:
+            # Create a static Translation object for the requested language
+            t = gettext.translation(domain, localedir, languages=[lang_code], fallback=True)
+            # Monkey-patch the global gettext module to bypass all system/portal restrictions!
+            gettext.gettext = t.gettext
+            
+            # Optionally attempt to set the C locale as well
+            locale.setlocale(locale.LC_ALL, "")
             locale.setlocale(locale.LC_ALL, f"{lang_code}.UTF-8")
-        except locale.Error:
+        except Exception:
             pass
 
-    # Initialize gettext for Python side
-    gettext.bindtextdomain(domain, localedir)
-    gettext.textdomain(domain)
-    
     # Initialize gettext for C side (GTK/GLib)
     if hasattr(locale, 'bindtextdomain'):
-        locale.bindtextdomain(domain, localedir)
-        locale.textdomain(domain)
+        try:
+            locale.bindtextdomain(domain, localedir)
+            locale.textdomain(domain)
+        except Exception:
+            pass
     
     # The C components (like GLib/Gtk) will automatically pick up the LANGUAGE env var early on
 
