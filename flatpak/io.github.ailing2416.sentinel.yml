@@ -10,10 +10,9 @@ finish-args:
   - --socket=wayland
   - --socket=ssh-auth
   - --device=dri
-  - --filesystem=home
+  - --filesystem=xdg-config/sentinel:create
   - --filesystem=xdg-run/app/io.github.ailing2416.sentinel:create
   - --filesystem=~/.config/Bitwarden:ro
-  - --device=all
   - --talk-name=org.freedesktop.secrets
   - --talk-name=org.gtk.vfs.*
   - --system-talk-name=org.freedesktop.NetworkManager

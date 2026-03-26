@@ -579,13 +579,8 @@ msgstr "Ctrl+N 新建连接 · Ctrl+T 本地终端 · Ctrl+F 搜索"
 msgid "Duo"
 msgstr "Duo"
 
-#, fuzzy
 msgid "Duo passcode (or leave blank for push)"
-msgstr ""
-"#-#-#-#-#  zh_CN.po (sentinel)  #-#-#-#-#\n"
-"Duo 验证码 (或留空使用推送)\n"
-"#-#-#-#-#  zh_CN.po (sentinel)  #-#-#-#-#\n"
-"Duo 通行码 (或留空使用推送)"
+msgstr "Duo 通行码 (或留空进行推送)"
 
 msgid "Email verification code"
 msgstr "电子邮件验证码"
