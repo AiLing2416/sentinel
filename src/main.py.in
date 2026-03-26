@@ -46,6 +46,7 @@ def _setup_language() -> None:
         pass
 
     if lang_code:
+        print(f"DEBUG_LANG: Loaded app_language from DB = {lang_code}", flush=True)
         os.environ['LANGUAGE'] = lang_code
         try:
             locale.setlocale(locale.LC_ALL, f"{lang_code}.UTF-8")
