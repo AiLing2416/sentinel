@@ -325,18 +325,10 @@ class SecureVault:
         return bytes(buf)
 
     def _unpack_payload(self, data: bytes) -> dict[str, memoryview]:
-        """Binary unpacking with fallback to legacy JSON for compatibility."""
+        """Binary unpacking of payload fields."""
         if not data:
             return {}
             
-        # Check for legacy JSON header (starts with { )
-        if data[0] == ord('{'):
-            try:
-                legacy_data = json.loads(data.decode("utf-8"))
-                return {k: memoryview(v.encode("utf-8") if isinstance(v, str) else v) for k, v in legacy_data.items()}
-            except Exception as e:
-                logger.error(f"SecureVault: Legacy JSON fallback failed: {e}")
-        
         res = {}
         ptr = 0
         mv = memoryview(data)
@@ -356,11 +348,7 @@ class SecureVault:
             return res
         except Exception as e:
             logger.error(f"SecureVault: Payload unpacking failed: {e}")
-            # Final desperate attempt: is it just a raw string?
-            try:
-                return {"_raw": mv}
-            except:
-                raise ValueError("Corrupted vault payload")
+            raise ValueError("Corrupted vault payload") from e
 
     def _encrypt(self, data: dict) -> tuple[str, str]:
         """Encrypt a payload. Returns (base64 nonce, base64 ciphertext)."""
