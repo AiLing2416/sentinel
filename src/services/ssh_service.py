@@ -156,26 +156,24 @@ class SSHService:
                 "connect_timeout": 30,
                 "gss_auth": False,
                 "agent_path": None, # Explicitly disable agent to prevent background hangs
-                "agent_forwarding": conn.agent_forwarding,
+                # "agent_forwarding": conn.agent_forwarding,
                 "keepalive_interval": 60,
                 "keepalive_count_max": 3,
                 "tunnel": _tunnel,
             }
 
-            # ── Jump Host setup ─────────────────────────────────────────
-            if conn.jump_host_id and not _tunnel:
-                jump_conn = await self._get_connection_by_id(conn.jump_host_id)
-                if jump_conn:
-                    set_status(f"Connecting to jump host: {jump_conn.display_name or jump_conn.hostname}…")
-                    # Recursive call to get the tunnel connection
-                    # Note: We don't start a session on the jump host, just establish connection
-                    jump_ssh_conn, _ = await self.connect_and_start_session(
-                        jump_conn, ui_callbacks, lambda x: None, lambda x: None, 
-                        status_cb=status_cb, _depth=_depth + 1
-                    )
-                    kwargs["tunnel"] = jump_ssh_conn
-                else:
-                    logger.warning(f"Jump host ID {conn.jump_host_id} not found in database.")
+            # ── Jump Host setup (Disabled) ─────────────────────────
+            # if conn.jump_host_id and not _tunnel:
+            #     jump_conn = await self._get_connection_by_id(conn.jump_host_id)
+            #     if jump_conn:
+            #         set_status(f"Connecting to jump host: {jump_conn.display_name or jump_conn.hostname}…")
+            #         jump_ssh_conn, _ = await self.connect_and_start_session(
+            #             jump_conn, ui_callbacks, lambda x: None, lambda x: None, 
+            #             status_cb=status_cb, _depth=_depth + 1
+            #         )
+            #         kwargs["tunnel"] = jump_ssh_conn
+            #     else:
+            #         logger.warning(f"Jump host ID {conn.jump_host_id} not found in database.")
 
             # ── Auth setup ─────────────────────────────────────────
             password_provider: Any = None
@@ -370,8 +368,8 @@ class SSHService:
         bridge._conn_ref = connection 
         call_ui_sync(ui_callbacks["on_connected"], bridge)
         
-        # Apply Port Forwarding rules
-        await self._apply_forward_rules(connection, conn.id)
+        # Apply Port Forwarding rules (Disabled)
+        # await self._apply_forward_rules(connection, conn.id)
         
         # Background tasks...
         async def background_tasks():
@@ -440,6 +438,8 @@ class SSHService:
                 "connect_timeout": 30,
                 "gss_auth": False,
                 "agent_path": None,
+                "keepalive_interval": 60,
+                "keepalive_count_max": 3,
             }
 
             auth_info: dict[str, Any] = {}
@@ -633,40 +633,12 @@ class SSHService:
         return self._sessions[conn_id]
 
     async def _apply_forward_rules(self, connection: asyncssh.SSHClientConnection, connection_id: str) -> None:
-        """Read forward rules from DB and apply them to the established connection."""
-        from models.forward_rule import ForwardRule, ForwardType
-        db = Database()
-        db.open()
-        try:
-            rows = db._conn.execute(
-                "SELECT * FROM forward_rules WHERE connection_id = ? AND enabled = 1",
-                (connection_id,)
-            ).fetchall()
-            rules = [ForwardRule.from_dict(dict(r)) for r in rows]
-        finally:
-            db.close()
-
-        for rule in rules:
-            try:
-                if rule.type == ForwardType.LOCAL:
-                    await connection.start_local_forward(
-                        rule.bind_address, rule.bind_port,
-                        rule.remote_host, rule.remote_port
-                    )
-                    logger.info(f"Local forward started: {rule.bind_address}:{rule.bind_port} -> {rule.remote_host}:{rule.remote_port}")
-                elif rule.type == ForwardType.REMOTE:
-                    await connection.start_remote_forward(
-                        rule.bind_address, rule.bind_port,
-                        rule.remote_host, rule.remote_port
-                    )
-                    logger.info(f"Remote forward started: {rule.bind_address}:{rule.bind_port} -> {rule.remote_host}:{rule.remote_port}")
-                elif rule.type == ForwardType.DYNAMIC:
-                    await connection.start_dynamic_forward(
-                        rule.bind_address, rule.bind_port
-                    )
-                    logger.info(f"Dynamic (SOCKS) forward started: {rule.bind_address}:{rule.bind_port}")
-            except Exception as e:
-                logger.error(f"Failed to apply forward rule {rule.id}: {e}")
+        """Read forward rules from DB and apply them to the established connection (Disabled)."""
+        pass
+        # from models.forward_rule import ForwardRule, ForwardType
+        # ... (rest commented out)
+        # for rule in rules:
+        #    ...
 
     def update_session_state(self, conn_id: str, state: SessionState, pid: int | None = None, error: str | None = None) -> None:
         if conn_id in self._sessions:

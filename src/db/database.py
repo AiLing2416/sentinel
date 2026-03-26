@@ -190,10 +190,16 @@ class Database:
                 curr_id = jump_host.jump_host_id
 
         data = conn.to_dict()
-        cols = ", ".join(data.keys())
-        placeholders = ", ".join(f":{k}" for k in data.keys())
         self._db.execute(
-            f"INSERT OR REPLACE INTO connections ({cols}) VALUES ({placeholders})",
+            """INSERT OR REPLACE INTO connections (
+                id, name, hostname, port, username, auth_method, key_path, 
+                vault_item_id, jump_host_id, group_id, os_id, notes, 
+                last_connected, created_at, agent_forwarding, sort_order
+            ) VALUES (
+                :id, :name, :hostname, :port, :username, :auth_method, :key_path,
+                :vault_item_id, :jump_host_id, :group_id, :os_id, :notes,
+                :last_connected, :created_at, :agent_forwarding, :sort_order
+            )""",
             data,
         )
         self._db.commit()
@@ -259,10 +265,12 @@ class Database:
         """Insert or replace a connection group."""
         group.validate()
         data = group.to_dict()
-        cols = ", ".join(data.keys())
-        placeholders = ", ".join(f":{k}" for k in data.keys())
         self._db.execute(
-            f"INSERT OR REPLACE INTO groups ({cols}) VALUES ({placeholders})",
+            """INSERT OR REPLACE INTO groups (
+                id, name, parent_id, sort_order, color
+            ) VALUES (
+                :id, :name, :parent_id, :sort_order, :color
+            )""",
             data,
         )
         self._db.commit()

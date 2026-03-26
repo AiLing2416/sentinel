@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: sentinel\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-22 08:30+0000\n"
+"POT-Creation-Date: 2026-03-26 09:20-0700\n"
 "PO-Revision-Date: 2026-03-22 08:30+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -12,527 +12,40 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-msgid "App Settings"
-msgstr "應用設定"
-
-msgid "General"
-msgstr "一般"
-
-msgid "Language"
-msgstr "語言"
-
-msgid "Requires an application restart to fully apply"
-msgstr "需要重啟應用程式才能完全生效"
-
-msgid "Please restart the application for language changes to take effect."
-msgstr "請重啟應用程式以使語言更改生效。"
-
-msgid "Vault Manager"
-msgstr "金鑰庫管理器"
-
-msgid "Log in to Bitwarden"
-msgstr "登入 Bitwarden"
-
-msgid "Enter your credentials to access your vault."
-msgstr "請輸入您的憑據以存取金鑰庫。"
-
-msgid "Custom Server"
-msgstr "自訂伺服器"
-
-msgid "For self-hosted Bitwarden / VaultWarden"
-msgstr "適用於自代管 Bitwarden / VaultWarden"
-
-msgid "Email Address"
-msgstr "電子郵件地址"
-
-msgid "Master Password"
-msgstr "主密碼"
-
-msgid "Log In"
-msgstr "登入"
-
-msgid "Two-Step Verification"
-msgstr "兩步驟驗證"
-
-msgid "Your account requires two-step verification."
-msgstr "您的帳戶需要兩步驟驗證。"
-
-msgid "Verification Code"
-msgstr "驗證碼"
-
-msgid "Back"
-msgstr "返回"
-
-msgid "Verify & Log In"
-msgstr "驗證並登入"
-
-msgid "Vault Locked"
-msgstr "金鑰庫已鎖定"
-
-msgid "Enter your master password to unlock."
-msgstr "請輸入主密碼以解鎖。"
-
-msgid "Log Out"
-msgstr "登出"
-
-msgid "Unlock"
-msgstr "解鎖"
-
-msgid "Account"
-msgstr "帳戶"
-
-msgid "Server"
-msgstr "伺服器"
-
-msgid "Status"
-msgstr "狀態"
-
-msgid "Unlocked ✓"
-msgstr "已解鎖 ✓"
-
-msgid "Lock"
-msgstr "鎖定"
-
-msgid "Sync Vault"
-msgstr "同步金鑰庫"
-
-msgid "Pull the latest items from the server"
-msgstr "從伺服器拉取最新項目"
-
-msgid "Sync Now"
-msgstr "立即同步"
-
-msgid "New Connection"
-msgstr "新建連線"
-
-msgid "Connections"
-msgstr "連線"
-
-msgid "Close tab"
-msgstr "關閉分頁"
-
-msgid "Settings"
-msgstr "設定"
-
-msgid "About Sentinel"
-msgstr "關於 Sentinel"
-
-msgid "Shell"
-msgstr "終端機"
-
-msgid "SFTP"
-msgstr "檔案傳輸 (SFTP)"
-
-msgid "Copy Host"
-msgstr "複製主機位址"
-
-msgid "Clear Host Key"
-msgstr "清除主機金鑰"
-
-msgid "Edit"
-msgstr "編輯"
-
-msgid "Rename"
-msgstr "重新命名"
-
-msgid "Delete"
-msgstr "刪除"
-
-msgid "Properties"
-msgstr "屬性"
-
-msgid "Cancel"
-msgstr "取消"
-
-msgid "Confirm"
-msgstr "確認"
-
-msgid "Connect"
-msgstr "連線"
-
-msgid "Select"
-msgstr "選擇"
-
-msgid "Close"
-msgstr "關閉"
-
-msgid "OK"
-msgstr "確定"
-
-msgid "Reject"
-msgstr "拒絕"
-
-msgid "Accept and Connect"
-msgstr "接受並連線"
-
-msgid "No Connections"
-msgstr "暫無連線"
-
-msgid ""
-"Press + to add your first\n"
-"SSH connection"
-msgstr ""
-"點擊 + 新增您的第一個\n"
-"SSH 連線"
-
-msgid "File"
-msgstr "檔案"
-
-msgid "Directory"
-msgstr "目錄"
-
-msgid "Name"
-msgstr "名稱"
-
-msgid "Size"
-msgstr "大小"
-
-msgid "Type"
-msgstr "類型"
-
-msgid "Last Modified"
-msgstr "最後修改"
-
-msgid "Permissions"
-msgstr "權限"
-
-msgid "Owner"
-msgstr "所有者"
-
-msgid "Remote Path"
-msgstr "遠端路徑"
-
-msgid "New File"
-msgstr "新建檔案"
-
-msgid "New Folder"
-msgstr "新建資料夾"
-
-msgid "New..."
-msgstr "新建..."
-
-msgid "View Options"
-msgstr "檢視選項"
-
-msgid "Show Hidden Files"
-msgstr "顯示隱藏檔案"
-
-msgid "Auto-sync on Save"
-msgstr "儲存時自動同步"
-
-msgid "Connecting…"
-msgstr "正在連線…"
-
-msgid "Connected to {hostname}"
-msgstr "已連線到 {hostname}"
-
-msgid "Loading {path}…"
-msgstr "正在載入 {path}…"
-
-msgid "Calculating size for {name}..."
-msgstr "正在計算 {name} 的大小..."
-
-msgid "Synchronizing {name}..."
-msgstr "正在同步 {name}..."
-
-msgid "Deleted {name}"
-msgstr "已刪除 {name}"
-
-msgid "Renamed to {name}"
-msgstr "已重新命名為 {name}"
-
-msgid "Created file {name}"
-msgstr "已建立檔案 {name}"
-
-msgid "Created folder {name}"
-msgstr "已建立資料夾 {name}"
-
-msgid "Enter name for the new folder:"
-msgstr "輸入新資料夾名稱："
-
-msgid "Enter name for the new file:"
-msgstr "輸入新檔案名稱："
-
-msgid "Enter new name for {name}:"
-msgstr "為 {name} 輸入新名稱："
-
-msgid ""
-"Are you sure you want to delete '{name}'?\n"
-"This action cannot be undone."
-msgstr ""
-"您確定要刪除「{name}」嗎？\n"
-"此操作無法撤回。"
-
-msgid "File Updated Locally"
-msgstr "本地檔案已更新"
-
-msgid ""
-"The file '{name}' has been modified and saved.\n"
-"Update the remote copy on the server?"
-msgstr ""
-"檔案「{name}」已修改並儲存。\n"
-"是否更新伺服器上的遠端副本？"
-
-msgid "Update Remote"
-msgstr "更新遠端"
-
-msgid "Password for {hostname}"
-msgstr "{hostname} 的密碼"
-
-msgid "Unlock SSH Key"
-msgstr "解鎖 SSH 金鑰"
-
-msgid "Enter passphrase for {path}"
-msgstr "輸入 {path} 的密碼短語"
-
-msgid "Unknown Host Key ({hostname})"
-msgstr "未知主機金鑰 ({hostname})"
-
-msgid ""
-"The authenticity of host '{hostname}' can't be established.\n"
-"\n"
-msgstr ""
-"無法確認主機「{hostname}」的真實性。\n"
-"\n"
-
-msgid "Algorithm: {algorithm}\n"
-msgstr "演算法：{algorithm}\n"
-
-msgid ""
-"Fingerprint: {fingerprint}\n"
-"\n"
-msgstr ""
-"指紋：{fingerprint}\n"
-"\n"
-
-msgid "Are you sure you want to continue connecting?"
-msgstr "您確定要繼續連線嗎？"
-
-msgid "Properties: {name}"
-msgstr "屬性：{name}"
-
-msgid "UID: {uid} / GID: {gid}"
-msgstr "UID: {uid} / GID: {gid}"
-
-msgid "Terminal Theme"
-msgstr "終端機配色方案"
-
-msgid "The quick brown fox jumps over the lazy dog"
-msgstr "敏捷的棕色狐狸跳過了懶狗"
-
-msgid "Custom"
-msgstr "自訂"
-
-msgid "Presets"
-msgstr "預設"
-
-msgid "Theme Presets"
-msgstr "配色預設"
-
-msgid "Customization"
-msgstr "個性化"
-
-msgid "Foreground"
-msgstr "前景"
-
-msgid "Background"
-msgstr "背景"
-
-msgid "Cursor"
-msgstr "光標"
-
-msgid "Selection Background"
-msgstr "選取背景"
-
-msgid "ANSI Colors Palette"
-msgstr "ANSI 顏色調色盤"
-
+#: src/utils/themes.py:27
 msgid "Catppuccin Mocha"
 msgstr "Catppuccin Mocha"
 
+#: src/utils/themes.py:43
 msgid "Nord"
 msgstr "Nord"
 
+#: src/utils/themes.py:59
 msgid "Solarized Dark"
 msgstr "Solarized Dark"
 
+#: src/utils/themes.py:75
 msgid "Dracula"
 msgstr "Dracula"
 
+#: src/utils/themes.py:91
 msgid "GNOME Dark"
 msgstr "GNOME 暗色"
 
-msgid "New Custom Theme"
-msgstr "新建自訂配色"
-
-msgid "Select Theme"
-msgstr "選擇配色方案"
-
-msgid "Active Theme Settings"
-msgstr "目前方案設定"
-
-msgid "Rename or delete your custom theme"
-msgstr "重新命名或刪除此自訂方案"
-
-msgid "Theme Actions"
-msgstr "配色操作"
-
-msgid "Copy Code"
-msgstr "複製分享碼"
-
-msgid "Import..."
-msgstr "匯入..."
-
-msgid "Import from Code"
-msgstr "從分享碼匯入"
-
-msgid "Paste a theme code to import"
-msgstr "貼上配色分享碼進行匯入"
-
-msgid "Rename Theme"
-msgstr "重新命名配色"
-
-msgid "Enter a new name for this theme"
-msgstr "輸入此配色方案的新名稱"
-
-msgid "Delete Theme?"
-msgstr "刪除配色？"
-
-msgid "Are you sure you want to delete '{name}'?"
-msgstr "您確定要刪除「{name}」嗎？"
-
-msgid "Theme code copied to clipboard"
-msgstr "配色分享碼已複製到剪貼簿"
-
-msgid "Theme Code"
-msgstr "配色分享碼"
-
-msgid "Import Theme"
-msgstr "匯入配色"
-
-msgid "Paste the theme code below:"
-msgstr "在下方貼上配色分享碼："
-
-msgid "Imported Theme"
-msgstr "已匯入的配色"
-
-msgid "Terminal"
-msgstr "終端機"
-
-msgid "Welcome"
-msgstr "歡迎"
-
-msgid "Vault"
-msgstr "金鑰庫"
-
-msgid "Username"
-msgstr "使用者名稱"
-
-msgid "Untitled"
-msgstr "未命名"
-
-msgid "Sync completed."
-msgstr "同步完成。"
-
-msgid "Syncing vault…"
-msgstr "正在同步金鑰庫…"
-
-msgid "Wrong master password."
-msgstr "主密碼錯誤。"
-
-msgid "Verification Method"
-msgstr "驗證方式"
-
-msgid "Verification failed: {err}"
-msgstr "驗證失敗：{err}"
-
-msgid "YubiKey OTP"
-msgstr "YubiKey OTP"
-
-msgid "Touch your hardware security key when it lights up."
-msgstr "當硬體安全金鑰亮起時請觸摸它。"
-
-msgid "Vault Settings"
-msgstr "金鑰庫設定"
-
-msgid "Unlock Local Vault"
-msgstr "解鎖本地金鑰庫"
-
-msgid "Set Up Local Vault"
-msgstr "設定本地金鑰庫"
-
-msgid "Unlock {vault_name}"
-msgstr "解鎖 {vault_name}"
-
-msgid "Theme Management"
-msgstr "配色管理"
-
-msgid "This connection will be permanently removed."
-msgstr "此連線將被永久刪除。"
-
-msgid "Transfer failed: {err}"
-msgstr "傳輸失敗：{err}"
-
-msgid "Transferring: {percent}%"
-msgstr "正在傳輸：{percent}%"
-
-msgid "Uploaded successfully"
-msgstr "上傳成功"
-
-msgid "Uploading {count} items..."
-msgstr "正在上傳 {count} 個項目..."
-
-msgid "Updated: {name}"
-msgstr "已更新: {name}"
-
-msgid "Synchronized {name}"
-msgstr "已同步 {name}"
-
-msgid "Synchronize"
-msgstr "同步"
-
-msgid "Sync failed: {e}"
-msgstr "同步失敗：{e}"
-
-msgid "Sync error: {e}"
-msgstr "同步錯誤：{e}"
-
-msgid "Starting cross-server transfer from {hostname}..."
-msgstr "正在啟動跨伺服器傳輸，源：{hostname}..."
-
-msgid "Source SFTP session must be active to perform transfer."
-msgstr "執行傳輸必須啟用源 SFTP 工作階段。"
-
-msgid "Source connection not found in database."
-msgstr "資料庫中找不到源連線。"
-
-msgid "SSH Agent"
-msgstr "SSH 代理"
-
-msgid "SSH Key"
-msgstr "SSH 金鑰"
-
-msgid "SSH Key from Vault"
-msgstr "來自金鑰庫的 SSH 金鑰"
-
-msgid "Size of {name}: {size}"
-msgstr "{name} 的大小：{size}"
-
-msgid "Size calculation failed: {msg}"
-msgstr "大小計算失敗：{msg}"
-
-msgid "The directory occupies: {size}"
-msgstr "目錄佔用空間：{size}"
-
+#: src/application.py:65 src/views/main_window.py:33
+#: src/views/main_window.py:113 src/views/main_window.py:214
 msgid "Sentinel"
 msgstr "Sentinel"
 
+#: src/application.py:67 src/application.py:69
 msgid "Sentinel Contributors"
 msgstr "Sentinel 貢獻者"
 
+#: src/application.py:70
 msgid "© 2026 Sentinel Contributors"
 msgstr "© 2026 Sentinel 貢獻者"
 
+#: src/application.py:72
 msgid ""
 "A secure GNOME SSH connection manager\n"
 "with password manager integration."
@@ -540,246 +53,567 @@ msgstr ""
 "一個安全的 GNOME SSH 連線管理器\n"
 "整合了密碼管理器。"
 
-msgid "Apply"
-msgstr "套用"
-
-msgid "Paste code here..."
-msgstr "在處貼上分享碼..."
-
-msgid "Import"
-msgstr "匯入"
-
-msgid "Authentication"
-msgstr "身分驗證"
-
-msgid "Authenticator App (TOTP)"
-msgstr "身份驗證器應用程式 (TOTP)"
-
-msgid "Basic"
-msgstr "基本"
-
-msgid "Bitwarden CLI ('bw') not found. Please install it."
-msgstr "未找到 Bitwarden CLI ('bw')。請安裝。"
-
-msgid "Check your email inbox for a verification code sent by Bitwarden."
-msgstr "請檢查您的電子郵件以獲取 Bitwarden 發送的驗證碼。"
-
-msgid "Checking Vault Status…"
-msgstr "正在檢查金鑰庫狀態…"
-
-msgid "Creating folder {name}..."
-msgstr "正在建立資料夾 {name}..."
-
-msgid "Create Vault"
-msgstr "建立金鑰庫"
-
-msgid "Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"
-msgstr "Ctrl+N 新建連線 · Ctrl+T 本地終端機 · Ctrl+F 搜尋"
-
-msgid "Duo"
-msgstr "Duo"
-
-msgid "Duo passcode (or leave blank for push)"
-msgstr "Duo 通行碼 (或留空使用推送)"
-
-msgid "Email verification code"
-msgstr "電子郵件驗證碼"
-
-msgid "Enter your Sentinel vault master password to continue."
-msgstr "請輸入 Sentinel 金鑰庫主密碼以繼續。"
-
-msgid "Error: {msg}"
-msgstr "錯誤：{msg}"
-
-msgid "Failed to create vault: {e}"
-msgstr "建立金鑰庫失敗：{e}"
-
-msgid "Failed to load folders: {e}"
-msgstr "載入資料夾失敗：{e}"
-
-msgid "FIDO2 / WebAuthn (hardware key)"
-msgstr "FIDO2 / WebAuthn (硬體金鑰)"
-
-msgid "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
-msgstr "Bitwarden CLI 不支援 FIDO2 / WebAuthn。"
-
-msgid "Find next"
-msgstr "搜尋下一個"
-
-msgid "Find previous"
-msgstr "搜尋上一個"
-
-msgid "Forget"
-msgstr "忘記"
-
-msgid "https://bitwarden.com (leave blank for default)"
-msgstr "https://bitwarden.com (留空使用預設值)"
-
-msgid "Insert your YubiKey and tap it to generate an OTP."
-msgstr "插入您的 YubiKey 並輕觸它來生成 OTP。"
-
-msgid "Key File Path (optional)"
-msgstr "金鑰檔案路徑 (可選)"
-
-msgid "Key + Passphrase"
-msgstr "金鑰 + 密碼短語"
-
-msgid "Login password missing for 2FA"
-msgstr "缺少兩步驟驗證所需的登入密碼"
-
-msgid "Master password is saved in system keyring for auto-unlock"
-msgstr "主密碼已儲存在系統金鑰環中進行自動解鎖"
-
-msgid "Menu"
-msgstr "選單"
-
-msgid "Merge all tabs into another window and close"
-msgstr "將所有分頁合併到另一個視窗並關閉"
-
-msgid "Method"
-msgstr "方式"
-
-msgid "Mount failed, using GVFS fallback. (Error: {err}...)"
-msgstr "掛載失敗，將回退到 GVFS。(錯誤：{err}...)"
-
+#: src/vault/bitwarden.py:689
+#, python-brace-format
 msgid "No password found in item. Check item ID '{id}'."
 msgstr "項目中未找到密碼。請檢查項目 ID '{id}'。"
 
-msgid "Notes"
-msgstr "備註"
+#: src/views/main_window.py:59
+msgid "Connections"
+msgstr "連線"
 
-msgid "Not selected"
-msgstr "未選擇"
+#: src/views/main_window.py:65
+msgid "New Connection  (Ctrl+N)"
+msgstr "新建連線  (Ctrl+N)"
 
-msgid "(Not supported in CLI mode — use another method)"
-msgstr "(CLI 模式下不支援 — 請使用其他方式)"
+#: src/views/main_window.py:70
+msgid "Menu"
+msgstr "選單"
 
-msgid "Official Cloud Server"
-msgstr "官方雲端伺服器"
+#: src/views/main_window.py:72 src/views/terminal_theme_dialog.py:34
+msgid "Terminal Theme"
+msgstr "終端機配色方案"
 
-msgid "Opened {name} with {app}"
-msgstr "已使用 {app} 開啟 {name}"
+#: src/views/main_window.py:73
+msgid "Vault Settings"
+msgstr "金鑰庫設定"
 
-msgid "Open Local Shell (Ctrl+T)"
-msgstr "開啟本地終端機 (Ctrl+T)"
+#: src/views/main_window.py:74
+msgid "About Sentinel"
+msgstr "關於 Sentinel"
 
-msgid "Open With..."
-msgstr "開啟方式..."
-
-msgid "Password must be at least 8 characters."
-msgstr "密碼必須至少 8 個字元。"
-
-msgid "Paste"
-msgstr "貼上"
-
-msgid "Please enter your verification code."
-msgstr "請輸入驗證碼。"
-
-msgid "Please log in / unlock Bitwarden via Vault Settings first."
-msgstr "請先在金鑰庫設定中登入 / 解鎖 Bitwarden。"
-
-msgid "Please use a different 2FA method (e.g. TOTP or Email)."
-msgstr "請使用不同的兩步驟驗證方式 (例如 TOTP 或電子郵件)。"
-
-msgid "Port"
-msgstr "連接埠"
-
+#: src/views/main_window.py:75
 msgid "Quit"
 msgstr "結束"
 
-msgid "Read-only"
-msgstr "唯讀"
+#: src/views/main_window.py:82
+msgid "Search connections…"
+msgstr "搜尋連線…"
 
-msgid "Retrieving data from Vault..."
-msgstr "正在從金鑰庫檢索數據..."
+#: src/views/main_window.py:134
+msgid "Terminal"
+msgstr "終端機"
 
-msgid "Save"
-msgstr "儲存"
+#: src/views/main_window.py:151
+msgid "Open Local Shell (Ctrl+T)"
+msgstr "開啟本地終端機 (Ctrl+T)"
 
-msgid "Saved master password removed from keyring."
-msgstr "已從金鑰環中刪除儲存的主密碼。"
+#: src/views/main_window.py:161
+msgid "Merge all tabs into another window and close"
+msgstr "將所有分頁合併到另一個視窗並關閉"
 
-msgid "Save master password securely in system keyring"
-msgstr "在系統金鑰環中安全儲存主密碼"
-
+#: src/views/main_window.py:218
 msgid "Secure SSH Connection Manager"
 msgstr "安全的 SSH 連線管理器"
 
-msgid "Select the vault item that stores the SSH private key"
-msgstr "請選擇存儲 SSH 私鑰的金鑰庫項目"
+#: src/views/main_window.py:229 src/views/main_window.py:259
+msgid "New Connection"
+msgstr "新建連線"
 
-msgid "Spawning local shell..."
-msgstr "正在啟動本地終端機..."
-
+#: src/views/main_window.py:235 src/views/terminal_view.py:75
+#: src/views/terminal_view.py:389 src/views/terminal_view.py:638
 msgid "Local Shell"
 msgstr "本地終端機"
 
-msgid "Connecting to {title}…"
-msgstr "正在連線到 {title}…"
+#: src/views/main_window.py:244
+msgid "Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"
+msgstr "Ctrl+N 新建連線 · Ctrl+T 本地終端機 · Ctrl+F 搜尋"
 
-msgid "Connected — {title}"
-msgstr "已連線 — {title}"
+#: src/views/main_window.py:259
+msgid "Edit Connection"
+msgstr "編輯連線"
 
-msgid "Disconnected: {exc}"
-msgstr "已斷開連線：{exc}"
+#: src/views/main_window.py:267 src/views/main_window.py:637
+#: src/views/dialogs.py:20 src/views/dialogs.py:105 src/views/dialogs.py:167
+#: src/views/dialogs.py:288 src/views/dialogs.py:329
+#: src/views/terminal_theme_dialog.py:331
+#: src/views/terminal_theme_dialog.py:367
+#: src/views/terminal_theme_dialog.py:474
+msgid "Cancel"
+msgstr "取消"
 
-msgid "Disconnected"
-msgstr "已斷開連線"
+#: src/views/main_window.py:271
+msgid "Save"
+msgstr "儲存"
 
-msgid "Exited with code {exit_status}"
-msgstr "已退出，代碼 {exit_status}"
+#: src/views/main_window.py:279
+msgid "Basic"
+msgstr "基本"
 
-msgid "Error: {error}"
-msgstr "錯誤：{error}"
+#: src/views/main_window.py:282 src/views/dialogs.py:419
+#: src/views/sftp_view.py:201
+msgid "Name"
+msgstr "名稱"
 
-msgid "Exited code {exit_status}"
-msgstr "已退出，代碼 {exit_status}"
+#: src/views/main_window.py:287
+msgid "Hostname"
+msgstr "主機名稱"
 
-msgid "Reconnecting…"
-msgstr "正在重新連線…"
+#: src/views/main_window.py:293
+msgid "Port"
+msgstr "連接埠"
 
-msgid "Searching connections…"
-msgstr "正在搜尋連線…"
+#: src/views/main_window.py:297
+msgid "Username"
+msgstr "使用者名稱"
 
+#: src/views/main_window.py:305
+msgid "Authentication"
+msgstr "身分驗證"
+
+#: src/views/main_window.py:309
+msgid "SSH Key"
+msgstr "SSH 金鑰"
+
+#: src/views/main_window.py:309
+msgid "Password"
+msgstr "密碼"
+
+#: src/views/main_window.py:309
+msgid "Key + Passphrase"
+msgstr "金鑰 + 密碼短語"
+
+#: src/views/main_window.py:309
+msgid "SSH Agent"
+msgstr "SSH 代理"
+
+#: src/views/main_window.py:309
+msgid "Vault"
+msgstr "金鑰庫"
+
+#: src/views/main_window.py:311
+msgid "Method"
+msgstr "方式"
+
+#: src/views/main_window.py:321
+msgid "Key File Path (optional)"
+msgstr "金鑰檔案路徑 (可選)"
+
+#: src/views/main_window.py:340
+msgid "SSH Key from Vault"
+msgstr "來自金鑰庫的 SSH 金鑰"
+
+#: src/views/main_window.py:341
+msgid "Select the vault item that stores the SSH private key"
+msgstr "請選取包含此連線 SSH 私密金鑰的金鑰庫項目。"
+
+#: src/views/main_window.py:348 src/views/main_window.py:350
+#: src/views/main_window.py:376
+msgid "Not selected"
+msgstr "未選擇"
+
+#: src/views/main_window.py:353
+msgid "Clear vault key selection"
+msgstr "清除金鑰庫金鑰選取"
+
+#: src/views/main_window.py:358
+msgid "Select…"
+msgstr "選擇…"
+
+#: src/views/main_window.py:359
 msgid "Select SSH key from Vault"
 msgstr "從金鑰庫選擇 SSH 金鑰"
 
-msgid "Select SSH Key from Vault"
-msgstr "從金鑰庫選擇 SSH 金鑰"
+#: src/views/main_window.py:391
+msgid "Bitwarden CLI not found. Install it first."
+msgstr "未找到 Bitwarden CLI ('bw')。請安裝。"
 
-msgid "Size of {name}"
-msgstr "{name} 的大小"
+#: src/views/main_window.py:408
+msgid "Please log in / unlock Bitwarden via Vault Settings first."
+msgstr "請先在金鑰庫設定中登入 / 解鎖 Bitwarden。"
 
-msgid "Renaming to {name}..."
-msgstr "正在重新命名為 {name}..."
+#: src/views/main_window.py:420
+msgid "Failed to fetch vault items: {fetch_err}"
+msgstr "取得金鑰庫項目失敗：{fetch_err}"
 
-msgid "Rename Item"
-msgstr "重新命名項目"
+#: src/views/main_window.py:434 src/views/main_window.py:436
+msgid "Notes"
+msgstr "備註"
 
-msgid "Rename failed: {e}"
-msgstr "重新命名失敗：{e}"
+#: src/views/main_window.py:453
+msgid "Delete Connection"
+msgstr "刪除連線"
 
+#: src/views/main_window.py:498
+#, python-brace-format
+msgid "Updated: {name}"
+msgstr "已更新: {name}"
+
+#: src/views/main_window.py:498
+msgid "Added: {name}"
+msgstr "已新增：{name}"
+
+#: src/views/main_window.py:524
+msgid "Connection error: {e}"
+msgstr "連線錯誤：{e}"
+
+#: src/views/main_window.py:547
+msgid "Welcome"
+msgstr "歡迎"
+
+#: src/views/main_window.py:568
+msgid "Untitled"
+msgstr "未命名"
+
+#: src/views/main_window.py:634
+msgid "Delete \"{name}\"?"
+msgstr "刪除「{name}」？"
+
+#: src/views/main_window.py:635
+msgid "This connection will be permanently removed."
+msgstr "此連線將被永久刪除。"
+
+#: src/views/main_window.py:638 src/views/sftp_view.py:277
+#: src/views/sftp_view.py:1414 src/views/terminal_theme_dialog.py:368
+msgid "Delete"
+msgstr "刪除"
+
+#: src/views/main_window.py:646
+msgid "Deleted: {name}"
+msgstr "已刪除：{name}"
+
+#: src/views/main_window.py:670
+#, python-brace-format
+msgid "Cleared host key and OS info for {hostname}"
+msgstr "已清除 {hostname} 的主機金鑰和系統資訊"
+
+#: src/views/main_window.py:672
+msgid "Cleared OS info for {hostname}"
+msgstr "已清除 {hostname} 的系統資訊"
+
+#: src/views/terminal_view.py:178
+msgid "Find in terminal..."
+msgstr "在終端機中尋找..."
+
+#: src/views/terminal_view.py:182
+msgid "Find next"
+msgstr "搜尋下一個"
+
+#: src/views/terminal_view.py:187
+msgid "Find previous"
+msgstr "搜尋上一個"
+
+#: src/views/terminal_view.py:213
+#, python-brace-format
+msgid "Connecting to {title}…"
+msgstr "正在連線到 {title}…"
+
+#: src/views/terminal_view.py:213
+msgid "Spawning local shell..."
+msgstr "正在啟動本地終端機..."
+
+#: src/views/terminal_view.py:324
+#, python-brace-format
+msgid "Connected — {title}"
+msgstr "已連線 — {title}"
+
+#: src/views/terminal_view.py:334
+#, python-brace-format
+msgid "Disconnected: {exc}"
+msgstr "已斷開連線：{exc}"
+
+#: src/views/terminal_view.py:334
+msgid "Disconnected"
+msgstr "已斷開連線"
+
+#: src/views/terminal_view.py:366
+#, python-brace-format
+msgid "Exited with code {exit_status}"
+msgstr "已退出，代碼 {exit_status}"
+
+#: src/views/terminal_view.py:386
+#, python-brace-format
+msgid "Error: {error}"
+msgstr "錯誤：{error}"
+
+#: src/views/terminal_view.py:393
+#, python-brace-format
+msgid "Exited code {exit_status}"
+msgstr "已退出，代碼 {exit_status}"
+
+#: src/views/terminal_view.py:411
+msgid "Reconnecting…"
+msgstr "正在重新連線…"
+
+#: src/views/terminal_view.py:426 src/views/sftp_view.py:269
+msgid "Copy"
+msgstr "複製"
+
+#: src/views/terminal_view.py:427 src/views/sftp_view.py:270
+msgid "Paste"
+msgstr "貼上"
+
+#: src/views/terminal_view.py:431
+msgid "Find…"
+msgstr "尋找…"
+
+#: src/views/terminal_view.py:432
+msgid "Read-only"
+msgstr "唯讀"
+
+#: src/views/terminal_view.py:436
+msgid "Select All"
+msgstr "全選"
+
+#: src/views/terminal_view.py:437
+msgid "Clear"
+msgstr "清除"
+
+#: src/views/vault_settings_dialog.py:39
+msgid "Vault Manager"
+msgstr "金鑰庫管理器"
+
+#: src/views/vault_settings_dialog.py:112
+msgid "Checking Vault Status…"
+msgstr "正在檢查金鑰庫狀態…"
+
+#: src/views/vault_settings_dialog.py:129
+msgid "Set Up Local Vault"
+msgstr "設定本地金鑰庫"
+
+#: src/views/vault_settings_dialog.py:135
+msgid ""
+"Sentinel stores credentials in an encrypted local database. Please pick a "
+"strong master password. You will only need to enter it once — after that, it "
+"is stored securely in the system keyring."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:149
+#: src/views/vault_settings_dialog.py:194
+#: src/views/vault_settings_dialog.py:316
+#: src/views/vault_settings_dialog.py:461
+msgid "Master Password"
+msgstr "主密碼"
+
+#: src/views/vault_settings_dialog.py:152
+msgid "Confirm Password"
+msgstr "確認密碼"
+
+#: src/views/vault_settings_dialog.py:156
+msgid "Create Vault"
+msgstr "建立金鑰庫"
+
+#: src/views/vault_settings_dialog.py:179
+msgid "Unlock Local Vault"
+msgstr "解鎖本地金鑰庫"
+
+#: src/views/vault_settings_dialog.py:184
+msgid "Enter your Sentinel vault master password to continue."
+msgstr "請輸入 Sentinel 金鑰庫主密碼以繼續。"
+
+#: src/views/vault_settings_dialog.py:201
+#: src/views/vault_settings_dialog.py:482 src/views/dialogs.py:106
+msgid "Unlock"
+msgstr "解鎖"
+
+#: src/views/vault_settings_dialog.py:219
 msgid "Please enter a master password."
 msgstr "請輸入主密碼。"
 
+#: src/views/vault_settings_dialog.py:222
 msgid "Passwords do not match."
 msgstr "密碼不相符。"
 
+#: src/views/vault_settings_dialog.py:225
+msgid "Password must be at least 8 characters."
+msgstr "密碼必須至少 8 個字元。"
+
+#: src/views/vault_settings_dialog.py:237
 msgid "Local vault created successfully."
 msgstr "本地金鑰庫建立成功。"
 
-msgid "Please enter your master password to access {vault_name} credentials."
-msgstr "請輸入您的主密碼以存取 {vault_name} 憑據。"
+#: src/views/vault_settings_dialog.py:243
+#, python-brace-format
+msgid "Failed to create vault: {e}"
+msgstr "建立金鑰庫失敗：{e}"
 
-msgid "Please provide email and master password."
-msgstr "請提供電子郵件和主密碼。"
+#: src/views/vault_settings_dialog.py:262
+msgid "Wrong master password."
+msgstr "主密碼錯誤。"
 
+#: src/views/vault_settings_dialog.py:280
+msgid "Log in to Bitwarden"
+msgstr "登入 Bitwarden"
+
+#: src/views/vault_settings_dialog.py:285
+msgid "Enter your credentials to access your vault."
+msgstr "請輸入您的憑據以存取金鑰庫。"
+
+#: src/views/vault_settings_dialog.py:301
+msgid "https://bitwarden.com (leave blank for default)"
+msgstr "https://bitwarden.com (留空使用預設值)"
+
+#: src/views/vault_settings_dialog.py:303
+msgid "Custom Server"
+msgstr "自訂伺服器"
+
+#: src/views/vault_settings_dialog.py:303
+msgid "For self-hosted Bitwarden / VaultWarden"
+msgstr "適用於自代管 Bitwarden / VaultWarden"
+
+#: src/views/vault_settings_dialog.py:312
+msgid "Email Address"
+msgstr "電子郵件地址"
+
+#: src/views/vault_settings_dialog.py:319
+#: src/views/vault_settings_dialog.py:464
+msgid "Save master password securely in system keyring"
+msgstr "在系統金鑰環中安全儲存主密碼"
+
+#: src/views/vault_settings_dialog.py:328
+msgid "Log In"
+msgstr "登入"
+
+#: src/views/vault_settings_dialog.py:356
+msgid "Two-Step Verification"
+msgstr "兩步驟驗證"
+
+#: src/views/vault_settings_dialog.py:361
+msgid "Your account requires two-step verification."
+msgstr "您的帳戶需要兩步驟驗證。"
+
+#: src/views/vault_settings_dialog.py:377
+#: src/views/vault_settings_dialog.py:712
+msgid "Authenticator App (TOTP)"
+msgstr "身份驗證器應用程式 (TOTP)"
+
+#: src/views/vault_settings_dialog.py:378
+msgid "Email"
+msgstr "電子郵件"
+
+#: src/views/vault_settings_dialog.py:379
+#: src/views/vault_settings_dialog.py:714
+#: src/views/vault_settings_dialog.py:756
+msgid "YubiKey OTP"
+msgstr "YubiKey OTP"
+
+#: src/views/vault_settings_dialog.py:380
+#: src/views/vault_settings_dialog.py:715
+msgid "Duo"
+msgstr "Duo"
+
+#: src/views/vault_settings_dialog.py:381
+msgid "FIDO2 / WebAuthn (hardware key)"
+msgstr "FIDO2 / WebAuthn (硬體金鑰)"
+
+#: src/views/vault_settings_dialog.py:386
+msgid "Verification Method"
+msgstr "驗證方式"
+
+#: src/views/vault_settings_dialog.py:392
+msgid "Verification Code"
+msgstr "驗證碼"
+
+#: src/views/vault_settings_dialog.py:408
+msgid "Back"
+msgstr "返回"
+
+#: src/views/vault_settings_dialog.py:414
+msgid "Verify & Log In"
+msgstr "驗證並登入"
+
+#: src/views/vault_settings_dialog.py:442
+msgid "Vault Locked"
+msgstr "金鑰庫已鎖定"
+
+#: src/views/vault_settings_dialog.py:447
+msgid "Enter your master password to unlock."
+msgstr "請輸入主密碼以解鎖。"
+
+#: src/views/vault_settings_dialog.py:475
+#: src/views/vault_settings_dialog.py:518
+msgid "Log Out"
+msgstr "登出"
+
+#: src/views/vault_settings_dialog.py:503
+msgid "Account"
+msgstr "帳戶"
+
+#: src/views/vault_settings_dialog.py:505
+msgid "Server"
+msgstr "伺服器"
+
+#: src/views/vault_settings_dialog.py:505
+msgid "Loading…"
+msgstr "正在載入…"
+
+#: src/views/vault_settings_dialog.py:508
+msgid "Status"
+msgstr "狀態"
+
+#: src/views/vault_settings_dialog.py:508
+#: src/views/vault_settings_dialog.py:624
+msgid "Unlocked ✓"
+msgstr "已解鎖 ✓"
+
+#: src/views/vault_settings_dialog.py:513
+msgid "Lock"
+msgstr "鎖定"
+
+#: src/views/vault_settings_dialog.py:528
+msgid "Saved Password"
+msgstr "已儲存的密碼"
+
+#: src/views/vault_settings_dialog.py:529
+msgid "Master password is saved in system keyring for auto-unlock"
+msgstr "主密碼已儲存在系統金鑰環中進行自動解鎖"
+
+#: src/views/vault_settings_dialog.py:531
+msgid "Forget"
+msgstr "忘記"
+
+#: src/views/vault_settings_dialog.py:543
+msgid "Default Folder for Key Selection"
+msgstr "金鑰選取的預設資料夾"
+
+#: src/views/vault_settings_dialog.py:544
+msgid ""
+"Only items inside this folder will appear when picking a vault SSH key in "
+"connection settings. Leave as 'All Items' to search everywhere."
+msgstr "只有此資料夾內的項目會出現在連線設定的金鑰庫 SSH 金鑰選取中。留空為 '[All Items]' 以搜尋所有位置。"
+
+#: src/views/vault_settings_dialog.py:548
+msgid "Folder"
+msgstr "新建資料夾"
+
+#: src/views/vault_settings_dialog.py:554
+msgid "Sync Vault"
+msgstr "同步金鑰庫"
+
+#: src/views/vault_settings_dialog.py:554
+msgid "Pull the latest items from the server"
+msgstr "從伺服器拉取最新項目"
+
+#: src/views/vault_settings_dialog.py:555
+msgid "Sync Now"
+msgstr "立即同步"
+
+#: src/views/vault_settings_dialog.py:583
+msgid "Bitwarden CLI ('bw') not found. Please install it."
+msgstr "未找到 Bitwarden CLI ('bw')。請安裝。"
+
+#: src/views/vault_settings_dialog.py:623
+msgid "Official Cloud Server"
+msgstr "官方雲端伺服器"
+
+#: src/views/vault_settings_dialog.py:648
+#, python-brace-format
+msgid "Failed to load folders: {e}"
+msgstr "載入資料夾失敗：{e}"
+
+#: src/views/vault_settings_dialog.py:660
+msgid "[All Items]"
+msgstr "[所有項目]"
+
+#: src/views/vault_settings_dialog.py:713
 msgid "Email Verification"
 msgstr "電子郵件驗證"
 
+#: src/views/vault_settings_dialog.py:716
 msgid "FIDO2 / WebAuthn"
 msgstr "FIDO2 / WebAuthn"
 
+#: src/views/vault_settings_dialog.py:743
 msgid ""
 "Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) "
 "and enter the 6-digit code."
@@ -787,12 +621,752 @@ msgstr ""
 "請開啟您的身份驗證器應用程式 (如 Google Authenticator, Aegis, Ente Auth) 並輸"
 "入 6 位代碼。"
 
+#: src/views/vault_settings_dialog.py:745
+msgid "Check your email inbox for a verification code sent by Bitwarden."
+msgstr "請檢查您的電子郵件以獲取 Bitwarden 發送的驗證碼。"
+
+#: src/views/vault_settings_dialog.py:747
+msgid "Insert your YubiKey and tap it to generate an OTP."
+msgstr "插入您的 YubiKey 並輕觸它來生成 OTP。"
+
+#: src/views/vault_settings_dialog.py:749
 msgid ""
 "Approve the Duo push notification on your device, or enter the Duo passcode."
 msgstr "請在您的設備上批准 Duo 推送通知，或輸入 Duo 通行碼。"
 
+#: src/views/vault_settings_dialog.py:751
+msgid "Touch your hardware security key when it lights up."
+msgstr "當硬體安全金鑰亮起時請觸摸它。"
+
+#: src/views/vault_settings_dialog.py:754
 msgid "6-digit TOTP code"
 msgstr "6 位 TOTP 代碼"
 
-msgid "Please replace a different 2FA method (e.g. TOTP or Email)."
+#: src/views/vault_settings_dialog.py:755
+msgid "Email verification code"
+msgstr "電子郵件驗證碼"
+
+#: src/views/vault_settings_dialog.py:757
+msgid "Duo passcode (or leave blank for push)"
+msgstr "Duo 通行碼 (或留空使用推送)"
+
+#: src/views/vault_settings_dialog.py:758
+msgid "(Not supported in CLI mode — use another method)"
+msgstr "(CLI 模式下不支援 — 請使用其他方式)"
+
+#: src/views/vault_settings_dialog.py:771
+msgid "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
+msgstr "Bitwarden CLI 不支援 FIDO2 / WebAuthn。"
+
+#: src/views/vault_settings_dialog.py:772
+msgid "Please use a different 2FA method (e.g. TOTP or Email)."
 msgstr "請使用不同的兩步驟驗證方式 (例如 TOTP 或電子郵件)。"
+
+#: src/views/vault_settings_dialog.py:783
+msgid "Please provide email and master password."
+msgstr "請提供電子郵件和主密碼。"
+
+#: src/views/vault_settings_dialog.py:836
+msgid "Login failed: {err}"
+msgstr "登入失敗：{err}"
+
+#: src/views/vault_settings_dialog.py:863
+msgid "Please enter your verification code."
+msgstr "請輸入驗證碼。"
+
+#: src/views/vault_settings_dialog.py:882
+msgid "Login password missing for 2FA"
+msgstr "缺少兩步驟驗證所需的登入密碼"
+
+#: src/views/vault_settings_dialog.py:905
+#, python-brace-format
+msgid "Verification failed: {err}"
+msgstr "驗證失敗：{err}"
+
+#: src/views/vault_settings_dialog.py:933
+msgid "Incorrect master password, or unlock failed."
+msgstr "主密碼錯誤，或解鎖失敗。"
+
+#: src/views/vault_settings_dialog.py:967
+msgid "Saved master password removed from keyring."
+msgstr "已從金鑰環中刪除儲存的主密碼。"
+
+#: src/views/vault_settings_dialog.py:970
+msgid "Syncing vault…"
+msgstr "正在同步金鑰庫…"
+
+#: src/views/vault_settings_dialog.py:975
+msgid "Sync completed."
+msgstr "同步完成。"
+
+#: src/views/vault_settings_dialog.py:978
+#, python-brace-format
+msgid "Sync failed: {e}"
+msgstr "同步失敗：{e}"
+
+#: src/views/dialogs.py:21
+msgid "Connect"
+msgstr "連線"
+
+#: src/views/dialogs.py:71
+#, python-brace-format
+msgid "Unknown Host Key ({hostname})"
+msgstr "未知主機金鑰 ({hostname})"
+
+#: src/views/dialogs.py:73
+#, python-brace-format
+msgid ""
+"The authenticity of host '{hostname}' can't be established.\n"
+"\n"
+msgstr ""
+"無法確認主機「{hostname}」的真實性。\n"
+"\n"
+
+#: src/views/dialogs.py:74
+#, python-brace-format
+msgid "Algorithm: {algorithm}\n"
+msgstr "演算法：{algorithm}\n"
+
+#: src/views/dialogs.py:75
+#, python-brace-format
+msgid ""
+"Fingerprint: {fingerprint}\n"
+"\n"
+msgstr ""
+"指紋：{fingerprint}\n"
+"\n"
+
+#: src/views/dialogs.py:76
+msgid "Are you sure you want to continue connecting?"
+msgstr "您確定要繼續連線嗎？"
+
+#: src/views/dialogs.py:79
+msgid "Reject"
+msgstr "拒絕"
+
+#: src/views/dialogs.py:80
+msgid "Accept and Connect"
+msgstr "接受並連線"
+
+#: src/views/dialogs.py:102
+#, python-brace-format
+msgid "Unlock {vault_name}"
+msgstr "解鎖 {vault_name}"
+
+#: src/views/dialogs.py:103
+#, python-brace-format
+msgid "Please enter your master password to access {vault_name} credentials."
+msgstr "請輸入您的主密碼以存取 {vault_name} 憑據。"
+
+#: src/views/dialogs.py:153
+msgid "Select SSH Key from Vault"
+msgstr "從金鑰庫選擇 SSH 金鑰"
+
+#: src/views/dialogs.py:180
+msgid "Retrieving data from Vault..."
+msgstr "正在從金鑰庫檢索數據..."
+
+#: src/views/dialogs.py:191
+msgid ""
+"Choose the vault item that contains the SSH private key for this connection."
+msgstr "請選取包含此連線 SSH 私密金鑰的金鑰庫項目。"
+
+#: src/views/dialogs.py:238
+msgid "Select"
+msgstr "選擇"
+
+#: src/views/dialogs.py:289
+msgid "Confirm"
+msgstr "確認"
+
+#: src/views/dialogs.py:354
+msgid "OK"
+msgstr "確定"
+
+#: src/views/dialogs.py:374
+#, python-brace-format
+msgid "Properties: {name}"
+msgstr "屬性：{name}"
+
+#: src/views/dialogs.py:374 src/views/dialogs.py:420
+msgid "File"
+msgstr "檔案"
+
+#: src/views/dialogs.py:420
+msgid "Type"
+msgstr "類型"
+
+#: src/views/dialogs.py:420
+msgid "Directory"
+msgstr "目錄"
+
+#: src/views/dialogs.py:421 src/views/sftp_view.py:227
+msgid "Size"
+msgstr "大小"
+
+#: src/views/dialogs.py:422
+msgid "Last Modified"
+msgstr "最後修改"
+
+#: src/views/dialogs.py:423
+msgid "Permissions"
+msgstr "權限"
+
+#: src/views/dialogs.py:424
+msgid "Owner"
+msgstr "所有者"
+
+#: src/views/dialogs.py:424
+#, python-brace-format
+msgid "UID: {uid} / GID: {gid}"
+msgstr "UID: {uid} / GID: {gid}"
+
+#: src/views/dialogs.py:425
+msgid "Remote Path"
+msgstr "遠端路徑"
+
+#: src/views/dialogs.py:430
+msgid "Close"
+msgstr "關閉"
+
+#: src/views/sftp_view.py:141
+msgid "New..."
+msgstr "新建..."
+
+#: src/views/sftp_view.py:143 src/views/sftp_view.py:821
+msgid "New File"
+msgstr "新建檔案"
+
+#: src/views/sftp_view.py:144 src/views/sftp_view.py:792
+#: src/views/sftp_view.py:794
+msgid "New Folder"
+msgstr "新建資料夾"
+
+#: src/views/sftp_view.py:154
+msgid "View Options"
+msgstr "檢視選項"
+
+#: src/views/sftp_view.py:159
+msgid "Show Hidden Files"
+msgstr "顯示隱藏檔案"
+
+#: src/views/sftp_view.py:164
+msgid "Auto-sync on Save"
+msgstr "儲存時自動同步"
+
+#: src/views/sftp_view.py:246
+msgid "Date Modified"
+msgstr "修改日期"
+
+#: src/views/sftp_view.py:267 src/views/connection_list.py:253
+msgid "Edit"
+msgstr "編輯"
+
+#: src/views/sftp_view.py:268
+msgid "Open With..."
+msgstr "開啟方式..."
+
+#: src/views/sftp_view.py:271
+msgid "Synchronize"
+msgstr "同步"
+
+#: src/views/sftp_view.py:272
+msgid "Download"
+msgstr "下載"
+
+#: src/views/sftp_view.py:273
+msgid "Calculate Size"
+msgstr "計算大小"
+
+#: src/views/sftp_view.py:276
+msgid "Rename"
+msgstr "重新命名"
+
+#: src/views/sftp_view.py:278
+msgid "Properties"
+msgstr "屬性"
+
+#: src/views/sftp_view.py:432
+msgid "Connecting…"
+msgstr "正在連線…"
+
+#: src/views/sftp_view.py:615
+#, python-brace-format
+msgid "Password for {hostname}"
+msgstr "{hostname} 的密碼"
+
+#: src/views/sftp_view.py:617
+msgid "Unlock SSH Key"
+msgstr "解鎖 SSH 金鑰"
+
+#: src/views/sftp_view.py:617
+#, python-brace-format
+msgid "Enter passphrase for {path}"
+msgstr "輸入 {path} 的密碼短語"
+
+#: src/views/sftp_view.py:671
+#, python-brace-format
+msgid "Connected to {hostname}"
+msgstr "已連線到 {hostname}"
+
+#: src/views/sftp_view.py:685
+#, python-brace-format
+msgid "Loading {path}…"
+msgstr "正在載入 {path}…"
+
+#: src/views/sftp_view.py:726
+#, python-brace-format
+msgid "Error: {msg}"
+msgstr "錯誤：{msg}"
+
+#: src/views/sftp_view.py:778
+#, python-brace-format
+msgid "Creating folder {name}..."
+msgstr "正在建立資料夾 {name}..."
+
+#: src/views/sftp_view.py:783
+#, python-brace-format
+msgid "Created folder {name}"
+msgstr "已建立資料夾 {name}"
+
+#: src/views/sftp_view.py:786 src/views/sftp_view.py:815
+msgid "Error: {e}"
+msgstr "錯誤：{e}"
+
+#: src/views/sftp_view.py:793
+msgid "Enter name for the new folder:"
+msgstr "輸入新資料夾名稱："
+
+#: src/views/sftp_view.py:795
+msgid "Folder name"
+msgstr "資料夾名稱"
+
+#: src/views/sftp_view.py:805
+msgid "Creating file {name}..."
+msgstr "正在建立檔案 {name}..."
+
+#: src/views/sftp_view.py:812
+#, python-brace-format
+msgid "Created file {name}"
+msgstr "已建立檔案 {name}"
+
+#: src/views/sftp_view.py:822
+msgid "Enter name for the new file:"
+msgstr "輸入新檔案名稱："
+
+#: src/views/sftp_view.py:824
+msgid "File name"
+msgstr "檔案名稱"
+
+#: src/views/sftp_view.py:922
+msgid "Ensuring Rclone FUSE3 mount..."
+msgstr "正在準備 Rclone FUSE3 掛載..."
+
+#: src/views/sftp_view.py:941
+#, python-brace-format
+msgid "Mount failed, using GVFS fallback. (Error: {err}...)"
+msgstr "掛載失敗，將回退到 GVFS。(錯誤：{err}...)"
+
+#: src/views/sftp_view.py:954
+msgid "Copied {name} to clipboard"
+msgstr "已複製 {name} 到剪貼簿"
+
+#: src/views/sftp_view.py:973
+#, python-brace-format
+msgid "Renaming to {name}..."
+msgstr "正在重新命名為 {name}..."
+
+#: src/views/sftp_view.py:978
+#, python-brace-format
+msgid "Renamed to {name}"
+msgstr "已重新命名為 {name}"
+
+#: src/views/sftp_view.py:981
+#, python-brace-format
+msgid "Rename failed: {e}"
+msgstr "重新命名失敗：{e}"
+
+#: src/views/sftp_view.py:987
+msgid "Rename Item"
+msgstr "重新命名項目"
+
+#: src/views/sftp_view.py:988
+#, python-brace-format
+msgid "Enter new name for {name}:"
+msgstr "為 {name} 輸入新名稱："
+
+#: src/views/sftp_view.py:990
+msgid "New name"
+msgstr "新名稱"
+
+#: src/views/sftp_view.py:1005
+msgid "Ensuring mount for editing..."
+msgstr "正在準備掛載以供編輯..."
+
+#: src/views/sftp_view.py:1026 src/views/sftp_view.py:1125
+msgid "Fallback failed: {e}"
+msgstr "備援失敗：{e}"
+
+#: src/views/sftp_view.py:1054 src/views/sftp_view.py:1065
+#: src/views/sftp_view.py:1143 src/views/sftp_view.py:1155
+msgid "Download failed: {e}"
+msgstr "下載失敗：{e}"
+
+#: src/views/sftp_view.py:1085 src/views/sftp_view.py:1181
+#, python-brace-format
+msgid "Opened {name} with {app}"
+msgstr "已使用 {app} 開啟 {name}"
+
+#: src/views/sftp_view.py:1090
+msgid "Opening {name}..."
+msgstr "正在開啟 {name}..."
+
+#: src/views/sftp_view.py:1093
+msgid "Failed to open: {e}"
+msgstr "開啟失敗：{e}"
+
+#: src/views/sftp_view.py:1107
+msgid "Ensuring mount for Open With..."
+msgstr "正在準備掛載以供開啟方式..."
+
+#: src/views/sftp_view.py:1183
+msgid "Launch failed: {e}"
+msgstr "啟動失敗：{e}"
+
+#: src/views/sftp_view.py:1334
+msgid "File Updated Locally"
+msgstr "本地檔案已更新"
+
+#: src/views/sftp_view.py:1335
+#, python-brace-format
+msgid ""
+"The file '{name}' has been modified and saved.\n"
+"Update the remote copy on the server?"
+msgstr ""
+"檔案「{name}」已修改並儲存。\n"
+"是否更新伺服器上的遠端副本？"
+
+#: src/views/sftp_view.py:1336
+msgid "Update Remote"
+msgstr "更新遠端"
+
+#: src/views/sftp_view.py:1362
+#, python-brace-format
+msgid "Synchronizing {name}..."
+msgstr "正在同步 {name}..."
+
+#: src/views/sftp_view.py:1368
+#, python-brace-format
+msgid "Synchronized {name}"
+msgstr "已同步 {name}"
+
+#: src/views/sftp_view.py:1373
+#, python-brace-format
+msgid "Sync error: {e}"
+msgstr "同步錯誤：{e}"
+
+#: src/views/sftp_view.py:1392
+msgid "Deleting {name}..."
+msgstr "正在刪除 {name}..."
+
+#: src/views/sftp_view.py:1403
+#, python-brace-format
+msgid "Deleted {name}"
+msgstr "已刪除 {name}"
+
+#: src/views/sftp_view.py:1406
+msgid "Delete failed: {e}"
+msgstr "刪除失敗：{e}"
+
+#: src/views/sftp_view.py:1412
+msgid "Delete Item"
+msgstr "刪除項目"
+
+#: src/views/sftp_view.py:1413
+#, python-brace-format
+msgid ""
+"Are you sure you want to delete '{name}'?\n"
+"This action cannot be undone."
+msgstr ""
+"您確定要刪除「{name}」嗎？\n"
+"此操作無法撤回。"
+
+#: src/views/sftp_view.py:1430
+msgid "Download Directory: {name}"
+msgstr "下載目錄：{name}"
+
+#: src/views/sftp_view.py:1433
+msgid "Download File: {name}"
+msgstr "下載檔案：{name}"
+
+#: src/views/sftp_view.py:1457
+msgid "Downloading {name}..."
+msgstr "正在下載 {name}..."
+
+#: src/views/sftp_view.py:1462
+#, python-brace-format
+msgid "Downloaded {name} to local system"
+msgstr "已下載 {name} 到本機"
+
+#: src/views/sftp_view.py:1516
+msgid "Source connection not found in database."
+msgstr "資料庫中找不到源連線。"
+
+#: src/views/sftp_view.py:1522
+msgid "Source SFTP session must be active to perform transfer."
+msgstr "執行傳輸必須啟用源 SFTP 工作階段。"
+
+#: src/views/sftp_view.py:1531
+#, python-brace-format
+msgid "Starting cross-server transfer from {hostname}..."
+msgstr "正在啟動跨伺服器傳輸，源：{hostname}..."
+
+#: src/views/sftp_view.py:1540
+#, python-brace-format
+msgid "Transferring: {percent}%"
+msgstr "正在傳輸：{percent}%"
+
+#: src/views/sftp_view.py:1549
+msgid "Cross-server transfer complete"
+msgstr "跨伺服器傳輸完成"
+
+#: src/views/sftp_view.py:1551
+#, python-brace-format
+msgid "Transfer failed: {err}"
+msgstr "傳輸失敗：{err}"
+
+#: src/views/sftp_view.py:1567
+#, python-brace-format
+msgid "Uploading {count} items..."
+msgstr "正在上傳 {count} 個項目..."
+
+#: src/views/sftp_view.py:1572
+msgid "Uploaded successfully"
+msgstr "上傳成功"
+
+#: src/views/sftp_view.py:1592
+#, python-brace-format
+msgid "{count} items in {path}"
+msgstr "{path} 中有 {count} 個項目"
+
+#: src/views/sftp_view.py:1605
+msgid "Auto-sync enabled for this session."
+msgstr "本次工作階段已啟用自動同步。"
+
+#: src/views/sftp_view.py:1607
+msgid "Auto-sync disabled."
+msgstr "已關閉自動同步。"
+
+#: src/views/sftp_view.py:1656
+#, python-brace-format
+msgid "Calculating size for {name}..."
+msgstr "正在計算 {name} 的大小..."
+
+#: src/views/sftp_view.py:1667
+#, python-brace-format
+msgid "Size of {name}"
+msgstr "{name} 的大小"
+
+#: src/views/sftp_view.py:1667
+#, python-brace-format
+msgid "The directory occupies: {size}"
+msgstr "目錄佔用空間：{size}"
+
+#: src/views/sftp_view.py:1668
+#, python-brace-format
+msgid "Size of {name}: {size}"
+msgstr "{name} 的大小：{size}"
+
+#: src/views/sftp_view.py:1672
+#, python-brace-format
+msgid "Size calculation failed: {msg}"
+msgstr "大小計算失敗：{msg}"
+
+#: src/views/sftp_view.py:1701
+msgid "SFTP: {hostname}"
+msgstr "SFTP：{hostname}"
+
+#: src/views/connection_list.py:68
+msgid "No Connections"
+msgstr "暫無連線"
+
+#: src/views/connection_list.py:72
+msgid ""
+"Press + to add your first\n"
+"SSH connection"
+msgstr ""
+"點擊 + 新增您的第一個\n"
+"SSH 連線"
+
+#: src/views/connection_list.py:249
+msgid "Shell"
+msgstr "終端機"
+
+#: src/views/connection_list.py:250
+msgid "SFTP"
+msgstr "檔案傳輸 (SFTP)"
+
+#: src/views/connection_list.py:251
+msgid "Copy Host"
+msgstr "複製主機位址"
+
+#: src/views/connection_list.py:252
+msgid "Clear Host Key"
+msgstr "清除主機金鑰"
+
+#: src/views/terminal_theme_dialog.py:104
+msgid "New Custom Theme"
+msgstr "新建自訂配色"
+
+#: src/views/terminal_theme_dialog.py:127
+msgid "The quick brown fox jumps over the lazy dog"
+msgstr "敏捷的棕色狐狸跳過了懶狗"
+
+#: src/views/terminal_theme_dialog.py:145
+msgid "Theme Management"
+msgstr "配色管理"
+
+#: src/views/terminal_theme_dialog.py:147
+msgid "Select Theme"
+msgstr "選擇配色方案"
+
+#: src/views/terminal_theme_dialog.py:157
+#: src/views/terminal_theme_dialog.py:326
+msgid "Rename Theme"
+msgstr "重新命名配色"
+
+#: src/views/terminal_theme_dialog.py:162
+msgid "Delete Theme"
+msgstr "刪除配色"
+
+#: src/views/terminal_theme_dialog.py:167
+msgid "Copy Code"
+msgstr "複製分享碼"
+
+#: src/views/terminal_theme_dialog.py:168
+msgid "Copy sharing code to clipboard"
+msgstr "將分享碼複製到剪貼簿"
+
+#: src/views/terminal_theme_dialog.py:177
+msgid "Active Theme Settings"
+msgstr "目前方案設定"
+
+#: src/views/terminal_theme_dialog.py:178
+msgid "Rename or delete your custom theme"
+msgstr "重新命名或刪除此自訂方案"
+
+#: src/views/terminal_theme_dialog.py:183
+msgid "Import from Code"
+msgstr "從分享碼匯入"
+
+#: src/views/terminal_theme_dialog.py:183
+msgid "Paste a theme code to import"
+msgstr "貼上配色分享碼進行匯入"
+
+#: src/views/terminal_theme_dialog.py:184
+msgid "Import..."
+msgstr "匯入..."
+
+#: src/views/terminal_theme_dialog.py:193
+msgid "Customization"
+msgstr "個性化"
+
+#: src/views/terminal_theme_dialog.py:194
+msgid "Foreground"
+msgstr "前景"
+
+#: src/views/terminal_theme_dialog.py:195
+msgid "Background"
+msgstr "背景"
+
+#: src/views/terminal_theme_dialog.py:196
+msgid "Cursor"
+msgstr "光標"
+
+#: src/views/terminal_theme_dialog.py:197
+msgid "Selection Background"
+msgstr "選取背景"
+
+#: src/views/terminal_theme_dialog.py:205
+msgid "ANSI Colors Palette"
+msgstr "ANSI 顏色調色盤"
+
+#: src/views/terminal_theme_dialog.py:327
+msgid "Enter a new name for this theme"
+msgstr "輸入此配色方案的新名稱"
+
+#: src/views/terminal_theme_dialog.py:332
+msgid "Apply"
+msgstr "套用"
+
+#: src/views/terminal_theme_dialog.py:363
+msgid "Delete Theme?"
+msgstr "刪除配色？"
+
+#: src/views/terminal_theme_dialog.py:364
+#, python-brace-format
+msgid "Are you sure you want to delete '{name}'?"
+msgstr "您確定要刪除「{name}」嗎？"
+
+#: src/views/terminal_theme_dialog.py:458
+msgid "Theme code copied to clipboard"
+msgstr "配色分享碼已複製到剪貼簿"
+
+#: src/views/terminal_theme_dialog.py:462
+msgid "Paste code here..."
+msgstr "在處貼上分享碼..."
+
+#: src/views/terminal_theme_dialog.py:469
+msgid "Import Theme"
+msgstr "匯入配色"
+
+#: src/views/terminal_theme_dialog.py:470
+msgid "Paste the theme code below:"
+msgstr "在下方貼上配色分享碼："
+
+#: src/views/terminal_theme_dialog.py:475
+msgid "Import"
+msgstr "匯入"
+
+#: src/views/terminal_theme_dialog.py:483
+msgid "Imported Theme"
+msgstr "已匯入的配色"
+
+#~ msgid "Settings"
+#~ msgstr "設定"
+
+#~ msgid "App Settings"
+#~ msgstr "應用設定"
+
+#~ msgid "General"
+#~ msgstr "一般"
+
+#~ msgid "Language"
+#~ msgstr "語言"
+
+#~ msgid "Requires an application restart to fully apply"
+#~ msgstr "需要重啟應用程式才能完全生效"
+
+#~ msgid "Please restart the application for language changes to take effect."
+#~ msgstr "請重啟應用程式以使語言更改生效。"
+
+#~ msgid "Close tab"
+#~ msgstr "關閉分頁"
+
+#~ msgid "Custom"
+#~ msgstr "自訂"
+
+#~ msgid "Presets"
+#~ msgstr "預設"
+
+#~ msgid "Theme Presets"
+#~ msgstr "配色預設"
+
+#~ msgid "Theme Actions"
+#~ msgstr "配色操作"
+
+#~ msgid "Theme Code"
+#~ msgstr "配色分享碼"
+
+#~ msgid "Please replace a different 2FA method (e.g. TOTP or Email)."
+#~ msgstr "請使用不同的兩步驟驗證方式 (例如 TOTP 或電子郵件)。"

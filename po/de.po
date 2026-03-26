@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: sentinel\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-22 08:30+0000\n"
+"POT-Creation-Date: 2026-03-26 09:20-0700\n"
 "PO-Revision-Date: 2026-03-22 08:30+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -12,530 +12,40 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "App Settings"
-msgstr "App-Einstellungen"
-
-msgid "General"
-msgstr "Allgemein"
-
-msgid "Language"
-msgstr "Sprache"
-
-msgid "Requires an application restart to fully apply"
-msgstr ""
-"Erfordert einen Neustart der Anwendung, um vollständig wirksam zu werden"
-
-msgid "Please restart the application for language changes to take effect."
-msgstr ""
-"Bitte starten Sie die Anwendung neu, damit die Sprachänderungen wirksam "
-"werden."
-
-msgid "Vault Manager"
-msgstr "Tresor-Manager"
-
-msgid "Log in to Bitwarden"
-msgstr "Bei Bitwarden anmelden"
-
-msgid "Enter your credentials to access your vault."
-msgstr "Geben Sie Ihre Zugangsdaten ein, um auf Ihren Tresor zuzugreifen."
-
-msgid "Custom Server"
-msgstr "Benutzerdefinierter Server"
-
-msgid "For self-hosted Bitwarden / VaultWarden"
-msgstr "Für selbst gehostetes Bitwarden / VaultWarden"
-
-msgid "Email Address"
-msgstr "E-Mail-Adresse"
-
-msgid "Master Password"
-msgstr "Master-Passwort"
-
-msgid "Log In"
-msgstr "Anmelden"
-
-msgid "Two-Step Verification"
-msgstr "Zweistufige Verifizierung"
-
-msgid "Your account requires two-step verification."
-msgstr "Ihr Konto erfordert eine zweistufige Verifizierung."
-
-msgid "Verification Code"
-msgstr "Verifizierungscode"
-
-msgid "Back"
-msgstr "Zurück"
-
-msgid "Verify & Log In"
-msgstr "Verifizieren & Anmelden"
-
-msgid "Vault Locked"
-msgstr "Tresor gesperrt"
-
-msgid "Enter your master password to unlock."
-msgstr "Geben Sie Ihr Master-Passwort zum Entsperren ein."
-
-msgid "Log Out"
-msgstr "Abmelden"
-
-msgid "Unlock"
-msgstr "Entsperren"
-
-msgid "Account"
-msgstr "Konto"
-
-msgid "Server"
-msgstr "Server"
-
-msgid "Status"
-msgstr "Status"
-
-msgid "Unlocked ✓"
-msgstr "Entsperrt ✓"
-
-msgid "Lock"
-msgstr "Sperren"
-
-msgid "Sync Vault"
-msgstr "Tresor synchronisieren"
-
-msgid "Pull the latest items from the server"
-msgstr "Die neuesten Elemente vom Server abrufen"
-
-msgid "Sync Now"
-msgstr "Jetzt synchronisieren"
-
-msgid "New Connection"
-msgstr "Neue Verbindung"
-
-msgid "Connections"
-msgstr "Verbindungen"
-
-msgid "Close tab"
-msgstr "Tab schließen"
-
-msgid "Settings"
-msgstr "Einstellungen"
-
-msgid "About Sentinel"
-msgstr "Über Sentinel"
-
-msgid "Shell"
-msgstr "Shell"
-
-msgid "SFTP"
-msgstr "Dateitransfer (SFTP)"
-
-msgid "Copy Host"
-msgstr "Host kopieren"
-
-msgid "Clear Host Key"
-msgstr "Host-Key löschen"
-
-msgid "Edit"
-msgstr "Bearbeiten"
-
-msgid "Rename"
-msgstr "Umbenennen"
-
-msgid "Delete"
-msgstr "Löschen"
-
-msgid "Properties"
-msgstr "Eigenschaften"
-
-msgid "Cancel"
-msgstr "Abbrechen"
-
-msgid "Confirm"
-msgstr "Bestätigen"
-
-msgid "Connect"
-msgstr "Verbinden"
-
-msgid "Select"
-msgstr "Auswählen"
-
-msgid "Close"
-msgstr "Schließen"
-
-msgid "OK"
-msgstr "OK"
-
-msgid "Reject"
-msgstr "Ablehnen"
-
-msgid "Accept and Connect"
-msgstr "Akzeptieren und Verbinden"
-
-msgid "No Connections"
-msgstr "Keine Verbindungen"
-
-msgid ""
-"Press + to add your first\n"
-"SSH connection"
-msgstr ""
-"Drücken Sie +, um Ihre erste\n"
-"SSH-Verbindung hinzuzufügen"
-
-msgid "File"
-msgstr "Datei"
-
-msgid "Directory"
-msgstr "Verzeichnis"
-
-msgid "Name"
-msgstr "Name"
-
-msgid "Size"
-msgstr "Größe"
-
-msgid "Type"
-msgstr "Typ"
-
-msgid "Last Modified"
-msgstr "Zuletzt geändert"
-
-msgid "Permissions"
-msgstr "Berechtigungen"
-
-msgid "Owner"
-msgstr "Besitzer"
-
-msgid "Remote Path"
-msgstr "Remotepfad"
-
-msgid "New File"
-msgstr "Neue Datei"
-
-msgid "New Folder"
-msgstr "Neuer Ordner"
-
-msgid "New..."
-msgstr "Neu..."
-
-msgid "View Options"
-msgstr "Ansichtsoptionen"
-
-msgid "Show Hidden Files"
-msgstr "Versteckte Dateien anzeigen"
-
-msgid "Auto-sync on Save"
-msgstr "Auto-Sync beim Speichern"
-
-msgid "Connecting…"
-msgstr "Verbinde…"
-
-msgid "Connected to {hostname}"
-msgstr "Verbunden mit {hostname}"
-
-msgid "Loading {path}…"
-msgstr "Lade {path}…"
-
-msgid "Calculating size for {name}..."
-msgstr "Berechne Größe für {name}..."
-
-msgid "Synchronizing {name}..."
-msgstr "Synchronisiere {name}..."
-
-msgid "Deleted {name}"
-msgstr "{name} gelöscht"
-
-msgid "Renamed to {name}"
-msgstr "Umbenannt in {name}"
-
-msgid "Created file {name}"
-msgstr "Datei {name} erstellt"
-
-msgid "Created folder {name}"
-msgstr "Ordner {name} erstellt"
-
-msgid "Enter name for the new folder:"
-msgstr "Name für den neuen Ordner eingeben:"
-
-msgid "Enter name for the new file:"
-msgstr "Name für die neue Datei eingeben:"
-
-msgid "Enter new name for {name}:"
-msgstr "Neuen Namen für {name} eingeben:"
-
-msgid ""
-"Are you sure you want to delete '{name}'?\n"
-"This action cannot be undone."
-msgstr ""
-"Sind Sie sicher, dass Sie „{name}“ löschen möchten?\n"
-"Diese Aktion kann nicht rückgängig gemacht werden."
-
-msgid "File Updated Locally"
-msgstr "Datei lokal aktualisiert"
-
-msgid ""
-"The file '{name}' has been modified and saved.\n"
-"Update the remote copy on the server?"
-msgstr ""
-"Die Datei „{name}“ wurde geändert und gespeichert.\n"
-"Remote-Kopie auf dem Server aktualisieren?"
-
-msgid "Update Remote"
-msgstr "Remote aktualisieren"
-
-msgid "Password for {hostname}"
-msgstr "Passwort für {hostname}"
-
-msgid "Unlock SSH Key"
-msgstr "SSH-Key entsperren"
-
-msgid "Enter passphrase for {path}"
-msgstr "Passphrase für {path} eingeben"
-
-msgid "Unknown Host Key ({hostname})"
-msgstr "Unbekannter Host-Key ({hostname})"
-
-msgid ""
-"The authenticity of host '{hostname}' can't be established.\n"
-"\n"
-msgstr ""
-"Die Authentizität des Hosts „{hostname}“ konnte nicht festgestellt werden.\n"
-"\n"
-
-msgid "Algorithm: {algorithm}\n"
-msgstr "Algorithmus: {algorithm}\n"
-
-msgid ""
-"Fingerprint: {fingerprint}\n"
-"\n"
-msgstr ""
-"Fingerabdruck: {fingerprint}\n"
-"\n"
-
-msgid "Are you sure you want to continue connecting?"
-msgstr "Sind Sie sicher, dass Sie die Verbindung fortsetzen möchten?"
-
-msgid "Properties: {name}"
-msgstr "Eigenschaften: {name}"
-
-msgid "UID: {uid} / GID: {gid}"
-msgstr "UID: {uid} / GID: {gid}"
-
-msgid "Terminal Theme"
-msgstr "Terminal-Design"
-
-msgid "The quick brown fox jumps over the lazy dog"
-msgstr "Franz jagt im komplett verwahrlosten Taxi quer durch Bayern"
-
-msgid "Custom"
-msgstr "Benutzerdefiniert"
-
-msgid "Presets"
-msgstr "Presets"
-
-msgid "Theme Presets"
-msgstr "Design-Presets"
-
-msgid "Customization"
-msgstr "Anpassung"
-
-msgid "Foreground"
-msgstr "Vordergrund"
-
-msgid "Background"
-msgstr "Hintergrund"
-
-msgid "Cursor"
-msgstr "Cursor"
-
-msgid "Selection Background"
-msgstr "Auswahl-Hintergrund"
-
-msgid "ANSI Colors Palette"
-msgstr "ANSI-Farbpalette"
-
+#: src/utils/themes.py:27
 msgid "Catppuccin Mocha"
 msgstr "Catppuccin Mocha"
 
+#: src/utils/themes.py:43
 msgid "Nord"
 msgstr "Nord"
 
+#: src/utils/themes.py:59
 msgid "Solarized Dark"
 msgstr "Solarized Dark"
 
+#: src/utils/themes.py:75
 msgid "Dracula"
 msgstr "Dracula"
 
+#: src/utils/themes.py:91
 msgid "GNOME Dark"
 msgstr "GNOME Dunkel"
 
-msgid "New Custom Theme"
-msgstr "Neues benutzerdefiniertes Design"
-
-msgid "Select Theme"
-msgstr "Design auswählen"
-
-msgid "Active Theme Settings"
-msgstr "Aktive Design-Einstellungen"
-
-msgid "Rename or delete your custom theme"
-msgstr "Benutzerdefiniertes Design umbenennen oder löschen"
-
-msgid "Theme Actions"
-msgstr "Design-Aktionen"
-
-msgid "Copy Code"
-msgstr "Code kopieren"
-
-msgid "Import..."
-msgstr "Importieren..."
-
-msgid "Import from Code"
-msgstr "Aus Code importieren"
-
-msgid "Paste a theme code to import"
-msgstr "Design-Code zum Importieren einfügen"
-
-msgid "Rename Theme"
-msgstr "Design umbenennen"
-
-msgid "Enter a new name for this theme"
-msgstr "Neuen Namen für dieses Design eingeben"
-
-msgid "Delete Theme?"
-msgstr "Design löschen?"
-
-msgid "Are you sure you want to delete '{name}'?"
-msgstr "Sind Sie sicher, dass Sie „{name}“ löschen möchten?"
-
-msgid "Theme code copied to clipboard"
-msgstr "Design-Code in Zwischenablage kopiert"
-
-msgid "Theme Code"
-msgstr "Design-Code"
-
-msgid "Import Theme"
-msgstr "Design importieren"
-
-msgid "Paste the theme code below:"
-msgstr "Fügen Sie den Design-Code unten ein:"
-
-msgid "Imported Theme"
-msgstr "Importiertes Design"
-
-msgid "Terminal"
-msgstr "Terminal"
-
-msgid "Welcome"
-msgstr "Willkommen"
-
-msgid "Vault"
-msgstr "Tresor"
-
-msgid "Username"
-msgstr "Benutzername"
-
-msgid "Untitled"
-msgstr "Unbenannt"
-
-msgid "Sync completed."
-msgstr "Synchronisation abgeschlossen."
-
-msgid "Syncing vault…"
-msgstr "Tresor wird synchronisiert…"
-
-msgid "Wrong master password."
-msgstr "Falsches Master-Passwort."
-
-msgid "Verification Method"
-msgstr "Verifizierungsmethode"
-
-msgid "Verification failed: {err}"
-msgstr "Verifizierung fehlgeschlagen: {err}"
-
-msgid "YubiKey OTP"
-msgstr "YubiKey OTP"
-
-msgid "Touch your hardware security key when it lights up."
-msgstr "Berühren Sie Ihren Hardware-Sicherheitsschlüssel, wenn er aufleuchtet."
-
-msgid "Vault Settings"
-msgstr "Tresor-Einstellungen"
-
-msgid "Unlock Local Vault"
-msgstr "Lokalen Tresor entsperren"
-
-msgid "Set Up Local Vault"
-msgstr "Lokalen Tresor einrichten"
-
-msgid "Unlock {vault_name}"
-msgstr "{vault_name} entsperren"
-
-msgid "Theme Management"
-msgstr "Design-Verwaltung"
-
-msgid "This connection will be permanently removed."
-msgstr "Diese Verbindung wird dauerhaft entfernt."
-
-msgid "Transfer failed: {err}"
-msgstr "Transfer fehlgeschlagen: {err}"
-
-msgid "Transferring: {percent}%"
-msgstr "Übertragung: {percent}%"
-
-msgid "Uploaded successfully"
-msgstr "Erfolgreich hochgeladen"
-
-msgid "Uploading {count} items..."
-msgstr "Lade {count} Elemente hoch..."
-
-msgid "Updated: {name}"
-msgstr "Aktualisiert: {name}"
-
-msgid "Synchronized {name}"
-msgstr "{name} synchronisiert"
-
-msgid "Synchronize"
-msgstr "Synchronisieren"
-
-msgid "Sync failed: {e}"
-msgstr "Synchronisation fehlgeschlagen: {e}"
-
-msgid "Sync error: {e}"
-msgstr "Synchronisationsfehler: {e}"
-
-msgid "Starting cross-server transfer from {hostname}..."
-msgstr "Starte Cross-Server-Transfer von {hostname}..."
-
-msgid "Source SFTP session must be active to perform transfer."
-msgstr "Die SFTP-Quellsitzung muss aktiv sein, um den Transfer durchzuführen."
-
-msgid "Source connection not found in database."
-msgstr "Quellverbindung nicht in Datenbank gefunden."
-
-msgid "SSH Agent"
-msgstr "SSH-Agent"
-
-msgid "SSH Key"
-msgstr "SSH-Schlüssel"
-
-msgid "SSH Key from Vault"
-msgstr "SSH-Schlüssel aus dem Tresor"
-
-msgid "Size of {name}: {size}"
-msgstr "Größe von {name}: {size}"
-
-msgid "Size calculation failed: {msg}"
-msgstr "Größenberechnung fehlgeschlagen: {msg}"
-
-msgid "The directory occupies: {size}"
-msgstr "Das Verzeichnis belegt: {size}"
-
+#: src/application.py:65 src/views/main_window.py:33
+#: src/views/main_window.py:113 src/views/main_window.py:214
 msgid "Sentinel"
 msgstr "Sentinel"
 
+#: src/application.py:67 src/application.py:69
 msgid "Sentinel Contributors"
 msgstr "Sentinel-Mitwirkende"
 
+#: src/application.py:70
 msgid "© 2026 Sentinel Contributors"
 msgstr "© 2026 Sentinel-Mitwirkende"
 
+#: src/application.py:72
 msgid ""
 "A secure GNOME SSH connection manager\n"
 "with password manager integration."
@@ -543,258 +53,573 @@ msgstr ""
 "Ein sicherer GNOME SSH-Verbindungsmanager\n"
 "mit Passwortmanager-Integration."
 
-msgid "Apply"
-msgstr "Anwenden"
-
-msgid "Paste code here..."
-msgstr "Code hier einfügen..."
-
-msgid "Import"
-msgstr "Importieren"
-
-msgid "Authentication"
-msgstr "Authentifizierung"
-
-msgid "Authenticator App (TOTP)"
-msgstr "Authentifikator-App (TOTP)"
-
-msgid "Basic"
-msgstr "Basis"
-
-msgid "Bitwarden CLI ('bw') not found. Please install it."
-msgstr "Bitwarden CLI ('bw') nicht gefunden. Bitte installieren Sie es."
-
-msgid "Check your email inbox for a verification code sent by Bitwarden."
-msgstr ""
-"Überprüfen Sie Ihren E-Mail-Posteingang auf einen Verifizierungscode von "
-"Bitwarden."
-
-msgid "Checking Vault Status…"
-msgstr "Prüfe Tresor-Status…"
-
-msgid "Creating folder {name}..."
-msgstr "Erstelle Ordner {name}..."
-
-msgid "Create Vault"
-msgstr "Tresor erstellen"
-
-msgid "Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"
-msgstr "Strg+N Neue Verbindung · Strg+T Lokale Shell · Strg+F Suchen"
-
-msgid "Duo"
-msgstr "Duo"
-
-msgid "Duo passcode (or leave blank for push)"
-msgstr "Duo-Passcode (oder für Push leer lassen)"
-
-msgid "Email verification code"
-msgstr "E-Mail-Verifizierungscode"
-
-msgid "Enter your Sentinel vault master password to continue."
-msgstr "Geben Sie Ihr Sentinel-Tresor-Masterpasswort ein, um fortzufahren."
-
-msgid "Error: {msg}"
-msgstr "Fehler: {msg}"
-
-msgid "Failed to create vault: {e}"
-msgstr "Tresor konnte nicht erstellt werden: {e}"
-
-msgid "Failed to load folders: {e}"
-msgstr "Ordner konnten nicht geladen werden: {e}"
-
-msgid "FIDO2 / WebAuthn (hardware key)"
-msgstr "FIDO2 / WebAuthn (Hardware-Schlüssel)"
-
-msgid "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
-msgstr "FIDO2 / WebAuthn wird von der Bitwarden CLI nicht unterstützt. "
-
-msgid "Find next"
-msgstr "Weitersuchen"
-
-msgid "Find previous"
-msgstr "Rückwärts suchen"
-
-msgid "Forget"
-msgstr "Vergessen"
-
-msgid "https://bitwarden.com (leave blank for default)"
-msgstr "https://bitwarden.com (für Standard leer lassen)"
-
-msgid "Insert your YubiKey and tap it to generate an OTP."
-msgstr ""
-"Stecken Sie Ihren YubiKey ein und tippen Sie darauf, um ein OTP zu "
-"generieren."
-
-msgid "Key File Path (optional)"
-msgstr "Schlüsseldateipfad (optional)"
-
-msgid "Key + Passphrase"
-msgstr "Schlüssel + Passphrase"
-
-msgid "Login password missing for 2FA"
-msgstr "Login-Passwort fehlt für 2FA"
-
-msgid "Master password is saved in system keyring for auto-unlock"
-msgstr ""
-"Master-Passwort ist im System-Schlüsselbund für automatisches Entsperren "
-"gespeichert"
-
-msgid "Menu"
-msgstr "Menü"
-
-msgid "Merge all tabs into another window and close"
-msgstr "Alle Tabs in ein anderes Fenster zusammenführen und schließen"
-
-msgid "Method"
-msgstr "Methode"
-
-msgid "Mount failed, using GVFS fallback. (Error: {err}...)"
-msgstr "Mount fehlgeschlagen, verwende GVFS-Fallback. (Fehler: {err}...)"
-
+#: src/vault/bitwarden.py:689
+#, python-brace-format
 msgid "No password found in item. Check item ID '{id}'."
 msgstr ""
 "Kein Passwort im Element gefunden. Überprüfen Sie die Element-ID '{id}'."
 
-msgid "Notes"
-msgstr "Notizen"
+#: src/views/main_window.py:59
+msgid "Connections"
+msgstr "Verbindungen"
 
-msgid "Not selected"
-msgstr "Nicht ausgewählt"
+#: src/views/main_window.py:65
+msgid "New Connection  (Ctrl+N)"
+msgstr "Neue Verbindung  (Ctrl+N)"
 
-msgid "(Not supported in CLI mode — use another method)"
-msgstr "(Im CLI-Modus nicht unterstützt – bitte eine andere Methode verwenden)"
+#: src/views/main_window.py:70
+msgid "Menu"
+msgstr "Menü"
 
-msgid "Official Cloud Server"
-msgstr "Offizieller Cloud-Server"
+#: src/views/main_window.py:72 src/views/terminal_theme_dialog.py:34
+msgid "Terminal Theme"
+msgstr "Terminal-Design"
 
-msgid "Opened {name} with {app}"
-msgstr "{name} mit {app} geöffnet"
+#: src/views/main_window.py:73
+msgid "Vault Settings"
+msgstr "Tresor-Einstellungen"
 
+#: src/views/main_window.py:74
+msgid "About Sentinel"
+msgstr "Über Sentinel"
+
+#: src/views/main_window.py:75
+msgid "Quit"
+msgstr "Beenden"
+
+#: src/views/main_window.py:82
+msgid "Search connections…"
+msgstr "Verbindungen suchen…"
+
+#: src/views/main_window.py:134
+msgid "Terminal"
+msgstr "Terminal"
+
+#: src/views/main_window.py:151
 msgid "Open Local Shell (Ctrl+T)"
 msgstr "Lokale Shell öffnen (Strg+T)"
 
-msgid "Open With..."
-msgstr "Öffnen mit..."
+#: src/views/main_window.py:161
+msgid "Merge all tabs into another window and close"
+msgstr "Alle Tabs in ein anderes Fenster zusammenführen und schließen"
 
-msgid "Password must be at least 8 characters."
-msgstr "Das Passwort muss mindestens 8 Zeichen lang sein."
+#: src/views/main_window.py:218
+msgid "Secure SSH Connection Manager"
+msgstr "Sicherer SSH-Verbindungsmanager"
 
-msgid "Paste"
-msgstr "Einfügen"
+#: src/views/main_window.py:229 src/views/main_window.py:259
+msgid "New Connection"
+msgstr "Neue Verbindung"
 
-msgid "Please enter your verification code."
-msgstr "Bitte geben Sie Ihren Verifizierungscode ein."
+#: src/views/main_window.py:235 src/views/terminal_view.py:75
+#: src/views/terminal_view.py:389 src/views/terminal_view.py:638
+msgid "Local Shell"
+msgstr "Lokale Shell"
 
+#: src/views/main_window.py:244
+msgid "Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"
+msgstr "Strg+N Neue Verbindung · Strg+T Lokale Shell · Strg+F Suchen"
+
+#: src/views/main_window.py:259
+msgid "Edit Connection"
+msgstr "Verbindung bearbeiten"
+
+#: src/views/main_window.py:267 src/views/main_window.py:637
+#: src/views/dialogs.py:20 src/views/dialogs.py:105 src/views/dialogs.py:167
+#: src/views/dialogs.py:288 src/views/dialogs.py:329
+#: src/views/terminal_theme_dialog.py:331
+#: src/views/terminal_theme_dialog.py:367
+#: src/views/terminal_theme_dialog.py:474
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: src/views/main_window.py:271
+msgid "Save"
+msgstr "Speichern"
+
+#: src/views/main_window.py:279
+msgid "Basic"
+msgstr "Basis"
+
+#: src/views/main_window.py:282 src/views/dialogs.py:419
+#: src/views/sftp_view.py:201
+msgid "Name"
+msgstr "Name"
+
+#: src/views/main_window.py:287
+msgid "Hostname"
+msgstr "Hostname"
+
+#: src/views/main_window.py:293
+msgid "Port"
+msgstr "Port"
+
+#: src/views/main_window.py:297
+msgid "Username"
+msgstr "Benutzername"
+
+#: src/views/main_window.py:305
+msgid "Authentication"
+msgstr "Authentifizierung"
+
+#: src/views/main_window.py:309
+msgid "SSH Key"
+msgstr "SSH-Schlüssel"
+
+#: src/views/main_window.py:309
+msgid "Password"
+msgstr "Passwort"
+
+#: src/views/main_window.py:309
+msgid "Key + Passphrase"
+msgstr "Schlüssel + Passphrase"
+
+#: src/views/main_window.py:309
+msgid "SSH Agent"
+msgstr "SSH-Agent"
+
+#: src/views/main_window.py:309
+msgid "Vault"
+msgstr "Tresor"
+
+#: src/views/main_window.py:311
+msgid "Method"
+msgstr "Methode"
+
+#: src/views/main_window.py:321
+msgid "Key File Path (optional)"
+msgstr "Schlüsseldateipfad (optional)"
+
+#: src/views/main_window.py:340
+msgid "SSH Key from Vault"
+msgstr "SSH-Schlüssel aus dem Tresor"
+
+#: src/views/main_window.py:341
+msgid "Select the vault item that stores the SSH private key"
+msgstr ""
+"Wählen Sie das Tresorelement aus, das den privaten SSH-Schlüssel speichert"
+
+#: src/views/main_window.py:348 src/views/main_window.py:350
+#: src/views/main_window.py:376
+msgid "Not selected"
+msgstr "Nicht ausgewählt"
+
+#: src/views/main_window.py:353
+msgid "Clear vault key selection"
+msgstr "Schlüsselauswahl löschen"
+
+#: src/views/main_window.py:358
+msgid "Select…"
+msgstr "Auswählen…"
+
+#: src/views/main_window.py:359
+msgid "Select SSH key from Vault"
+msgstr "SSH-Schlüssel aus dem Tresor auswählen"
+
+#: src/views/main_window.py:391
+msgid "Bitwarden CLI not found. Install it first."
+msgstr "Bitwarden CLI nicht gefunden. Bitte zuerst installieren."
+
+#: src/views/main_window.py:408
 msgid "Please log in / unlock Bitwarden via Vault Settings first."
 msgstr ""
 "Bitte melden Sie sich zuerst an oder entsperren Sie Bitwarden über die "
 "Tresor-Einstellungen."
 
-msgid "Please use a different 2FA method (e.g. TOTP or Email)."
-msgstr "Bitte verwenden Sie eine andere 2FA-Methode (z. B. TOTP oder E-Mail)."
+#: src/views/main_window.py:420
+msgid "Failed to fetch vault items: {fetch_err}"
+msgstr "Tresor-Einträge abrufen fehlgeschlagen: {fetch_err}"
 
-msgid "Port"
-msgstr "Port"
+#: src/views/main_window.py:434 src/views/main_window.py:436
+msgid "Notes"
+msgstr "Notizen"
 
-msgid "Quit"
-msgstr "Beenden"
+#: src/views/main_window.py:453
+msgid "Delete Connection"
+msgstr "Verbindung löschen"
 
-msgid "Read-only"
-msgstr "Schreibgeschützt"
+#: src/views/main_window.py:498
+#, python-brace-format
+msgid "Updated: {name}"
+msgstr "Aktualisiert: {name}"
 
-msgid "Retrieving data from Vault..."
-msgstr "Rufe Daten aus dem Tresor ab..."
+#: src/views/main_window.py:498
+msgid "Added: {name}"
+msgstr "Hinzugefügt: {name}"
 
-msgid "Save"
-msgstr "Speichern"
+#: src/views/main_window.py:524
+msgid "Connection error: {e}"
+msgstr "Verbindungsfehler: {e}"
 
-msgid "Saved master password removed from keyring."
-msgstr "Gespeichertes Master-Passwort aus dem Schlüsselbund entfernt."
+#: src/views/main_window.py:547
+msgid "Welcome"
+msgstr "Willkommen"
 
-msgid "Save master password securely in system keyring"
-msgstr "Master-Passwort sicher im System-Schlüsselbund speichern"
+#: src/views/main_window.py:568
+msgid "Untitled"
+msgstr "Unbenannt"
 
-msgid "Secure SSH Connection Manager"
-msgstr "Sicherer SSH-Verbindungsmanager"
+#: src/views/main_window.py:634
+msgid "Delete \"{name}\"?"
+msgstr "„{name}\" löschen?"
 
-msgid "Select the vault item that stores the SSH private key"
-msgstr ""
-"Wählen Sie das Tresorelement aus, das den privaten SSH-Schlüssel speichert"
+#: src/views/main_window.py:635
+msgid "This connection will be permanently removed."
+msgstr "Diese Verbindung wird dauerhaft entfernt."
 
-msgid "Spawning local shell..."
-msgstr "Lokale Shell wird gestartet..."
+#: src/views/main_window.py:638 src/views/sftp_view.py:277
+#: src/views/sftp_view.py:1414 src/views/terminal_theme_dialog.py:368
+msgid "Delete"
+msgstr "Löschen"
 
-msgid "Local Shell"
-msgstr "Lokale Shell"
+#: src/views/main_window.py:646
+msgid "Deleted: {name}"
+msgstr "Gelöscht: {name}"
 
+#: src/views/main_window.py:670
+#, python-brace-format
+msgid "Cleared host key and OS info for {hostname}"
+msgstr "Host-Key und OS-Info für {hostname} gelöscht"
+
+#: src/views/main_window.py:672
+msgid "Cleared OS info for {hostname}"
+msgstr "OS-Info für {hostname} gelöscht"
+
+#: src/views/terminal_view.py:178
+msgid "Find in terminal..."
+msgstr "Im Terminal suchen..."
+
+#: src/views/terminal_view.py:182
+msgid "Find next"
+msgstr "Weitersuchen"
+
+#: src/views/terminal_view.py:187
+msgid "Find previous"
+msgstr "Rückwärts suchen"
+
+#: src/views/terminal_view.py:213
+#, python-brace-format
 msgid "Connecting to {title}…"
 msgstr "Verbinde mit {title}…"
 
+#: src/views/terminal_view.py:213
+msgid "Spawning local shell..."
+msgstr "Lokale Shell wird gestartet..."
+
+#: src/views/terminal_view.py:324
+#, python-brace-format
 msgid "Connected — {title}"
 msgstr "Verbunden — {title}"
 
+#: src/views/terminal_view.py:334
+#, python-brace-format
 msgid "Disconnected: {exc}"
 msgstr "Verbindung getrennt: {exc}"
 
+#: src/views/terminal_view.py:334
 msgid "Disconnected"
 msgstr "Verbindung getrennt"
 
+#: src/views/terminal_view.py:366
+#, python-brace-format
 msgid "Exited with code {exit_status}"
 msgstr "Beendet mit Code {exit_status}"
 
+#: src/views/terminal_view.py:386
+#, python-brace-format
 msgid "Error: {error}"
 msgstr "Fehler: {error}"
 
+#: src/views/terminal_view.py:393
+#, python-brace-format
 msgid "Exited code {exit_status}"
 msgstr "Exit-Code {exit_status}"
 
+#: src/views/terminal_view.py:411
 msgid "Reconnecting…"
 msgstr "Verbinde erneut…"
 
-msgid "Searching connections…"
-msgstr "Suche Verbindungen…"
+#: src/views/terminal_view.py:426 src/views/sftp_view.py:269
+msgid "Copy"
+msgstr "Kopieren"
 
-msgid "Select SSH key from Vault"
-msgstr "SSH-Schlüssel aus dem Tresor auswählen"
+#: src/views/terminal_view.py:427 src/views/sftp_view.py:270
+msgid "Paste"
+msgstr "Einfügen"
 
-msgid "Select SSH Key from Vault"
-msgstr "SSH-Schlüssel aus dem Tresor auswählen"
+#: src/views/terminal_view.py:431
+msgid "Find…"
+msgstr "Suchen…"
 
-msgid "Size of {name}"
-msgstr "Größe von {name}"
+#: src/views/terminal_view.py:432
+msgid "Read-only"
+msgstr "Schreibgeschützt"
 
-msgid "Renaming to {name}..."
-msgstr "Benenne in {name} um..."
+#: src/views/terminal_view.py:436
+msgid "Select All"
+msgstr "Alles auswählen"
 
-msgid "Rename Item"
-msgstr "Element umbenennen"
+#: src/views/terminal_view.py:437
+msgid "Clear"
+msgstr "Leeren"
 
-msgid "Rename failed: {e}"
-msgstr "Umbenennen fehlgeschlagen: {e}"
+#: src/views/vault_settings_dialog.py:39
+msgid "Vault Manager"
+msgstr "Tresor-Manager"
 
+#: src/views/vault_settings_dialog.py:112
+msgid "Checking Vault Status…"
+msgstr "Prüfe Tresor-Status…"
+
+#: src/views/vault_settings_dialog.py:129
+msgid "Set Up Local Vault"
+msgstr "Lokalen Tresor einrichten"
+
+#: src/views/vault_settings_dialog.py:135
+msgid ""
+"Sentinel stores credentials in an encrypted local database. Please pick a "
+"strong master password. You will only need to enter it once — after that, it "
+"is stored securely in the system keyring."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:149
+#: src/views/vault_settings_dialog.py:194
+#: src/views/vault_settings_dialog.py:316
+#: src/views/vault_settings_dialog.py:461
+msgid "Master Password"
+msgstr "Master-Passwort"
+
+#: src/views/vault_settings_dialog.py:152
+msgid "Confirm Password"
+msgstr "Passwort bestätigen"
+
+#: src/views/vault_settings_dialog.py:156
+msgid "Create Vault"
+msgstr "Tresor erstellen"
+
+#: src/views/vault_settings_dialog.py:179
+msgid "Unlock Local Vault"
+msgstr "Lokalen Tresor entsperren"
+
+#: src/views/vault_settings_dialog.py:184
+msgid "Enter your Sentinel vault master password to continue."
+msgstr "Geben Sie Ihr Sentinel-Tresor-Masterpasswort ein, um fortzufahren."
+
+#: src/views/vault_settings_dialog.py:201
+#: src/views/vault_settings_dialog.py:482 src/views/dialogs.py:106
+msgid "Unlock"
+msgstr "Entsperren"
+
+#: src/views/vault_settings_dialog.py:219
 msgid "Please enter a master password."
 msgstr "Bitte geben Sie ein Master-Passwort ein."
 
+#: src/views/vault_settings_dialog.py:222
 msgid "Passwords do not match."
 msgstr "Passwörter stimmen nicht überein."
 
+#: src/views/vault_settings_dialog.py:225
+msgid "Password must be at least 8 characters."
+msgstr "Das Passwort muss mindestens 8 Zeichen lang sein."
+
+#: src/views/vault_settings_dialog.py:237
 msgid "Local vault created successfully."
 msgstr "Lokaler Tresor erfolgreich erstellt."
 
-msgid "Please enter your master password to access {vault_name} credentials."
+#: src/views/vault_settings_dialog.py:243
+#, python-brace-format
+msgid "Failed to create vault: {e}"
+msgstr "Tresor-Einträge abrufen fehlgeschlagen: {fetch_err}"
+
+#: src/views/vault_settings_dialog.py:262
+msgid "Wrong master password."
+msgstr "Falsches Master-Passwort."
+
+#: src/views/vault_settings_dialog.py:280
+msgid "Log in to Bitwarden"
+msgstr "Bei Bitwarden anmelden"
+
+#: src/views/vault_settings_dialog.py:285
+msgid "Enter your credentials to access your vault."
+msgstr "Geben Sie Ihre Zugangsdaten ein, um auf Ihren Tresor zuzugreifen."
+
+#: src/views/vault_settings_dialog.py:301
+msgid "https://bitwarden.com (leave blank for default)"
+msgstr "https://bitwarden.com (für Standard leer lassen)"
+
+#: src/views/vault_settings_dialog.py:303
+msgid "Custom Server"
+msgstr "Benutzerdefinierter Server"
+
+#: src/views/vault_settings_dialog.py:303
+msgid "For self-hosted Bitwarden / VaultWarden"
+msgstr "Für selbst gehostetes Bitwarden / VaultWarden"
+
+#: src/views/vault_settings_dialog.py:312
+msgid "Email Address"
+msgstr "E-Mail-Adresse"
+
+#: src/views/vault_settings_dialog.py:319
+#: src/views/vault_settings_dialog.py:464
+msgid "Save master password securely in system keyring"
+msgstr "Master-Passwort sicher im System-Schlüsselbund speichern"
+
+#: src/views/vault_settings_dialog.py:328
+msgid "Log In"
+msgstr "Anmelden"
+
+#: src/views/vault_settings_dialog.py:356
+msgid "Two-Step Verification"
+msgstr "Zweistufige Verifizierung"
+
+#: src/views/vault_settings_dialog.py:361
+msgid "Your account requires two-step verification."
+msgstr "Ihr Konto erfordert eine zweistufige Verifizierung."
+
+#: src/views/vault_settings_dialog.py:377
+#: src/views/vault_settings_dialog.py:712
+msgid "Authenticator App (TOTP)"
+msgstr "Authentifikator-App (TOTP)"
+
+#: src/views/vault_settings_dialog.py:378
+msgid "Email"
+msgstr "E-Mail"
+
+#: src/views/vault_settings_dialog.py:379
+#: src/views/vault_settings_dialog.py:714
+#: src/views/vault_settings_dialog.py:756
+msgid "YubiKey OTP"
+msgstr "YubiKey OTP"
+
+#: src/views/vault_settings_dialog.py:380
+#: src/views/vault_settings_dialog.py:715
+msgid "Duo"
+msgstr "Duo"
+
+#: src/views/vault_settings_dialog.py:381
+msgid "FIDO2 / WebAuthn (hardware key)"
+msgstr "FIDO2 / WebAuthn (Hardware-Schlüssel)"
+
+#: src/views/vault_settings_dialog.py:386
+msgid "Verification Method"
+msgstr "Verifizierungsmethode"
+
+#: src/views/vault_settings_dialog.py:392
+msgid "Verification Code"
+msgstr "Verifizierungscode"
+
+#: src/views/vault_settings_dialog.py:408
+msgid "Back"
+msgstr "Zurück"
+
+#: src/views/vault_settings_dialog.py:414
+msgid "Verify & Log In"
+msgstr "Verifizieren & Anmelden"
+
+#: src/views/vault_settings_dialog.py:442
+msgid "Vault Locked"
+msgstr "Tresor gesperrt"
+
+#: src/views/vault_settings_dialog.py:447
+msgid "Enter your master password to unlock."
+msgstr "Falsches Master-Passwort oder Entsperren fehlgeschlagen."
+
+#: src/views/vault_settings_dialog.py:475
+#: src/views/vault_settings_dialog.py:518
+msgid "Log Out"
+msgstr "Abmelden"
+
+#: src/views/vault_settings_dialog.py:503
+msgid "Account"
+msgstr "Konto"
+
+#: src/views/vault_settings_dialog.py:505
+msgid "Server"
+msgstr "Server"
+
+#: src/views/vault_settings_dialog.py:505
+msgid "Loading…"
+msgstr "Lade…"
+
+#: src/views/vault_settings_dialog.py:508
+msgid "Status"
+msgstr "Status"
+
+#: src/views/vault_settings_dialog.py:508
+#: src/views/vault_settings_dialog.py:624
+msgid "Unlocked ✓"
+msgstr "Entsperrt ✓"
+
+#: src/views/vault_settings_dialog.py:513
+msgid "Lock"
+msgstr "Sperren"
+
+#: src/views/vault_settings_dialog.py:528
+msgid "Saved Password"
+msgstr "Gespeichertes Passwort"
+
+#: src/views/vault_settings_dialog.py:529
+msgid "Master password is saved in system keyring for auto-unlock"
 msgstr ""
-"Geben Sie Ihr Master-Passwort ein, um auf {vault_name}-Anmeldedaten "
-"zuzugreifen."
+"Master-Passwort ist im System-Schlüsselbund für automatisches Entsperren "
+"gespeichert"
 
-msgid "Please provide email and master password."
-msgstr "Bitte geben Sie E-Mail und Master-Passwort an."
+#: src/views/vault_settings_dialog.py:531
+msgid "Forget"
+msgstr "Vergessen"
 
+#: src/views/vault_settings_dialog.py:543
+msgid "Default Folder for Key Selection"
+msgstr "Standardordner für Schlüsselauswahl"
+
+#: src/views/vault_settings_dialog.py:544
+msgid ""
+"Only items inside this folder will appear when picking a vault SSH key in "
+"connection settings. Leave as 'All Items' to search everywhere."
+msgstr "Nur Einträge in diesem Ordner erscheinen bei der SSH-Schlüsselauswahl in den Verbindungseinstellungen. Leer lassen für '[All Items]', um überall zu suchen."
+
+#: src/views/vault_settings_dialog.py:548
+msgid "Folder"
+msgstr "Ordner"
+
+#: src/views/vault_settings_dialog.py:554
+msgid "Sync Vault"
+msgstr "Tresor synchronisieren"
+
+#: src/views/vault_settings_dialog.py:554
+msgid "Pull the latest items from the server"
+msgstr "Die neuesten Elemente vom Server abrufen"
+
+#: src/views/vault_settings_dialog.py:555
+msgid "Sync Now"
+msgstr "Jetzt synchronisieren"
+
+#: src/views/vault_settings_dialog.py:583
+msgid "Bitwarden CLI ('bw') not found. Please install it."
+msgstr "Bitwarden CLI nicht gefunden. Bitte zuerst installieren."
+
+#: src/views/vault_settings_dialog.py:623
+msgid "Official Cloud Server"
+msgstr "Offizieller Cloud-Server"
+
+#: src/views/vault_settings_dialog.py:648
+#, python-brace-format
+msgid "Failed to load folders: {e}"
+msgstr "Öffnen fehlgeschlagen: {e}"
+
+#: src/views/vault_settings_dialog.py:660
+msgid "[All Items]"
+msgstr "[Alle Einträge]"
+
+#: src/views/vault_settings_dialog.py:713
 msgid "Email Verification"
 msgstr "E-Mail-Verifizierung"
 
+#: src/views/vault_settings_dialog.py:716
 msgid "FIDO2 / WebAuthn"
 msgstr "FIDO2 / WebAuthn"
 
+#: src/views/vault_settings_dialog.py:743
 msgid ""
 "Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) "
 "and enter the 6-digit code."
@@ -802,14 +627,765 @@ msgstr ""
 "Öffnen Sie Ihre Authentifikator-App (z. B. Google Authenticator, Aegis, Ente "
 "Auth) und geben Sie den 6-stelligen Code ein."
 
+#: src/views/vault_settings_dialog.py:745
+msgid "Check your email inbox for a verification code sent by Bitwarden."
+msgstr ""
+"Überprüfen Sie Ihren E-Mail-Posteingang auf einen Verifizierungscode von "
+"Bitwarden."
+
+#: src/views/vault_settings_dialog.py:747
+msgid "Insert your YubiKey and tap it to generate an OTP."
+msgstr ""
+"Stecken Sie Ihren YubiKey ein und tippen Sie darauf, um ein OTP zu "
+"generieren."
+
+#: src/views/vault_settings_dialog.py:749
 msgid ""
 "Approve the Duo push notification on your device, or enter the Duo passcode."
 msgstr ""
 "Genehmigen Sie die Duo-Push-Benachrichtigung auf Ihrem Gerät oder geben Sie "
 "den Duo-Passcode ein."
 
+#: src/views/vault_settings_dialog.py:751
+msgid "Touch your hardware security key when it lights up."
+msgstr "Berühren Sie Ihren Hardware-Sicherheitsschlüssel, wenn er aufleuchtet."
+
+#: src/views/vault_settings_dialog.py:754
 msgid "6-digit TOTP code"
 msgstr "6-stelliger TOTP-Code"
 
-msgid "Please replace a different 2FA method (e.g. TOTP or Email)."
+#: src/views/vault_settings_dialog.py:755
+msgid "Email verification code"
+msgstr "E-Mail-Verifizierungscode"
+
+#: src/views/vault_settings_dialog.py:757
+msgid "Duo passcode (or leave blank for push)"
+msgstr "Duo-Passcode (oder für Push leer lassen)"
+
+#: src/views/vault_settings_dialog.py:758
+msgid "(Not supported in CLI mode — use another method)"
+msgstr "(Im CLI-Modus nicht unterstützt – bitte eine andere Methode verwenden)"
+
+#: src/views/vault_settings_dialog.py:771
+msgid "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
+msgstr "FIDO2 / WebAuthn wird von der Bitwarden CLI nicht unterstützt. "
+
+#: src/views/vault_settings_dialog.py:772
+msgid "Please use a different 2FA method (e.g. TOTP or Email)."
 msgstr "Bitte verwenden Sie eine andere 2FA-Methode (z. B. TOTP oder E-Mail)."
+
+#: src/views/vault_settings_dialog.py:783
+msgid "Please provide email and master password."
+msgstr "Bitte geben Sie E-Mail und Master-Passwort an."
+
+#: src/views/vault_settings_dialog.py:836
+msgid "Login failed: {err}"
+msgstr "Anmeldung fehlgeschlagen: {err}"
+
+#: src/views/vault_settings_dialog.py:863
+msgid "Please enter your verification code."
+msgstr "Bitte geben Sie Ihren Verifizierungscode ein."
+
+#: src/views/vault_settings_dialog.py:882
+msgid "Login password missing for 2FA"
+msgstr "Login-Passwort fehlt für 2FA"
+
+#: src/views/vault_settings_dialog.py:905
+#, python-brace-format
+msgid "Verification failed: {err}"
+msgstr "Verifizierung fehlgeschlagen: {err}"
+
+#: src/views/vault_settings_dialog.py:933
+msgid "Incorrect master password, or unlock failed."
+msgstr "Falsches Master-Passwort oder Entsperren fehlgeschlagen."
+
+#: src/views/vault_settings_dialog.py:967
+msgid "Saved master password removed from keyring."
+msgstr "Gespeichertes Master-Passwort aus dem Schlüsselbund entfernt."
+
+#: src/views/vault_settings_dialog.py:970
+msgid "Syncing vault…"
+msgstr "Tresor wird synchronisiert…"
+
+#: src/views/vault_settings_dialog.py:975
+msgid "Sync completed."
+msgstr "Synchronisation abgeschlossen."
+
+#: src/views/vault_settings_dialog.py:978
+#, python-brace-format
+msgid "Sync failed: {e}"
+msgstr "Synchronisation fehlgeschlagen: {e}"
+
+#: src/views/dialogs.py:21
+msgid "Connect"
+msgstr "Verbinden"
+
+#: src/views/dialogs.py:71
+#, python-brace-format
+msgid "Unknown Host Key ({hostname})"
+msgstr "Unbekannter Host-Key ({hostname})"
+
+#: src/views/dialogs.py:73
+#, python-brace-format
+msgid ""
+"The authenticity of host '{hostname}' can't be established.\n"
+"\n"
+msgstr ""
+"Die Authentizität des Hosts „{hostname}“ konnte nicht festgestellt werden.\n"
+"\n"
+
+#: src/views/dialogs.py:74
+#, python-brace-format
+msgid "Algorithm: {algorithm}\n"
+msgstr "Algorithmus: {algorithm}\n"
+
+#: src/views/dialogs.py:75
+#, python-brace-format
+msgid ""
+"Fingerprint: {fingerprint}\n"
+"\n"
+msgstr ""
+"Fingerabdruck: {fingerprint}\n"
+"\n"
+
+#: src/views/dialogs.py:76
+msgid "Are you sure you want to continue connecting?"
+msgstr "Sind Sie sicher, dass Sie die Verbindung fortsetzen möchten?"
+
+#: src/views/dialogs.py:79
+msgid "Reject"
+msgstr "Ablehnen"
+
+#: src/views/dialogs.py:80
+msgid "Accept and Connect"
+msgstr "Akzeptieren und Verbinden"
+
+#: src/views/dialogs.py:102
+#, python-brace-format
+msgid "Unlock {vault_name}"
+msgstr "{vault_name} entsperren"
+
+#: src/views/dialogs.py:103
+#, python-brace-format
+msgid "Please enter your master password to access {vault_name} credentials."
+msgstr ""
+"Geben Sie Ihr Master-Passwort ein, um auf {vault_name}-Anmeldedaten "
+"zuzugreifen."
+
+#: src/views/dialogs.py:153
+msgid "Select SSH Key from Vault"
+msgstr "SSH-Schlüssel aus dem Tresor auswählen"
+
+#: src/views/dialogs.py:180
+msgid "Retrieving data from Vault..."
+msgstr "Rufe Daten aus dem Tresor ab..."
+
+#: src/views/dialogs.py:191
+msgid ""
+"Choose the vault item that contains the SSH private key for this connection."
+msgstr ""
+"Wählen Sie das Tresorelement aus, das den privaten SSH-Schlüssel speichert"
+
+#: src/views/dialogs.py:238
+msgid "Select"
+msgstr "Auswählen"
+
+#: src/views/dialogs.py:289
+msgid "Confirm"
+msgstr "Bestätigen"
+
+#: src/views/dialogs.py:354
+msgid "OK"
+msgstr "OK"
+
+#: src/views/dialogs.py:374
+#, python-brace-format
+msgid "Properties: {name}"
+msgstr "Eigenschaften: {name}"
+
+#: src/views/dialogs.py:374 src/views/dialogs.py:420
+msgid "File"
+msgstr "Datei"
+
+#: src/views/dialogs.py:420
+msgid "Type"
+msgstr "Typ"
+
+#: src/views/dialogs.py:420
+msgid "Directory"
+msgstr "Verzeichnis"
+
+#: src/views/dialogs.py:421 src/views/sftp_view.py:227
+msgid "Size"
+msgstr "Größe"
+
+#: src/views/dialogs.py:422
+msgid "Last Modified"
+msgstr "Zuletzt geändert"
+
+#: src/views/dialogs.py:423
+msgid "Permissions"
+msgstr "Berechtigungen"
+
+#: src/views/dialogs.py:424
+msgid "Owner"
+msgstr "Besitzer"
+
+#: src/views/dialogs.py:424
+#, python-brace-format
+msgid "UID: {uid} / GID: {gid}"
+msgstr "UID: {uid} / GID: {gid}"
+
+#: src/views/dialogs.py:425
+msgid "Remote Path"
+msgstr "Remotepfad"
+
+#: src/views/dialogs.py:430
+msgid "Close"
+msgstr "Schließen"
+
+#: src/views/sftp_view.py:141
+msgid "New..."
+msgstr "Neu..."
+
+#: src/views/sftp_view.py:143 src/views/sftp_view.py:821
+msgid "New File"
+msgstr "Neue Datei"
+
+#: src/views/sftp_view.py:144 src/views/sftp_view.py:792
+#: src/views/sftp_view.py:794
+msgid "New Folder"
+msgstr "Neuer Ordner"
+
+#: src/views/sftp_view.py:154
+msgid "View Options"
+msgstr "Ansichtsoptionen"
+
+#: src/views/sftp_view.py:159
+msgid "Show Hidden Files"
+msgstr "Versteckte Dateien anzeigen"
+
+#: src/views/sftp_view.py:164
+msgid "Auto-sync on Save"
+msgstr "Auto-Sync beim Speichern"
+
+#: src/views/sftp_view.py:246
+msgid "Date Modified"
+msgstr "Änderungsdatum"
+
+#: src/views/sftp_view.py:267 src/views/connection_list.py:253
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: src/views/sftp_view.py:268
+msgid "Open With..."
+msgstr "Öffnen mit..."
+
+#: src/views/sftp_view.py:271
+msgid "Synchronize"
+msgstr "Synchronisieren"
+
+#: src/views/sftp_view.py:272
+msgid "Download"
+msgstr "Herunterladen"
+
+#: src/views/sftp_view.py:273
+msgid "Calculate Size"
+msgstr "Größe berechnen"
+
+#: src/views/sftp_view.py:276
+msgid "Rename"
+msgstr "Umbenennen"
+
+#: src/views/sftp_view.py:278
+msgid "Properties"
+msgstr "Eigenschaften"
+
+#: src/views/sftp_view.py:432
+msgid "Connecting…"
+msgstr "Verbinde…"
+
+#: src/views/sftp_view.py:615
+#, python-brace-format
+msgid "Password for {hostname}"
+msgstr "Passwort für {hostname}"
+
+#: src/views/sftp_view.py:617
+msgid "Unlock SSH Key"
+msgstr "SSH-Key entsperren"
+
+#: src/views/sftp_view.py:617
+#, python-brace-format
+msgid "Enter passphrase for {path}"
+msgstr "Passphrase für {path} eingeben"
+
+#: src/views/sftp_view.py:671
+#, python-brace-format
+msgid "Connected to {hostname}"
+msgstr "Verbunden mit {hostname}"
+
+#: src/views/sftp_view.py:685
+#, python-brace-format
+msgid "Loading {path}…"
+msgstr "Lade {path}…"
+
+#: src/views/sftp_view.py:726
+#, python-brace-format
+msgid "Error: {msg}"
+msgstr "Fehler: {msg}"
+
+#: src/views/sftp_view.py:778
+#, python-brace-format
+msgid "Creating folder {name}..."
+msgstr "Erstelle Ordner {name}..."
+
+#: src/views/sftp_view.py:783
+#, python-brace-format
+msgid "Created folder {name}"
+msgstr "Ordner {name} erstellt"
+
+#: src/views/sftp_view.py:786 src/views/sftp_view.py:815
+msgid "Error: {e}"
+msgstr "Fehler: {e}"
+
+#: src/views/sftp_view.py:793
+msgid "Enter name for the new folder:"
+msgstr "Name für den neuen Ordner eingeben:"
+
+#: src/views/sftp_view.py:795
+msgid "Folder name"
+msgstr "Ordnername"
+
+#: src/views/sftp_view.py:805
+msgid "Creating file {name}..."
+msgstr "Erstelle Datei {name}..."
+
+#: src/views/sftp_view.py:812
+#, python-brace-format
+msgid "Created file {name}"
+msgstr "Datei {name} erstellt"
+
+#: src/views/sftp_view.py:822
+msgid "Enter name for the new file:"
+msgstr "Name für die neue Datei eingeben:"
+
+#: src/views/sftp_view.py:824
+msgid "File name"
+msgstr "Dateiname"
+
+#: src/views/sftp_view.py:922
+msgid "Ensuring Rclone FUSE3 mount..."
+msgstr "Bereite Rclone FUSE3-Einbindung vor..."
+
+#: src/views/sftp_view.py:941
+#, python-brace-format
+msgid "Mount failed, using GVFS fallback. (Error: {err}...)"
+msgstr "Mount fehlgeschlagen, verwende GVFS-Fallback. (Fehler: {err}...)"
+
+#: src/views/sftp_view.py:954
+msgid "Copied {name} to clipboard"
+msgstr "{name} in Zwischenablage kopiert"
+
+#: src/views/sftp_view.py:973
+#, python-brace-format
+msgid "Renaming to {name}..."
+msgstr "Benenne in {name} um..."
+
+#: src/views/sftp_view.py:978
+#, python-brace-format
+msgid "Renamed to {name}"
+msgstr "Umbenannt in {name}"
+
+#: src/views/sftp_view.py:981
+#, python-brace-format
+msgid "Rename failed: {e}"
+msgstr "Umbenennen fehlgeschlagen: {e}"
+
+#: src/views/sftp_view.py:987
+msgid "Rename Item"
+msgstr "Element umbenennen"
+
+#: src/views/sftp_view.py:988
+#, python-brace-format
+msgid "Enter new name for {name}:"
+msgstr "Neuen Namen für {name} eingeben:"
+
+#: src/views/sftp_view.py:990
+msgid "New name"
+msgstr "Neuer Name"
+
+#: src/views/sftp_view.py:1005
+msgid "Ensuring mount for editing..."
+msgstr "Bereite Einbindung zum Bearbeiten vor..."
+
+#: src/views/sftp_view.py:1026 src/views/sftp_view.py:1125
+msgid "Fallback failed: {e}"
+msgstr "Fallback fehlgeschlagen: {e}"
+
+#: src/views/sftp_view.py:1054 src/views/sftp_view.py:1065
+#: src/views/sftp_view.py:1143 src/views/sftp_view.py:1155
+msgid "Download failed: {e}"
+msgstr "Download fehlgeschlagen: {e}"
+
+#: src/views/sftp_view.py:1085 src/views/sftp_view.py:1181
+#, python-brace-format
+msgid "Opened {name} with {app}"
+msgstr "{name} mit {app} geöffnet"
+
+#: src/views/sftp_view.py:1090
+msgid "Opening {name}..."
+msgstr "Öffne {name}..."
+
+#: src/views/sftp_view.py:1093
+msgid "Failed to open: {e}"
+msgstr "Öffnen fehlgeschlagen: {e}"
+
+#: src/views/sftp_view.py:1107
+msgid "Ensuring mount for Open With..."
+msgstr "Bereite Einbindung für 'Öffnen mit' vor..."
+
+#: src/views/sftp_view.py:1183
+msgid "Launch failed: {e}"
+msgstr "Starten fehlgeschlagen: {e}"
+
+#: src/views/sftp_view.py:1334
+msgid "File Updated Locally"
+msgstr "Datei lokal aktualisiert"
+
+#: src/views/sftp_view.py:1335
+#, python-brace-format
+msgid ""
+"The file '{name}' has been modified and saved.\n"
+"Update the remote copy on the server?"
+msgstr ""
+"Die Datei „{name}“ wurde geändert und gespeichert.\n"
+"Remote-Kopie auf dem Server aktualisieren?"
+
+#: src/views/sftp_view.py:1336
+msgid "Update Remote"
+msgstr "Remote aktualisieren"
+
+#: src/views/sftp_view.py:1362
+#, python-brace-format
+msgid "Synchronizing {name}..."
+msgstr "Synchronisiere {name}..."
+
+#: src/views/sftp_view.py:1368
+#, python-brace-format
+msgid "Synchronized {name}"
+msgstr "{name} synchronisiert"
+
+#: src/views/sftp_view.py:1373
+#, python-brace-format
+msgid "Sync error: {e}"
+msgstr "Synchronisationsfehler: {e}"
+
+#: src/views/sftp_view.py:1392
+msgid "Deleting {name}..."
+msgstr "Lösche {name}..."
+
+#: src/views/sftp_view.py:1403
+#, python-brace-format
+msgid "Deleted {name}"
+msgstr "{name} gelöscht"
+
+#: src/views/sftp_view.py:1406
+msgid "Delete failed: {e}"
+msgstr "Löschen fehlgeschlagen: {e}"
+
+#: src/views/sftp_view.py:1412
+msgid "Delete Item"
+msgstr "Eintrag löschen"
+
+#: src/views/sftp_view.py:1413
+#, python-brace-format
+msgid ""
+"Are you sure you want to delete '{name}'?\n"
+"This action cannot be undone."
+msgstr ""
+"Sind Sie sicher, dass Sie „{name}“ löschen möchten?\n"
+"Diese Aktion kann nicht rückgängig gemacht werden."
+
+#: src/views/sftp_view.py:1430
+msgid "Download Directory: {name}"
+msgstr "Verzeichnis herunterladen: {name}"
+
+#: src/views/sftp_view.py:1433
+msgid "Download File: {name}"
+msgstr "Datei herunterladen: {name}"
+
+#: src/views/sftp_view.py:1457
+msgid "Downloading {name}..."
+msgstr "Lade {name} herunter..."
+
+#: src/views/sftp_view.py:1462
+#, python-brace-format
+msgid "Downloaded {name} to local system"
+msgstr "{name} auf das lokale System heruntergeladen"
+
+#: src/views/sftp_view.py:1516
+msgid "Source connection not found in database."
+msgstr "Quellverbindung nicht in Datenbank gefunden."
+
+#: src/views/sftp_view.py:1522
+msgid "Source SFTP session must be active to perform transfer."
+msgstr "Die SFTP-Quellsitzung muss aktiv sein, um den Transfer durchzuführen."
+
+#: src/views/sftp_view.py:1531
+#, python-brace-format
+msgid "Starting cross-server transfer from {hostname}..."
+msgstr "Starte Cross-Server-Transfer von {hostname}..."
+
+#: src/views/sftp_view.py:1540
+#, python-brace-format
+msgid "Transferring: {percent}%"
+msgstr "Übertragung: {percent}%"
+
+#: src/views/sftp_view.py:1549
+msgid "Cross-server transfer complete"
+msgstr "Server-übergreifende Übertragung abgeschlossen"
+
+#: src/views/sftp_view.py:1551
+#, python-brace-format
+msgid "Transfer failed: {err}"
+msgstr "Transfer fehlgeschlagen: {err}"
+
+#: src/views/sftp_view.py:1567
+#, python-brace-format
+msgid "Uploading {count} items..."
+msgstr "Lade {count} Elemente hoch..."
+
+#: src/views/sftp_view.py:1572
+msgid "Uploaded successfully"
+msgstr "Erfolgreich hochgeladen"
+
+#: src/views/sftp_view.py:1592
+#, python-brace-format
+msgid "{count} items in {path}"
+msgstr "{count} Elemente in {path}"
+
+#: src/views/sftp_view.py:1605
+msgid "Auto-sync enabled for this session."
+msgstr "Auto-Sync für diese Sitzung aktiviert."
+
+#: src/views/sftp_view.py:1607
+msgid "Auto-sync disabled."
+msgstr "Auto-Sync deaktiviert."
+
+#: src/views/sftp_view.py:1656
+#, python-brace-format
+msgid "Calculating size for {name}..."
+msgstr "Berechne Größe für {name}..."
+
+#: src/views/sftp_view.py:1667
+#, python-brace-format
+msgid "Size of {name}"
+msgstr "Größe von {name}"
+
+#: src/views/sftp_view.py:1667
+#, python-brace-format
+msgid "The directory occupies: {size}"
+msgstr "Das Verzeichnis belegt: {size}"
+
+#: src/views/sftp_view.py:1668
+#, python-brace-format
+msgid "Size of {name}: {size}"
+msgstr "Größe von {name}: {size}"
+
+#: src/views/sftp_view.py:1672
+#, python-brace-format
+msgid "Size calculation failed: {msg}"
+msgstr "Größenberechnung fehlgeschlagen: {msg}"
+
+#: src/views/sftp_view.py:1701
+msgid "SFTP: {hostname}"
+msgstr "SFTP: {hostname}"
+
+#: src/views/connection_list.py:68
+msgid "No Connections"
+msgstr "Keine Verbindungen"
+
+#: src/views/connection_list.py:72
+msgid ""
+"Press + to add your first\n"
+"SSH connection"
+msgstr ""
+"Drücken Sie +, um Ihre erste\n"
+"SSH-Verbindung hinzuzufügen"
+
+#: src/views/connection_list.py:249
+msgid "Shell"
+msgstr "Shell"
+
+#: src/views/connection_list.py:250
+msgid "SFTP"
+msgstr "Dateitransfer (SFTP)"
+
+#: src/views/connection_list.py:251
+msgid "Copy Host"
+msgstr "Host kopieren"
+
+#: src/views/connection_list.py:252
+msgid "Clear Host Key"
+msgstr "Host-Key löschen"
+
+#: src/views/terminal_theme_dialog.py:104
+msgid "New Custom Theme"
+msgstr "Neues benutzerdefiniertes Design"
+
+#: src/views/terminal_theme_dialog.py:127
+msgid "The quick brown fox jumps over the lazy dog"
+msgstr "Franz jagt im komplett verwahrlosten Taxi quer durch Bayern"
+
+#: src/views/terminal_theme_dialog.py:145
+msgid "Theme Management"
+msgstr "Design-Verwaltung"
+
+#: src/views/terminal_theme_dialog.py:147
+msgid "Select Theme"
+msgstr "Design auswählen"
+
+#: src/views/terminal_theme_dialog.py:157
+#: src/views/terminal_theme_dialog.py:326
+msgid "Rename Theme"
+msgstr "Design umbenennen"
+
+#: src/views/terminal_theme_dialog.py:162
+msgid "Delete Theme"
+msgstr "Design löschen"
+
+#: src/views/terminal_theme_dialog.py:167
+msgid "Copy Code"
+msgstr "Code kopieren"
+
+#: src/views/terminal_theme_dialog.py:168
+msgid "Copy sharing code to clipboard"
+msgstr "Freigabe-Code in Zwischenablage kopieren"
+
+#: src/views/terminal_theme_dialog.py:177
+msgid "Active Theme Settings"
+msgstr "Aktive Design-Einstellungen"
+
+#: src/views/terminal_theme_dialog.py:178
+msgid "Rename or delete your custom theme"
+msgstr "Benutzerdefiniertes Design umbenennen oder löschen"
+
+#: src/views/terminal_theme_dialog.py:183
+msgid "Import from Code"
+msgstr "Aus Code importieren"
+
+#: src/views/terminal_theme_dialog.py:183
+msgid "Paste a theme code to import"
+msgstr "Design-Code zum Importieren einfügen"
+
+#: src/views/terminal_theme_dialog.py:184
+msgid "Import..."
+msgstr "Importieren..."
+
+#: src/views/terminal_theme_dialog.py:193
+msgid "Customization"
+msgstr "Anpassung"
+
+#: src/views/terminal_theme_dialog.py:194
+msgid "Foreground"
+msgstr "Vordergrund"
+
+#: src/views/terminal_theme_dialog.py:195
+msgid "Background"
+msgstr "Hintergrund"
+
+#: src/views/terminal_theme_dialog.py:196
+msgid "Cursor"
+msgstr "Cursor"
+
+#: src/views/terminal_theme_dialog.py:197
+msgid "Selection Background"
+msgstr "Auswahl-Hintergrund"
+
+#: src/views/terminal_theme_dialog.py:205
+msgid "ANSI Colors Palette"
+msgstr "ANSI-Farbpalette"
+
+#: src/views/terminal_theme_dialog.py:327
+msgid "Enter a new name for this theme"
+msgstr "Neuen Namen für dieses Design eingeben"
+
+#: src/views/terminal_theme_dialog.py:332
+msgid "Apply"
+msgstr "Anwenden"
+
+#: src/views/terminal_theme_dialog.py:363
+msgid "Delete Theme?"
+msgstr "Design löschen?"
+
+#: src/views/terminal_theme_dialog.py:364
+#, python-brace-format
+msgid "Are you sure you want to delete '{name}'?"
+msgstr "Sind Sie sicher, dass Sie „{name}“ löschen möchten?"
+
+#: src/views/terminal_theme_dialog.py:458
+msgid "Theme code copied to clipboard"
+msgstr "Design-Code in Zwischenablage kopiert"
+
+#: src/views/terminal_theme_dialog.py:462
+msgid "Paste code here..."
+msgstr "Code hier einfügen..."
+
+#: src/views/terminal_theme_dialog.py:469
+msgid "Import Theme"
+msgstr "Design importieren"
+
+#: src/views/terminal_theme_dialog.py:470
+msgid "Paste the theme code below:"
+msgstr "Fügen Sie den Design-Code unten ein:"
+
+#: src/views/terminal_theme_dialog.py:475
+msgid "Import"
+msgstr "Importieren"
+
+#: src/views/terminal_theme_dialog.py:483
+msgid "Imported Theme"
+msgstr "Importiertes Design"
+
+#~ msgid "Settings"
+#~ msgstr "Einstellungen"
+
+#~ msgid "App Settings"
+#~ msgstr "App-Einstellungen"
+
+#~ msgid "General"
+#~ msgstr "Allgemein"
+
+#~ msgid "Language"
+#~ msgstr "Sprache"
+
+#~ msgid "Requires an application restart to fully apply"
+#~ msgstr ""
+#~ "Erfordert einen Neustart der Anwendung, um vollständig wirksam zu werden"
+
+#~ msgid "Please restart the application for language changes to take effect."
+#~ msgstr ""
+#~ "Bitte starten Sie die Anwendung neu, damit die Sprachänderungen wirksam "
+#~ "werden."
+
+#~ msgid "Close tab"
+#~ msgstr "Tab schließen"
+
+#~ msgid "Custom"
+#~ msgstr "Benutzerdefiniert"
+
+#~ msgid "Presets"
+#~ msgstr "Presets"
+
+#~ msgid "Theme Presets"
+#~ msgstr "Design-Presets"
+
+#~ msgid "Theme Actions"
+#~ msgstr "Design-Aktionen"
+
+#~ msgid "Theme Code"
+#~ msgstr "Design-Code"
+
+#~ msgid "Please replace a different 2FA method (e.g. TOTP or Email)."
+#~ msgstr ""
+#~ "Bitte verwenden Sie eine andere 2FA-Methode (z. B. TOTP oder E-Mail)."

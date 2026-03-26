@@ -1,0 +1,802 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: sentinel\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-26 09:19-0700\n"
+"PO-Revision-Date: 2026-03-22 08:30+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: test_app_startup.py:38 test_lang_glib2.py:21 test_lang.py:21
+#: test_lang_glib.py:23
+msgid "Settings"
+msgstr "设置"
+
+#~ msgid "App Settings"
+#~ msgstr "应用设置"
+
+#~ msgid "General"
+#~ msgstr "通用"
+
+#~ msgid "Language"
+#~ msgstr "语言"
+
+#~ msgid "Requires an application restart to fully apply"
+#~ msgstr "需要重启应用才能完全生效"
+
+#~ msgid "Please restart the application for language changes to take effect."
+#~ msgstr "请重启应用以使语言更改生效。"
+
+#~ msgid "Vault Manager"
+#~ msgstr "密钥库管理器"
+
+#~ msgid "Log in to Bitwarden"
+#~ msgstr "登录 Bitwarden"
+
+#~ msgid "Enter your credentials to access your vault."
+#~ msgstr "请输入您的凭据以访问密钥库。"
+
+#~ msgid "Custom Server"
+#~ msgstr "自定义服务器"
+
+#~ msgid "For self-hosted Bitwarden / VaultWarden"
+#~ msgstr "适用于自托管 Bitwarden / VaultWarden"
+
+#~ msgid "Email Address"
+#~ msgstr "电子邮件地址"
+
+#~ msgid "Master Password"
+#~ msgstr "主密码"
+
+#~ msgid "Log In"
+#~ msgstr "登录"
+
+#~ msgid "Two-Step Verification"
+#~ msgstr "两步验证"
+
+#~ msgid "Your account requires two-step verification."
+#~ msgstr "您的账户需要两步验证。"
+
+#~ msgid "Verification Code"
+#~ msgstr "验证码"
+
+#~ msgid "Back"
+#~ msgstr "返回"
+
+#~ msgid "Verify & Log In"
+#~ msgstr "验证并登录"
+
+#~ msgid "Vault Locked"
+#~ msgstr "密钥库已锁定"
+
+#~ msgid "Enter your master password to unlock."
+#~ msgstr "请输入主密码以解锁。"
+
+#~ msgid "Log Out"
+#~ msgstr "退出登录"
+
+#~ msgid "Unlock"
+#~ msgstr "解锁"
+
+#~ msgid "Account"
+#~ msgstr "账户"
+
+#~ msgid "Server"
+#~ msgstr "服务器"
+
+#~ msgid "Status"
+#~ msgstr "状态"
+
+#~ msgid "Unlocked ✓"
+#~ msgstr "已解锁 ✓"
+
+#~ msgid "Lock"
+#~ msgstr "锁定"
+
+#~ msgid "Sync Vault"
+#~ msgstr "同步密钥库"
+
+#~ msgid "Pull the latest items from the server"
+#~ msgstr "从服务器拉取最新条目"
+
+#~ msgid "Sync Now"
+#~ msgstr "立即同步"
+
+#~ msgid "New Connection"
+#~ msgstr "新建连接"
+
+#~ msgid "Connections"
+#~ msgstr "连接"
+
+#~ msgid "Close tab"
+#~ msgstr "关闭标签页"
+
+#~ msgid "About Sentinel"
+#~ msgstr "关于 Sentinel"
+
+#~ msgid "Shell"
+#~ msgstr "终端"
+
+#~ msgid "SFTP"
+#~ msgstr "文件传输 (SFTP)"
+
+#~ msgid "Copy Host"
+#~ msgstr "复制主机地址"
+
+#~ msgid "Clear Host Key"
+#~ msgstr "清除主机密钥"
+
+#~ msgid "Edit"
+#~ msgstr "编辑"
+
+#~ msgid "Rename"
+#~ msgstr "重命名"
+
+#~ msgid "Delete"
+#~ msgstr "删除"
+
+#~ msgid "Properties"
+#~ msgstr "属性"
+
+#~ msgid "Cancel"
+#~ msgstr "取消"
+
+#~ msgid "Confirm"
+#~ msgstr "确认"
+
+#~ msgid "Connect"
+#~ msgstr "连接"
+
+#~ msgid "Select"
+#~ msgstr "选择"
+
+#~ msgid "Close"
+#~ msgstr "关闭"
+
+#~ msgid "OK"
+#~ msgstr "确定"
+
+#~ msgid "Reject"
+#~ msgstr "拒绝"
+
+#~ msgid "Accept and Connect"
+#~ msgstr "接受并连接"
+
+#~ msgid "No Connections"
+#~ msgstr "暂无连接"
+
+#~ msgid ""
+#~ "Press + to add your first\n"
+#~ "SSH connection"
+#~ msgstr ""
+#~ "点击 + 添加您的第一个\n"
+#~ "SSH 连接"
+
+#~ msgid "File"
+#~ msgstr "文件"
+
+#~ msgid "Directory"
+#~ msgstr "目录"
+
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgid "Size"
+#~ msgstr "大小"
+
+#~ msgid "Type"
+#~ msgstr "类型"
+
+#~ msgid "Last Modified"
+#~ msgstr "最后修改"
+
+#~ msgid "Permissions"
+#~ msgstr "权限"
+
+#~ msgid "Owner"
+#~ msgstr "所有者"
+
+#~ msgid "Remote Path"
+#~ msgstr "远程路径"
+
+#~ msgid "New File"
+#~ msgstr "新建文件"
+
+#~ msgid "New Folder"
+#~ msgstr "新建文件夹"
+
+#~ msgid "New..."
+#~ msgstr "新建..."
+
+#~ msgid "View Options"
+#~ msgstr "视图选项"
+
+#~ msgid "Show Hidden Files"
+#~ msgstr "显示隐藏文件"
+
+#~ msgid "Auto-sync on Save"
+#~ msgstr "保存时自动同步"
+
+#~ msgid "Connecting…"
+#~ msgstr "正在连接…"
+
+#~ msgid "Connected to {hostname}"
+#~ msgstr "已连接到 {hostname}"
+
+#~ msgid "Loading {path}…"
+#~ msgstr "正在加载 {path}…"
+
+#~ msgid "Calculating size for {name}..."
+#~ msgstr "正在计算 {name} 的大小..."
+
+#~ msgid "Synchronizing {name}..."
+#~ msgstr "正在同步 {name}..."
+
+#~ msgid "Deleted {name}"
+#~ msgstr "已删除 {name}"
+
+#~ msgid "Renamed to {name}"
+#~ msgstr "已重命名为 {name}"
+
+#~ msgid "Created file {name}"
+#~ msgstr "已创建文件 {name}"
+
+#~ msgid "Created folder {name}"
+#~ msgstr "已创建文件夹 {name}"
+
+#~ msgid "Enter name for the new folder:"
+#~ msgstr "输入新文件夹名称："
+
+#~ msgid "Enter name for the new file:"
+#~ msgstr "输入新文件名称："
+
+#~ msgid "Enter new name for {name}:"
+#~ msgstr "为 {name} 输入新名称："
+
+#~ msgid ""
+#~ "Are you sure you want to delete '{name}'?\n"
+#~ "This action cannot be undone."
+#~ msgstr ""
+#~ "您确定要删除“{name}”吗？\n"
+#~ "此操作无法撤销。"
+
+#~ msgid "File Updated Locally"
+#~ msgstr "本地文件已更新"
+
+#~ msgid ""
+#~ "The file '{name}' has been modified and saved.\n"
+#~ "Update the remote copy on the server?"
+#~ msgstr ""
+#~ "文件“{name}”已修改并保存。\n"
+#~ "是否更新服务器上的远程副本？"
+
+#~ msgid "Update Remote"
+#~ msgstr "更新远程"
+
+#~ msgid "Password for {hostname}"
+#~ msgstr "{hostname} 的密码"
+
+#~ msgid "Unlock SSH Key"
+#~ msgstr "解锁 SSH 密钥"
+
+#~ msgid "Enter passphrase for {path}"
+#~ msgstr "输入 {path} 的密码短语"
+
+#~ msgid "Unknown Host Key ({hostname})"
+#~ msgstr "未知主机密钥 ({hostname})"
+
+#~ msgid ""
+#~ "The authenticity of host '{hostname}' can't be established.\n"
+#~ "\n"
+#~ msgstr ""
+#~ "无法确认主机“{hostname}”的真实性。\n"
+#~ "\n"
+
+#~ msgid "Algorithm: {algorithm}\n"
+#~ msgstr "算法：{algorithm}\n"
+
+#~ msgid ""
+#~ "Fingerprint: {fingerprint}\n"
+#~ "\n"
+#~ msgstr ""
+#~ "指纹：{fingerprint}\n"
+#~ "\n"
+
+#~ msgid "Are you sure you want to continue connecting?"
+#~ msgstr "您确定要继续连接吗？"
+
+#~ msgid "Properties: {name}"
+#~ msgstr "属性：{name}"
+
+#~ msgid "UID: {uid} / GID: {gid}"
+#~ msgstr "UID: {uid} / GID: {gid}"
+
+#~ msgid "Terminal Theme"
+#~ msgstr "终端主题"
+
+#~ msgid "The quick brown fox jumps over the lazy dog"
+#~ msgstr "敏捷的棕色狐狸跳过了懒狗"
+
+#~ msgid "Custom"
+#~ msgstr "自定义"
+
+#~ msgid "Presets"
+#~ msgstr "预设"
+
+#~ msgid "Theme Presets"
+#~ msgstr "主题预设"
+
+#~ msgid "Customization"
+#~ msgstr "个性化"
+
+#~ msgid "Foreground"
+#~ msgstr "前景"
+
+#~ msgid "Background"
+#~ msgstr "背景"
+
+#~ msgid "Cursor"
+#~ msgstr "光标"
+
+#~ msgid "Selection Background"
+#~ msgstr "选中背景"
+
+#~ msgid "ANSI Colors Palette"
+#~ msgstr "ANSI 颜色调色板"
+
+#~ msgid "Catppuccin Mocha"
+#~ msgstr "Catppuccin Mocha"
+
+#~ msgid "Nord"
+#~ msgstr "Nord"
+
+#~ msgid "Solarized Dark"
+#~ msgstr "Solarized Dark"
+
+#~ msgid "Dracula"
+#~ msgstr "Dracula"
+
+#~ msgid "GNOME Dark"
+#~ msgstr "GNOME 暗色"
+
+#~ msgid "New Custom Theme"
+#~ msgstr "新建自定义主题"
+
+#~ msgid "Select Theme"
+#~ msgstr "选择配色方案"
+
+#~ msgid "Active Theme Settings"
+#~ msgstr "当前方案设置"
+
+#~ msgid "Rename or delete your custom theme"
+#~ msgstr "重命名或删除此自定义方案"
+
+#~ msgid "Theme Actions"
+#~ msgstr "配色操作"
+
+#~ msgid "Copy Code"
+#~ msgstr "复制分享码"
+
+#~ msgid "Import..."
+#~ msgstr "导入..."
+
+#~ msgid "Import from Code"
+#~ msgstr "从分享码导入"
+
+#~ msgid "Paste a theme code to import"
+#~ msgstr "粘贴主题分享码进行导入"
+
+#~ msgid "Rename Theme"
+#~ msgstr "重命名主题"
+
+#~ msgid "Enter a new name for this theme"
+#~ msgstr "输入此主题的新名称"
+
+#~ msgid "Delete Theme?"
+#~ msgstr "删除主题？"
+
+#~ msgid "Are you sure you want to delete '{name}'?"
+#~ msgstr "您确定要删除“{name}”吗？"
+
+#~ msgid "Theme code copied to clipboard"
+#~ msgstr "主题分享码已复制到剪贴板"
+
+#~ msgid "Theme Code"
+#~ msgstr "主题分享码"
+
+#~ msgid "Import Theme"
+#~ msgstr "导入主题"
+
+#~ msgid "Paste the theme code below:"
+#~ msgstr "在下方粘贴主题分享码："
+
+#~ msgid "Imported Theme"
+#~ msgstr "已导入的主题"
+
+#~ msgid "Terminal"
+#~ msgstr "终端"
+
+#~ msgid "Welcome"
+#~ msgstr "欢迎"
+
+#~ msgid "Vault"
+#~ msgstr "密钥库"
+
+#~ msgid "Username"
+#~ msgstr "用户名"
+
+#~ msgid "Untitled"
+#~ msgstr "无标题"
+
+#~ msgid "Sync completed."
+#~ msgstr "同步完成。"
+
+#~ msgid "Syncing vault…"
+#~ msgstr "正在同步密钥库…"
+
+#~ msgid "Wrong master password."
+#~ msgstr "主密码错误。"
+
+#~ msgid "Verification Method"
+#~ msgstr "验证方式"
+
+#~ msgid "Verification failed: {err}"
+#~ msgstr "验证失败：{err}"
+
+#~ msgid "YubiKey OTP"
+#~ msgstr "YubiKey OTP"
+
+#~ msgid "Touch your hardware security key when it lights up."
+#~ msgstr "当硬件安全密钥亮起时请触摸它。"
+
+#~ msgid "Vault Settings"
+#~ msgstr "密钥库设置"
+
+#~ msgid "Unlock Local Vault"
+#~ msgstr "解锁本地密钥库"
+
+#~ msgid "Set Up Local Vault"
+#~ msgstr "设置本地密钥库"
+
+#~ msgid "Unlock {vault_name}"
+#~ msgstr "解锁 {vault_name}"
+
+#~ msgid "Theme Management"
+#~ msgstr "主题管理"
+
+#~ msgid "This connection will be permanently removed."
+#~ msgstr "此连接将被永久删除。"
+
+#~ msgid "Transfer failed: {err}"
+#~ msgstr "传输失败：{err}"
+
+#~ msgid "Transferring: {percent}%"
+#~ msgstr "正在传输：{percent}%"
+
+#~ msgid "Uploaded successfully"
+#~ msgstr "上传成功"
+
+#~ msgid "Uploading {count} items..."
+#~ msgstr "正在上传 {count} 个条目..."
+
+#~ msgid "Updated: {name}"
+#~ msgstr "已更新: {name}"
+
+#~ msgid "Synchronized {name}"
+#~ msgstr "已同步 {name}"
+
+#~ msgid "Synchronize"
+#~ msgstr "同步"
+
+#~ msgid "Sync failed: {e}"
+#~ msgstr "同步失败：{e}"
+
+#~ msgid "Sync error: {e}"
+#~ msgstr "同步错误：{e}"
+
+#~ msgid "Starting cross-server transfer from {hostname}..."
+#~ msgstr "正在启动跨服务器传输，源：{hostname}..."
+
+#~ msgid "Source SFTP session must be active to perform transfer."
+#~ msgstr "执行传输必须激活源 SFTP 会话。"
+
+#~ msgid "Source connection not found in database."
+#~ msgstr "数据库中找不到源连接。"
+
+#~ msgid "SSH Agent"
+#~ msgstr "SSH 代理"
+
+#~ msgid "SSH Key"
+#~ msgstr "SSH 密钥"
+
+#~ msgid "SSH Key from Vault"
+#~ msgstr "来自密钥库的 SSH 密钥"
+
+#~ msgid "Size of {name}: {size}"
+#~ msgstr "{name} 的大小：{size}"
+
+#~ msgid "Size calculation failed: {msg}"
+#~ msgstr "大小计算失败：{msg}"
+
+#~ msgid "The directory occupies: {size}"
+#~ msgstr "目录占用空间：{size}"
+
+#~ msgid "Sentinel"
+#~ msgstr "Sentinel"
+
+#~ msgid "Sentinel Contributors"
+#~ msgstr "Sentinel 贡献者"
+
+#~ msgid "© 2026 Sentinel Contributors"
+#~ msgstr "© 2026 Sentinel 贡献者"
+
+#~ msgid ""
+#~ "A secure GNOME SSH connection manager\n"
+#~ "with password manager integration."
+#~ msgstr ""
+#~ "一个安全的 GNOME SSH 连接管理器\n"
+#~ "集成了密码管理器。"
+
+#~ msgid "Apply"
+#~ msgstr "应用"
+
+#~ msgid "Paste code here..."
+#~ msgstr "在此处粘贴代码..."
+
+#~ msgid "Import"
+#~ msgstr "导入"
+
+#~ msgid "Authentication"
+#~ msgstr "身份验证"
+
+#~ msgid "Authenticator App (TOTP)"
+#~ msgstr "身份验证器应用 (TOTP)"
+
+#~ msgid "Basic"
+#~ msgstr "基本"
+
+#~ msgid "Bitwarden CLI ('bw') not found. Please install it."
+#~ msgstr "未找到 Bitwarden CLI ('bw')。请安装。"
+
+#~ msgid "Check your email inbox for a verification code sent by Bitwarden."
+#~ msgstr "请检查您的电子邮箱以获取 Bitwarden 发送的验证码。"
+
+#~ msgid "Checking Vault Status…"
+#~ msgstr "正在检查密钥库状态…"
+
+#~ msgid "Creating folder {name}..."
+#~ msgstr "正在创建文件夹 {name}..."
+
+#~ msgid "Create Vault"
+#~ msgstr "创建密钥库"
+
+#~ msgid "Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"
+#~ msgstr "Ctrl+N 新建连接 · Ctrl+T 本地终端 · Ctrl+F 搜索"
+
+#~ msgid "Duo"
+#~ msgstr "Duo"
+
+#~ msgid "Duo passcode (or leave blank for push)"
+#~ msgstr "Duo 通行码 (或留空进行推送)"
+
+#~ msgid "Email verification code"
+#~ msgstr "电子邮件验证码"
+
+#~ msgid "Enter your Sentinel vault master password to continue."
+#~ msgstr "请输入 Sentinel 密钥库主密码以继续。"
+
+#~ msgid "Error: {msg}"
+#~ msgstr "错误：{msg}"
+
+#~ msgid "Failed to create vault: {e}"
+#~ msgstr "创建密钥库失败：{e}"
+
+#~ msgid "Failed to load folders: {e}"
+#~ msgstr "加载文件夹失败：{e}"
+
+#~ msgid "FIDO2 / WebAuthn (hardware key)"
+#~ msgstr "FIDO2 / WebAuthn (硬件密钥)"
+
+#~ msgid "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
+#~ msgstr "Bitwarden CLI 不支持 FIDO2 / WebAuthn。 "
+
+#~ msgid "Find next"
+#~ msgstr "查找下一个"
+
+#~ msgid "Find previous"
+#~ msgstr "查找上一个"
+
+#~ msgid "Forget"
+#~ msgstr "忘记"
+
+#~ msgid "https://bitwarden.com (leave blank for default)"
+#~ msgstr "https://bitwarden.com (留空使用默认值)"
+
+#~ msgid "Insert your YubiKey and tap it to generate an OTP."
+#~ msgstr "插入您的 YubiKey 并轻触它来生成 OTP。"
+
+#~ msgid "Key File Path (optional)"
+#~ msgstr "密钥文件路径 (可选)"
+
+#~ msgid "Key + Passphrase"
+#~ msgstr "密钥 + 密码短语"
+
+#~ msgid "Login password missing for 2FA"
+#~ msgstr "缺少两步验证所需的登录密码"
+
+#~ msgid "Master password is saved in system keyring for auto-unlock"
+#~ msgstr "主密码已保存在系统密钥环中进行自动解锁"
+
+#~ msgid "Menu"
+#~ msgstr "菜单"
+
+#~ msgid "Merge all tabs into another window and close"
+#~ msgstr "将所有标签页合并到另一个窗口并关闭"
+
+#~ msgid "Method"
+#~ msgstr "方式"
+
+#~ msgid "Mount failed, using GVFS fallback. (Error: {err}...)"
+#~ msgstr "挂载失败，将回退到 GVFS。(错误：{err}...)"
+
+#~ msgid "No password found in item. Check item ID '{id}'."
+#~ msgstr "条目中未找到密码。请检查条目 ID '{id}'。"
+
+#~ msgid "Notes"
+#~ msgstr "备注"
+
+#~ msgid "Not selected"
+#~ msgstr "未选择"
+
+#~ msgid "(Not supported in CLI mode — use another method)"
+#~ msgstr "(CLI 模式下不支持 — 请使用其他方式)"
+
+#~ msgid "Official Cloud Server"
+#~ msgstr "官方云服务器"
+
+#~ msgid "Opened {name} with {app}"
+#~ msgstr "已使用 {app} 打开 {name}"
+
+#~ msgid "Open Local Shell (Ctrl+T)"
+#~ msgstr "打开本地终端 (Ctrl+T)"
+
+#~ msgid "Open With..."
+#~ msgstr "打开方式..."
+
+#~ msgid "Password must be at least 8 characters."
+#~ msgstr "密码必须至少 8 个字符。"
+
+#~ msgid "Paste"
+#~ msgstr "粘贴"
+
+#~ msgid "Please enter your verification code."
+#~ msgstr "请输入验证码。"
+
+#~ msgid "Please log in / unlock Bitwarden via Vault Settings first."
+#~ msgstr "请先在密钥库设置中登录 / 解锁 Bitwarden。"
+
+#~ msgid "Please use a different 2FA method (e.g. TOTP or Email)."
+#~ msgstr "请使用不同的两步验证方式 (例如 TOTP 或电子邮件)。"
+
+#~ msgid "Port"
+#~ msgstr "端口"
+
+#~ msgid "Quit"
+#~ msgstr "退出"
+
+#~ msgid "Read-only"
+#~ msgstr "只读"
+
+#~ msgid "Retrieving data from Vault..."
+#~ msgstr "正在从密钥库检索数据..."
+
+#~ msgid "Save"
+#~ msgstr "保存"
+
+#~ msgid "Saved master password removed from keyring."
+#~ msgstr "已从密钥环中删除保存的主密码。"
+
+#~ msgid "Save master password securely in system keyring"
+#~ msgstr "在系统密钥环中安全保存主密码"
+
+#~ msgid "Secure SSH Connection Manager"
+#~ msgstr "安全的 SSH 连接管理器"
+
+#~ msgid "Select the vault item that stores the SSH private key"
+#~ msgstr "请选择存储 SSH 私钥的密钥库条目"
+
+#~ msgid "Spawning local shell..."
+#~ msgstr "正在启动本地终端..."
+
+#~ msgid "Local Shell"
+#~ msgstr "本地终端"
+
+#~ msgid "Connecting to {title}…"
+#~ msgstr "正在连接到 {title}…"
+
+#~ msgid "Connected — {title}"
+#~ msgstr "已连接 — {title}"
+
+#~ msgid "Disconnected: {exc}"
+#~ msgstr "已断开连接：{exc}"
+
+#~ msgid "Disconnected"
+#~ msgstr "已断开连接"
+
+#~ msgid "Exited with code {exit_status}"
+#~ msgstr "已退出，代码 {exit_status}"
+
+#~ msgid "Error: {error}"
+#~ msgstr "错误：{error}"
+
+#~ msgid "Exited code {exit_status}"
+#~ msgstr "已退出，代码 {exit_status}"
+
+#~ msgid "Reconnecting…"
+#~ msgstr "正在重新连接…"
+
+#~ msgid "Searching connections…"
+#~ msgstr "正在搜索连接…"
+
+#~ msgid "Select SSH key from Vault"
+#~ msgstr "从密钥库选择 SSH 密钥"
+
+#~ msgid "Select SSH Key from Vault"
+#~ msgstr "从密钥库选择 SSH 密钥"
+
+#~ msgid "Size of {name}"
+#~ msgstr "{name} 的大小"
+
+#~ msgid "Renaming to {name}..."
+#~ msgstr "正在重命名为 {name}..."
+
+#~ msgid "Rename Item"
+#~ msgstr "重命名条目"
+
+#~ msgid "Rename failed: {e}"
+#~ msgstr "重命名失败：{e}"
+
+#~ msgid "Please enter a master password."
+#~ msgstr "请输入主密码。"
+
+#~ msgid "Passwords do not match."
+#~ msgstr "密码不匹配。"
+
+#~ msgid "Local vault created successfully."
+#~ msgstr "本地密钥库创建成功。"
+
+#~ msgid ""
+#~ "Please enter your master password to access {vault_name} credentials."
+#~ msgstr "请输入您的主密码以访问 {vault_name} 凭据。"
+
+#~ msgid "Please provide email and master password."
+#~ msgstr "请提供电子邮件和主密码。"
+
+#~ msgid "Email Verification"
+#~ msgstr "电子邮件验证"
+
+#~ msgid "FIDO2 / WebAuthn"
+#~ msgstr "FIDO2 / WebAuthn"
+
+#~ msgid ""
+#~ "Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) "
+#~ "and enter the 6-digit code."
+#~ msgstr ""
+#~ "请打开您的身份验证器应用 (如 Google Authenticator, Aegis, Ente Auth) 并输"
+#~ "入 6 位代码。"
+
+#~ msgid ""
+#~ "Approve the Duo push notification on your device, or enter the Duo "
+#~ "passcode."
+#~ msgstr "请在您的设备上批准 Duo 推送通知，或输入 Duo 通行码。"
+
+#~ msgid "6-digit TOTP code"
+#~ msgstr "6 位 TOTP 代码"
+
+#~ msgid "Please replace a different 2FA method (e.g. TOTP or Email)."
+#~ msgstr "请使用不同的两步验证方式 (例如 TOTP 或电子邮件)。"

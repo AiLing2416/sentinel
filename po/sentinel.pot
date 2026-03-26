@@ -1,127 +1,130 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: sentinel\n"
+"Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-03-26 09:20-0700\n"
-"PO-Revision-Date: 2026-03-22 08:30+0000\n"
-"Last-Translator: \n"
-"Language-Team: \n"
-"Language: en\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: src/utils/themes.py:27
 msgid "Catppuccin Mocha"
-msgstr "Catppuccin Mocha"
+msgstr ""
 
 #: src/utils/themes.py:43
 msgid "Nord"
-msgstr "Nord"
+msgstr ""
 
 #: src/utils/themes.py:59
 msgid "Solarized Dark"
-msgstr "Solarized Dark"
+msgstr ""
 
 #: src/utils/themes.py:75
 msgid "Dracula"
-msgstr "Dracula"
+msgstr ""
 
 #: src/utils/themes.py:91
 msgid "GNOME Dark"
-msgstr "GNOME Dark"
+msgstr ""
 
 #: src/application.py:65 src/views/main_window.py:33
 #: src/views/main_window.py:113 src/views/main_window.py:214
 msgid "Sentinel"
-msgstr "Sentinel"
+msgstr ""
 
 #: src/application.py:67 src/application.py:69
 msgid "Sentinel Contributors"
-msgstr "Sentinel Contributors"
+msgstr ""
 
 #: src/application.py:70
 msgid "© 2026 Sentinel Contributors"
-msgstr "© 2026 Sentinel Contributors"
+msgstr ""
 
 #: src/application.py:72
 msgid ""
 "A secure GNOME SSH connection manager\n"
 "with password manager integration."
 msgstr ""
-"A secure GNOME SSH connection manager\n"
-"with password manager integration."
 
 #: src/vault/bitwarden.py:689
 #, python-brace-format
 msgid "No password found in item. Check item ID '{id}'."
-msgstr "No password found in item. Check item ID '{id}'."
+msgstr ""
 
 #: src/views/main_window.py:59
 msgid "Connections"
-msgstr "Connections"
+msgstr ""
 
 #: src/views/main_window.py:65
 msgid "New Connection  (Ctrl+N)"
-msgstr "New Connection"
+msgstr ""
 
 #: src/views/main_window.py:70
 msgid "Menu"
-msgstr "Menu"
+msgstr ""
 
 #: src/views/main_window.py:72 src/views/terminal_theme_dialog.py:34
 msgid "Terminal Theme"
-msgstr "Terminal Theme"
+msgstr ""
 
 #: src/views/main_window.py:73
 msgid "Vault Settings"
-msgstr "Vault Settings"
+msgstr ""
 
 #: src/views/main_window.py:74
 msgid "About Sentinel"
-msgstr "About Sentinel"
+msgstr ""
 
 #: src/views/main_window.py:75
 msgid "Quit"
-msgstr "Quit"
+msgstr ""
 
 #: src/views/main_window.py:82
 msgid "Search connections…"
-msgstr "Searching connections…"
+msgstr ""
 
 #: src/views/main_window.py:134
 msgid "Terminal"
-msgstr "Terminal"
+msgstr ""
 
 #: src/views/main_window.py:151
 msgid "Open Local Shell (Ctrl+T)"
-msgstr "Open Local Shell (Ctrl+T)"
+msgstr ""
 
 #: src/views/main_window.py:161
 msgid "Merge all tabs into another window and close"
-msgstr "Merge all tabs into another window and close"
+msgstr ""
 
 #: src/views/main_window.py:218
 msgid "Secure SSH Connection Manager"
-msgstr "Secure SSH Connection Manager"
+msgstr ""
 
 #: src/views/main_window.py:229 src/views/main_window.py:259
 msgid "New Connection"
-msgstr "New Connection"
+msgstr ""
 
 #: src/views/main_window.py:235 src/views/terminal_view.py:75
 #: src/views/terminal_view.py:389 src/views/terminal_view.py:638
 msgid "Local Shell"
-msgstr "Local Shell"
+msgstr ""
 
 #: src/views/main_window.py:244
 msgid "Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"
-msgstr "Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"
+msgstr ""
 
 #: src/views/main_window.py:259
 msgid "Edit Connection"
-msgstr "Connections"
+msgstr ""
 
 #: src/views/main_window.py:267 src/views/main_window.py:637
 #: src/views/dialogs.py:20 src/views/dialogs.py:105 src/views/dialogs.py:167
@@ -130,77 +133,77 @@ msgstr "Connections"
 #: src/views/terminal_theme_dialog.py:367
 #: src/views/terminal_theme_dialog.py:474
 msgid "Cancel"
-msgstr "Cancel"
+msgstr ""
 
 #: src/views/main_window.py:271
 msgid "Save"
-msgstr "Save"
+msgstr ""
 
 #: src/views/main_window.py:279
 msgid "Basic"
-msgstr "Basic"
+msgstr ""
 
 #: src/views/main_window.py:282 src/views/dialogs.py:419
 #: src/views/sftp_view.py:201
 msgid "Name"
-msgstr "Name"
+msgstr ""
 
 #: src/views/main_window.py:287
 msgid "Hostname"
-msgstr "Username"
+msgstr ""
 
 #: src/views/main_window.py:293
 msgid "Port"
-msgstr "Port"
+msgstr ""
 
 #: src/views/main_window.py:297
 msgid "Username"
-msgstr "Username"
+msgstr ""
 
 #: src/views/main_window.py:305
 msgid "Authentication"
-msgstr "Authentication"
+msgstr ""
 
 #: src/views/main_window.py:309
 msgid "SSH Key"
-msgstr "SSH Key"
+msgstr ""
 
 #: src/views/main_window.py:309
 msgid "Password"
-msgstr "Master Password"
+msgstr ""
 
 #: src/views/main_window.py:309
 msgid "Key + Passphrase"
-msgstr "Key + Passphrase"
+msgstr ""
 
 #: src/views/main_window.py:309
 msgid "SSH Agent"
-msgstr "SSH Agent"
+msgstr ""
 
 #: src/views/main_window.py:309
 msgid "Vault"
-msgstr "Vault"
+msgstr ""
 
 #: src/views/main_window.py:311
 msgid "Method"
-msgstr "Method"
+msgstr ""
 
 #: src/views/main_window.py:321
 msgid "Key File Path (optional)"
-msgstr "Key File Path (optional)"
+msgstr ""
 
 #: src/views/main_window.py:340
 msgid "SSH Key from Vault"
-msgstr "SSH Key from Vault"
+msgstr ""
 
 #: src/views/main_window.py:341
 msgid "Select the vault item that stores the SSH private key"
-msgstr "Select the vault item that stores the SSH private key"
+msgstr ""
 
 #: src/views/main_window.py:348 src/views/main_window.py:350
 #: src/views/main_window.py:376
 msgid "Not selected"
-msgstr "Not selected"
+msgstr ""
 
 #: src/views/main_window.py:353
 msgid "Clear vault key selection"
@@ -208,69 +211,74 @@ msgstr ""
 
 #: src/views/main_window.py:358
 msgid "Select…"
-msgstr "Select"
+msgstr ""
 
 #: src/views/main_window.py:359
 msgid "Select SSH key from Vault"
-msgstr "Select SSH key from Vault"
+msgstr ""
 
 #: src/views/main_window.py:391
 msgid "Bitwarden CLI not found. Install it first."
-msgstr "Bitwarden CLI ('bw') not found. Please install it."
+msgstr ""
 
 #: src/views/main_window.py:408
 msgid "Please log in / unlock Bitwarden via Vault Settings first."
-msgstr "Please log in / unlock Bitwarden via Vault Settings first."
+msgstr ""
 
 #: src/views/main_window.py:420
+#, python-brace-format
 msgid "Failed to fetch vault items: {fetch_err}"
-msgstr "Failed to create vault: {e}"
+msgstr ""
 
 #: src/views/main_window.py:434 src/views/main_window.py:436
 msgid "Notes"
-msgstr "Notes"
+msgstr ""
 
 #: src/views/main_window.py:453
 msgid "Delete Connection"
-msgstr "New Connection"
+msgstr ""
 
 #: src/views/main_window.py:498
 #, python-brace-format
 msgid "Updated: {name}"
-msgstr "Updated: {name}"
+msgstr ""
 
 #: src/views/main_window.py:498
+#, python-brace-format
 msgid "Added: {name}"
-msgstr "Updated: {name}"
+msgstr ""
 
 #: src/views/main_window.py:524
+#, python-brace-format
 msgid "Connection error: {e}"
-msgstr "Sync error: {e}"
+msgstr ""
 
 #: src/views/main_window.py:547
 msgid "Welcome"
-msgstr "Welcome"
+msgstr ""
 
 #: src/views/main_window.py:568
 msgid "Untitled"
-msgstr "Untitled"
+msgstr ""
 
 #: src/views/main_window.py:634
+#, python-brace-format
 msgid "Delete \"{name}\"?"
-msgstr "Deleted {name}"
+msgstr ""
 
 #: src/views/main_window.py:635
 msgid "This connection will be permanently removed."
-msgstr "This connection will be permanently removed."
+msgstr ""
 
 #: src/views/main_window.py:638 src/views/sftp_view.py:277
 #: src/views/sftp_view.py:1414 src/views/terminal_theme_dialog.py:368
 msgid "Delete"
-msgstr "Delete"
+msgstr ""
 
 #: src/views/main_window.py:646
+#, python-brace-format
 msgid "Deleted: {name}"
-msgstr "Deleted {name}"
+msgstr ""
 
 #: src/views/main_window.py:670
 #, python-brace-format
@@ -278,8 +286,9 @@ msgid "Cleared host key and OS info for {hostname}"
 msgstr ""
 
 #: src/views/main_window.py:672
+#, python-brace-format
 msgid "Cleared OS info for {hostname}"
-msgstr "Password for {hostname}"
+msgstr ""
 
 #: src/views/terminal_view.py:178
 msgid "Find in terminal..."
@@ -287,61 +296,61 @@ msgstr ""
 
 #: src/views/terminal_view.py:182
 msgid "Find next"
-msgstr "Find next"
+msgstr ""
 
 #: src/views/terminal_view.py:187
 msgid "Find previous"
-msgstr "Find previous"
+msgstr ""
 
 #: src/views/terminal_view.py:213
 #, python-brace-format
 msgid "Connecting to {title}…"
-msgstr "Connecting to {title}…"
+msgstr ""
 
 #: src/views/terminal_view.py:213
 msgid "Spawning local shell..."
-msgstr "Spawning local shell..."
+msgstr ""
 
 #: src/views/terminal_view.py:324
 #, python-brace-format
 msgid "Connected — {title}"
-msgstr "Connected — {title}"
+msgstr ""
 
 #: src/views/terminal_view.py:334
 #, python-brace-format
 msgid "Disconnected: {exc}"
-msgstr "Disconnected: {exc}"
+msgstr ""
 
 #: src/views/terminal_view.py:334
 msgid "Disconnected"
-msgstr "Disconnected"
+msgstr ""
 
 #: src/views/terminal_view.py:366
 #, python-brace-format
 msgid "Exited with code {exit_status}"
-msgstr "Exited with code {exit_status}"
+msgstr ""
 
 #: src/views/terminal_view.py:386
 #, python-brace-format
 msgid "Error: {error}"
-msgstr "Error: {error}"
+msgstr ""
 
 #: src/views/terminal_view.py:393
 #, python-brace-format
 msgid "Exited code {exit_status}"
-msgstr "Exited code {exit_status}"
+msgstr ""
 
 #: src/views/terminal_view.py:411
 msgid "Reconnecting…"
-msgstr "Reconnecting…"
+msgstr ""
 
 #: src/views/terminal_view.py:426 src/views/sftp_view.py:269
 msgid "Copy"
-msgstr "Copy Host"
+msgstr ""
 
 #: src/views/terminal_view.py:427 src/views/sftp_view.py:270
 msgid "Paste"
-msgstr "Paste"
+msgstr ""
 
 #: src/views/terminal_view.py:431
 msgid "Find…"
@@ -349,11 +358,11 @@ msgstr ""
 
 #: src/views/terminal_view.py:432
 msgid "Read-only"
-msgstr "Read-only"
+msgstr ""
 
 #: src/views/terminal_view.py:436
 msgid "Select All"
-msgstr "Select"
+msgstr ""
 
 #: src/views/terminal_view.py:437
 msgid "Clear"
@@ -361,15 +370,15 @@ msgstr ""
 
 #: src/views/vault_settings_dialog.py:39
 msgid "Vault Manager"
-msgstr "Vault Manager"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:112
 msgid "Checking Vault Status…"
-msgstr "Checking Vault Status…"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:129
 msgid "Set Up Local Vault"
-msgstr "Set Up Local Vault"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:135
 msgid ""
@@ -383,99 +392,99 @@ msgstr ""
 #: src/views/vault_settings_dialog.py:316
 #: src/views/vault_settings_dialog.py:461
 msgid "Master Password"
-msgstr "Master Password"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:152
 msgid "Confirm Password"
-msgstr "Master Password"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:156
 msgid "Create Vault"
-msgstr "Create Vault"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:179
 msgid "Unlock Local Vault"
-msgstr "Unlock Local Vault"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:184
 msgid "Enter your Sentinel vault master password to continue."
-msgstr "Enter your Sentinel vault master password to continue."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:201
 #: src/views/vault_settings_dialog.py:482 src/views/dialogs.py:106
 msgid "Unlock"
-msgstr "Unlock"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:219
 msgid "Please enter a master password."
-msgstr "Please enter a master password."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:222
 msgid "Passwords do not match."
-msgstr "Passwords do not match."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:225
 msgid "Password must be at least 8 characters."
-msgstr "Password must be at least 8 characters."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:237
 msgid "Local vault created successfully."
-msgstr "Local vault created successfully."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:243
 #, python-brace-format
 msgid "Failed to create vault: {e}"
-msgstr "Failed to create vault: {e}"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:262
 msgid "Wrong master password."
-msgstr "Wrong master password."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:280
 msgid "Log in to Bitwarden"
-msgstr "Log in to Bitwarden"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:285
 msgid "Enter your credentials to access your vault."
-msgstr "Enter your credentials to access your vault."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:301
 msgid "https://bitwarden.com (leave blank for default)"
-msgstr "https://bitwarden.com (leave blank for default)"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:303
 msgid "Custom Server"
-msgstr "Custom Server"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:303
 msgid "For self-hosted Bitwarden / VaultWarden"
-msgstr "For self-hosted Bitwarden / VaultWarden"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:312
 msgid "Email Address"
-msgstr "Email Address"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:319
 #: src/views/vault_settings_dialog.py:464
 msgid "Save master password securely in system keyring"
-msgstr "Save master password securely in system keyring"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:328
 msgid "Log In"
-msgstr "Log In"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:356
 msgid "Two-Step Verification"
-msgstr "Two-Step Verification"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:361
 msgid "Your account requires two-step verification."
-msgstr "Your account requires two-step verification."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:377
 #: src/views/vault_settings_dialog.py:712
 msgid "Authenticator App (TOTP)"
-msgstr "Authenticator App (TOTP)"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:378
 msgid "Email"
@@ -485,82 +494,82 @@ msgstr ""
 #: src/views/vault_settings_dialog.py:714
 #: src/views/vault_settings_dialog.py:756
 msgid "YubiKey OTP"
-msgstr "YubiKey OTP"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:380
 #: src/views/vault_settings_dialog.py:715
 msgid "Duo"
-msgstr "Duo"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:381
 msgid "FIDO2 / WebAuthn (hardware key)"
-msgstr "FIDO2 / WebAuthn (hardware key)"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:386
 msgid "Verification Method"
-msgstr "Verification Method"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:392
 msgid "Verification Code"
-msgstr "Verification Code"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:408
 msgid "Back"
-msgstr "Back"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:414
 msgid "Verify & Log In"
-msgstr "Verify & Log In"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:442
 msgid "Vault Locked"
-msgstr "Vault Locked"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:447
 msgid "Enter your master password to unlock."
-msgstr "Enter your master password to unlock."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:475
 #: src/views/vault_settings_dialog.py:518
 msgid "Log Out"
-msgstr "Log Out"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:503
 msgid "Account"
-msgstr "Account"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:505
 msgid "Server"
-msgstr "Server"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:505
 msgid "Loading…"
-msgstr "Loading {path}…"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:508
 msgid "Status"
-msgstr "Status"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:508
 #: src/views/vault_settings_dialog.py:624
 msgid "Unlocked ✓"
-msgstr "Unlocked ✓"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:513
 msgid "Lock"
-msgstr "Lock"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:528
 msgid "Saved Password"
-msgstr "Master Password"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:529
 msgid "Master password is saved in system keyring for auto-unlock"
-msgstr "Master password is saved in system keyring for auto-unlock"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:531
 msgid "Forget"
-msgstr "Forget"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:543
 msgid "Default Folder for Key Selection"
@@ -574,32 +583,32 @@ msgstr ""
 
 #: src/views/vault_settings_dialog.py:548
 msgid "Folder"
-msgstr "New Folder"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:554
 msgid "Sync Vault"
-msgstr "Sync Vault"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:554
 msgid "Pull the latest items from the server"
-msgstr "Pull the latest items from the server"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:555
 msgid "Sync Now"
-msgstr "Sync Now"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:583
 msgid "Bitwarden CLI ('bw') not found. Please install it."
-msgstr "Bitwarden CLI ('bw') not found. Please install it."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:623
 msgid "Official Cloud Server"
-msgstr "Official Cloud Server"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:648
 #, python-brace-format
 msgid "Failed to load folders: {e}"
-msgstr "Failed to load folders: {e}"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:660
 msgid "[All Items]"
@@ -607,112 +616,110 @@ msgstr ""
 
 #: src/views/vault_settings_dialog.py:713
 msgid "Email Verification"
-msgstr "Email Verification"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:716
 msgid "FIDO2 / WebAuthn"
-msgstr "FIDO2 / WebAuthn"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:743
 msgid ""
 "Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) "
 "and enter the 6-digit code."
 msgstr ""
-"Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) "
-"and enter the 6-digit code."
 
 #: src/views/vault_settings_dialog.py:745
 msgid "Check your email inbox for a verification code sent by Bitwarden."
-msgstr "Check your email inbox for a verification code sent by Bitwarden."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:747
 msgid "Insert your YubiKey and tap it to generate an OTP."
-msgstr "Insert your YubiKey and tap it to generate an OTP."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:749
 msgid ""
 "Approve the Duo push notification on your device, or enter the Duo passcode."
 msgstr ""
-"Approve the Duo push notification on your device, or enter the Duo passcode."
 
 #: src/views/vault_settings_dialog.py:751
 msgid "Touch your hardware security key when it lights up."
-msgstr "Touch your hardware security key when it lights up."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:754
 msgid "6-digit TOTP code"
-msgstr "6-digit TOTP code"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:755
 msgid "Email verification code"
-msgstr "Email verification code"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:757
 msgid "Duo passcode (or leave blank for push)"
-msgstr "Duo passcode (or leave blank for push)"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:758
 msgid "(Not supported in CLI mode — use another method)"
-msgstr "(Not supported in CLI mode — use another method)"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:771
 msgid "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
-msgstr "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:772
 msgid "Please use a different 2FA method (e.g. TOTP or Email)."
-msgstr "Please use a different 2FA method (e.g. TOTP or Email)."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:783
 msgid "Please provide email and master password."
-msgstr "Please provide email and master password."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:836
+#, python-brace-format
 msgid "Login failed: {err}"
-msgstr "Sync failed: {e}"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:863
 msgid "Please enter your verification code."
-msgstr "Please enter your verification code."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:882
 msgid "Login password missing for 2FA"
-msgstr "Login password missing for 2FA"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:905
 #, python-brace-format
 msgid "Verification failed: {err}"
-msgstr "Verification failed: {err}"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:933
 msgid "Incorrect master password, or unlock failed."
-msgstr "Enter your master password to unlock."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:967
 msgid "Saved master password removed from keyring."
-msgstr "Saved master password removed from keyring."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:970
 msgid "Syncing vault…"
-msgstr "Syncing vault…"
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:975
 msgid "Sync completed."
-msgstr "Sync completed."
+msgstr ""
 
 #: src/views/vault_settings_dialog.py:978
 #, python-brace-format
 msgid "Sync failed: {e}"
-msgstr "Sync failed: {e}"
+msgstr ""
 
 #: src/views/dialogs.py:21
 msgid "Connect"
-msgstr "Connect"
+msgstr ""
 
 #: src/views/dialogs.py:71
 #, python-brace-format
 msgid "Unknown Host Key ({hostname})"
-msgstr "Unknown Host Key ({hostname})"
+msgstr ""
 
 #: src/views/dialogs.py:73
 #, python-brace-format
@@ -720,13 +727,11 @@ msgid ""
 "The authenticity of host '{hostname}' can't be established.\n"
 "\n"
 msgstr ""
-"The authenticity of host '{hostname}' can't be established.\n"
-"\n"
 
 #: src/views/dialogs.py:74
 #, python-brace-format
 msgid "Algorithm: {algorithm}\n"
-msgstr "Algorithm: {algorithm}\n"
+msgstr ""
 
 #: src/views/dialogs.py:75
 #, python-brace-format
@@ -734,142 +739,140 @@ msgid ""
 "Fingerprint: {fingerprint}\n"
 "\n"
 msgstr ""
-"Fingerprint: {fingerprint}\n"
-"\n"
 
 #: src/views/dialogs.py:76
 msgid "Are you sure you want to continue connecting?"
-msgstr "Are you sure you want to continue connecting?"
+msgstr ""
 
 #: src/views/dialogs.py:79
 msgid "Reject"
-msgstr "Reject"
+msgstr ""
 
 #: src/views/dialogs.py:80
 msgid "Accept and Connect"
-msgstr "Accept and Connect"
+msgstr ""
 
 #: src/views/dialogs.py:102
 #, python-brace-format
 msgid "Unlock {vault_name}"
-msgstr "Unlock {vault_name}"
+msgstr ""
 
 #: src/views/dialogs.py:103
 #, python-brace-format
 msgid "Please enter your master password to access {vault_name} credentials."
-msgstr "Please enter your master password to access {vault_name} credentials."
+msgstr ""
 
 #: src/views/dialogs.py:153
 msgid "Select SSH Key from Vault"
-msgstr "Select SSH Key from Vault"
+msgstr ""
 
 #: src/views/dialogs.py:180
 msgid "Retrieving data from Vault..."
-msgstr "Retrieving data from Vault..."
+msgstr ""
 
 #: src/views/dialogs.py:191
 msgid ""
 "Choose the vault item that contains the SSH private key for this connection."
-msgstr "Select the vault item that stores the SSH private key"
+msgstr ""
 
 #: src/views/dialogs.py:238
 msgid "Select"
-msgstr "Select"
+msgstr ""
 
 #: src/views/dialogs.py:289
 msgid "Confirm"
-msgstr "Confirm"
+msgstr ""
 
 #: src/views/dialogs.py:354
 msgid "OK"
-msgstr "OK"
+msgstr ""
 
 #: src/views/dialogs.py:374
 #, python-brace-format
 msgid "Properties: {name}"
-msgstr "Properties: {name}"
+msgstr ""
 
 #: src/views/dialogs.py:374 src/views/dialogs.py:420
 msgid "File"
-msgstr "File"
+msgstr ""
 
 #: src/views/dialogs.py:420
 msgid "Type"
-msgstr "Type"
+msgstr ""
 
 #: src/views/dialogs.py:420
 msgid "Directory"
-msgstr "Directory"
+msgstr ""
 
 #: src/views/dialogs.py:421 src/views/sftp_view.py:227
 msgid "Size"
-msgstr "Size"
+msgstr ""
 
 #: src/views/dialogs.py:422
 msgid "Last Modified"
-msgstr "Last Modified"
+msgstr ""
 
 #: src/views/dialogs.py:423
 msgid "Permissions"
-msgstr "Permissions"
+msgstr ""
 
 #: src/views/dialogs.py:424
 msgid "Owner"
-msgstr "Owner"
+msgstr ""
 
 #: src/views/dialogs.py:424
 #, python-brace-format
 msgid "UID: {uid} / GID: {gid}"
-msgstr "UID: {uid} / GID: {gid}"
+msgstr ""
 
 #: src/views/dialogs.py:425
 msgid "Remote Path"
-msgstr "Remote Path"
+msgstr ""
 
 #: src/views/dialogs.py:430
 msgid "Close"
-msgstr "Close"
+msgstr ""
 
 #: src/views/sftp_view.py:141
 msgid "New..."
-msgstr "New..."
+msgstr ""
 
 #: src/views/sftp_view.py:143 src/views/sftp_view.py:821
 msgid "New File"
-msgstr "New File"
+msgstr ""
 
 #: src/views/sftp_view.py:144 src/views/sftp_view.py:792
 #: src/views/sftp_view.py:794
 msgid "New Folder"
-msgstr "New Folder"
+msgstr ""
 
 #: src/views/sftp_view.py:154
 msgid "View Options"
-msgstr "View Options"
+msgstr ""
 
 #: src/views/sftp_view.py:159
 msgid "Show Hidden Files"
-msgstr "Show Hidden Files"
+msgstr ""
 
 #: src/views/sftp_view.py:164
 msgid "Auto-sync on Save"
-msgstr "Auto-sync on Save"
+msgstr ""
 
 #: src/views/sftp_view.py:246
 msgid "Date Modified"
-msgstr "Last Modified"
+msgstr ""
 
 #: src/views/sftp_view.py:267 src/views/connection_list.py:253
 msgid "Edit"
-msgstr "Edit"
+msgstr ""
 
 #: src/views/sftp_view.py:268
 msgid "Open With..."
-msgstr "Open With..."
+msgstr ""
 
 #: src/views/sftp_view.py:271
 msgid "Synchronize"
-msgstr "Synchronize"
+msgstr ""
 
 #: src/views/sftp_view.py:272
 msgid "Download"
@@ -881,83 +884,85 @@ msgstr ""
 
 #: src/views/sftp_view.py:276
 msgid "Rename"
-msgstr "Rename"
+msgstr ""
 
 #: src/views/sftp_view.py:278
 msgid "Properties"
-msgstr "Properties"
+msgstr ""
 
 #: src/views/sftp_view.py:432
 msgid "Connecting…"
-msgstr "Connecting…"
+msgstr ""
 
 #: src/views/sftp_view.py:615
 #, python-brace-format
 msgid "Password for {hostname}"
-msgstr "Password for {hostname}"
+msgstr ""
 
 #: src/views/sftp_view.py:617
 msgid "Unlock SSH Key"
-msgstr "Unlock SSH Key"
+msgstr ""
 
 #: src/views/sftp_view.py:617
 #, python-brace-format
 msgid "Enter passphrase for {path}"
-msgstr "Enter passphrase for {path}"
+msgstr ""
 
 #: src/views/sftp_view.py:671
 #, python-brace-format
 msgid "Connected to {hostname}"
-msgstr "Connected to {hostname}"
+msgstr ""
 
 #: src/views/sftp_view.py:685
 #, python-brace-format
 msgid "Loading {path}…"
-msgstr "Loading {path}…"
+msgstr ""
 
 #: src/views/sftp_view.py:726
 #, python-brace-format
 msgid "Error: {msg}"
-msgstr "Error: {msg}"
+msgstr ""
 
 #: src/views/sftp_view.py:778
 #, python-brace-format
 msgid "Creating folder {name}..."
-msgstr "Creating folder {name}..."
+msgstr ""
 
 #: src/views/sftp_view.py:783
 #, python-brace-format
 msgid "Created folder {name}"
-msgstr "Created folder {name}"
+msgstr ""
 
 #: src/views/sftp_view.py:786 src/views/sftp_view.py:815
+#, python-brace-format
 msgid "Error: {e}"
-msgstr "Error: {error}"
+msgstr ""
 
 #: src/views/sftp_view.py:793
 msgid "Enter name for the new folder:"
-msgstr "Enter name for the new folder:"
+msgstr ""
 
 #: src/views/sftp_view.py:795
 msgid "Folder name"
-msgstr "Username"
+msgstr ""
 
 #: src/views/sftp_view.py:805
+#, python-brace-format
 msgid "Creating file {name}..."
-msgstr "Creating folder {name}..."
+msgstr ""
 
 #: src/views/sftp_view.py:812
 #, python-brace-format
 msgid "Created file {name}"
-msgstr "Created file {name}"
+msgstr ""
 
 #: src/views/sftp_view.py:822
 msgid "Enter name for the new file:"
-msgstr "Enter name for the new file:"
+msgstr ""
 
 #: src/views/sftp_view.py:824
 msgid "File name"
-msgstr "Rename"
+msgstr ""
 
 #: src/views/sftp_view.py:922
 msgid "Ensuring Rclone FUSE3 mount..."
@@ -966,77 +971,83 @@ msgstr ""
 #: src/views/sftp_view.py:941
 #, python-brace-format
 msgid "Mount failed, using GVFS fallback. (Error: {err}...)"
-msgstr "Mount failed, using GVFS fallback. (Error: {err}...)"
+msgstr ""
 
 #: src/views/sftp_view.py:954
+#, python-brace-format
 msgid "Copied {name} to clipboard"
-msgstr "Theme code copied to clipboard"
+msgstr ""
 
 #: src/views/sftp_view.py:973
 #, python-brace-format
 msgid "Renaming to {name}..."
-msgstr "Renaming to {name}..."
+msgstr ""
 
 #: src/views/sftp_view.py:978
 #, python-brace-format
 msgid "Renamed to {name}"
-msgstr "Renamed to {name}"
+msgstr ""
 
 #: src/views/sftp_view.py:981
 #, python-brace-format
 msgid "Rename failed: {e}"
-msgstr "Rename failed: {e}"
+msgstr ""
 
 #: src/views/sftp_view.py:987
 msgid "Rename Item"
-msgstr "Rename Item"
+msgstr ""
 
 #: src/views/sftp_view.py:988
 #, python-brace-format
 msgid "Enter new name for {name}:"
-msgstr "Enter new name for {name}:"
+msgstr ""
 
 #: src/views/sftp_view.py:990
 msgid "New name"
-msgstr "Rename"
+msgstr ""
 
 #: src/views/sftp_view.py:1005
 msgid "Ensuring mount for editing..."
 msgstr ""
 
 #: src/views/sftp_view.py:1026 src/views/sftp_view.py:1125
+#, python-brace-format
 msgid "Fallback failed: {e}"
-msgstr "Sync failed: {e}"
+msgstr ""
 
 #: src/views/sftp_view.py:1054 src/views/sftp_view.py:1065
 #: src/views/sftp_view.py:1143 src/views/sftp_view.py:1155
+#, python-brace-format
 msgid "Download failed: {e}"
-msgstr "Rename failed: {e}"
+msgstr ""
 
 #: src/views/sftp_view.py:1085 src/views/sftp_view.py:1181
 #, python-brace-format
 msgid "Opened {name} with {app}"
-msgstr "Opened {name} with {app}"
+msgstr ""
 
 #: src/views/sftp_view.py:1090
+#, python-brace-format
 msgid "Opening {name}..."
-msgstr "Renaming to {name}..."
+msgstr ""
 
 #: src/views/sftp_view.py:1093
+#, python-brace-format
 msgid "Failed to open: {e}"
-msgstr "Failed to load folders: {e}"
+msgstr ""
 
 #: src/views/sftp_view.py:1107
 msgid "Ensuring mount for Open With..."
 msgstr ""
 
 #: src/views/sftp_view.py:1183
+#, python-brace-format
 msgid "Launch failed: {e}"
-msgstr "Sync failed: {e}"
+msgstr ""
 
 #: src/views/sftp_view.py:1334
 msgid "File Updated Locally"
-msgstr "File Updated Locally"
+msgstr ""
 
 #: src/views/sftp_view.py:1335
 #, python-brace-format
@@ -1044,44 +1055,44 @@ msgid ""
 "The file '{name}' has been modified and saved.\n"
 "Update the remote copy on the server?"
 msgstr ""
-"The file '{name}' has been modified and saved.\n"
-"Update the remote copy on the server?"
 
 #: src/views/sftp_view.py:1336
 msgid "Update Remote"
-msgstr "Update Remote"
+msgstr ""
 
 #: src/views/sftp_view.py:1362
 #, python-brace-format
 msgid "Synchronizing {name}..."
-msgstr "Synchronizing {name}..."
+msgstr ""
 
 #: src/views/sftp_view.py:1368
 #, python-brace-format
 msgid "Synchronized {name}"
-msgstr "Synchronized {name}"
+msgstr ""
 
 #: src/views/sftp_view.py:1373
 #, python-brace-format
 msgid "Sync error: {e}"
-msgstr "Sync error: {e}"
+msgstr ""
 
 #: src/views/sftp_view.py:1392
+#, python-brace-format
 msgid "Deleting {name}..."
-msgstr "Deleted {name}"
+msgstr ""
 
 #: src/views/sftp_view.py:1403
 #, python-brace-format
 msgid "Deleted {name}"
-msgstr "Deleted {name}"
+msgstr ""
 
 #: src/views/sftp_view.py:1406
+#, python-brace-format
 msgid "Delete failed: {e}"
-msgstr "Rename failed: {e}"
+msgstr ""
 
 #: src/views/sftp_view.py:1412
 msgid "Delete Item"
-msgstr "Delete Theme?"
+msgstr ""
 
 #: src/views/sftp_view.py:1413
 #, python-brace-format
@@ -1089,20 +1100,21 @@ msgid ""
 "Are you sure you want to delete '{name}'?\n"
 "This action cannot be undone."
 msgstr ""
-"Are you sure you want to delete '{name}'?\n"
-"This action cannot be undone."
 
 #: src/views/sftp_view.py:1430
+#, python-brace-format
 msgid "Download Directory: {name}"
-msgstr "Renamed to {name}"
+msgstr ""
 
 #: src/views/sftp_view.py:1433
+#, python-brace-format
 msgid "Download File: {name}"
-msgstr "Created file {name}"
+msgstr ""
 
 #: src/views/sftp_view.py:1457
+#, python-brace-format
 msgid "Downloading {name}..."
-msgstr "Renaming to {name}..."
+msgstr ""
 
 #: src/views/sftp_view.py:1462
 #, python-brace-format
@@ -1111,39 +1123,39 @@ msgstr ""
 
 #: src/views/sftp_view.py:1516
 msgid "Source connection not found in database."
-msgstr "Source connection not found in database."
+msgstr ""
 
 #: src/views/sftp_view.py:1522
 msgid "Source SFTP session must be active to perform transfer."
-msgstr "Source SFTP session must be active to perform transfer."
+msgstr ""
 
 #: src/views/sftp_view.py:1531
 #, python-brace-format
 msgid "Starting cross-server transfer from {hostname}..."
-msgstr "Starting cross-server transfer from {hostname}..."
+msgstr ""
 
 #: src/views/sftp_view.py:1540
 #, python-brace-format
 msgid "Transferring: {percent}%"
-msgstr "Transferring: {percent}%"
+msgstr ""
 
 #: src/views/sftp_view.py:1549
 msgid "Cross-server transfer complete"
-msgstr "Starting cross-server transfer from {hostname}..."
+msgstr ""
 
 #: src/views/sftp_view.py:1551
 #, python-brace-format
 msgid "Transfer failed: {err}"
-msgstr "Transfer failed: {err}"
+msgstr ""
 
 #: src/views/sftp_view.py:1567
 #, python-brace-format
 msgid "Uploading {count} items..."
-msgstr "Uploading {count} items..."
+msgstr ""
 
 #: src/views/sftp_view.py:1572
 msgid "Uploaded successfully"
-msgstr "Uploaded successfully"
+msgstr ""
 
 #: src/views/sftp_view.py:1592
 #, python-brace-format
@@ -1156,218 +1168,178 @@ msgstr ""
 
 #: src/views/sftp_view.py:1607
 msgid "Auto-sync disabled."
-msgstr "Auto-sync on Save"
+msgstr ""
 
 #: src/views/sftp_view.py:1656
 #, python-brace-format
 msgid "Calculating size for {name}..."
-msgstr "Calculating size for {name}..."
+msgstr ""
 
 #: src/views/sftp_view.py:1667
 #, python-brace-format
 msgid "Size of {name}"
-msgstr "Size of {name}"
+msgstr ""
 
 #: src/views/sftp_view.py:1667
 #, python-brace-format
 msgid "The directory occupies: {size}"
-msgstr "The directory occupies: {size}"
+msgstr ""
 
 #: src/views/sftp_view.py:1668
 #, python-brace-format
 msgid "Size of {name}: {size}"
-msgstr "Size of {name}: {size}"
+msgstr ""
 
 #: src/views/sftp_view.py:1672
 #, python-brace-format
 msgid "Size calculation failed: {msg}"
-msgstr "Size calculation failed: {msg}"
+msgstr ""
 
 #: src/views/sftp_view.py:1701
+#, python-brace-format
 msgid "SFTP: {hostname}"
-msgstr "Password for {hostname}"
+msgstr ""
 
 #: src/views/connection_list.py:68
 msgid "No Connections"
-msgstr "No Connections"
+msgstr ""
 
 #: src/views/connection_list.py:72
 msgid ""
 "Press + to add your first\n"
 "SSH connection"
 msgstr ""
-"Press + to add your first\n"
-"SSH connection"
 
 #: src/views/connection_list.py:249
 msgid "Shell"
-msgstr "Shell"
+msgstr ""
 
 #: src/views/connection_list.py:250
 msgid "SFTP"
-msgstr "SFTP"
+msgstr ""
 
 #: src/views/connection_list.py:251
 msgid "Copy Host"
-msgstr "Copy Host"
+msgstr ""
 
 #: src/views/connection_list.py:252
 msgid "Clear Host Key"
-msgstr "Clear Host Key"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:104
 msgid "New Custom Theme"
-msgstr "New Custom Theme"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:127
 msgid "The quick brown fox jumps over the lazy dog"
-msgstr "The quick brown fox jumps over the lazy dog"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:145
 msgid "Theme Management"
-msgstr "Theme Management"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:147
 msgid "Select Theme"
-msgstr "Select Theme"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:157
 #: src/views/terminal_theme_dialog.py:326
 msgid "Rename Theme"
-msgstr "Rename Theme"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:162
 msgid "Delete Theme"
-msgstr "Delete Theme?"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:167
 msgid "Copy Code"
-msgstr "Copy Code"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:168
 msgid "Copy sharing code to clipboard"
-msgstr "Theme code copied to clipboard"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:177
 msgid "Active Theme Settings"
-msgstr "Active Theme Settings"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:178
 msgid "Rename or delete your custom theme"
-msgstr "Rename or delete your custom theme"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:183
 msgid "Import from Code"
-msgstr "Import from Code"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:183
 msgid "Paste a theme code to import"
-msgstr "Paste a theme code to import"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:184
 msgid "Import..."
-msgstr "Import..."
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:193
 msgid "Customization"
-msgstr "Customization"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:194
 msgid "Foreground"
-msgstr "Foreground"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:195
 msgid "Background"
-msgstr "Background"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:196
 msgid "Cursor"
-msgstr "Cursor"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:197
 msgid "Selection Background"
-msgstr "Selection Background"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:205
 msgid "ANSI Colors Palette"
-msgstr "ANSI Colors Palette"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:327
 msgid "Enter a new name for this theme"
-msgstr "Enter a new name for this theme"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:332
 msgid "Apply"
-msgstr "Apply"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:363
 msgid "Delete Theme?"
-msgstr "Delete Theme?"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:364
 #, python-brace-format
 msgid "Are you sure you want to delete '{name}'?"
-msgstr "Are you sure you want to delete '{name}'?"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:458
 msgid "Theme code copied to clipboard"
-msgstr "Theme code copied to clipboard"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:462
 msgid "Paste code here..."
-msgstr "Paste code here..."
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:469
 msgid "Import Theme"
-msgstr "Import Theme"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:470
 msgid "Paste the theme code below:"
-msgstr "Paste the theme code below:"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:475
 msgid "Import"
-msgstr "Import"
+msgstr ""
 
 #: src/views/terminal_theme_dialog.py:483
 msgid "Imported Theme"
-msgstr "Imported Theme"
-
-#~ msgid "Settings"
-#~ msgstr "Settings"
-
-#~ msgid "App Settings"
-#~ msgstr "App Settings"
-
-#~ msgid "General"
-#~ msgstr "General"
-
-#~ msgid "Language"
-#~ msgstr "Language"
-
-#~ msgid "Requires an application restart to fully apply"
-#~ msgstr "Requires an application restart to fully apply"
-
-#~ msgid "Please restart the application for language changes to take effect."
-#~ msgstr "Please restart the application for language changes to take effect."
-
-#~ msgid "Close tab"
-#~ msgstr "Close tab"
-
-#~ msgid "Custom"
-#~ msgstr "Custom"
-
-#~ msgid "Presets"
-#~ msgstr "Presets"
-
-#~ msgid "Theme Presets"
-#~ msgstr "Theme Presets"
-
-#~ msgid "Theme Actions"
-#~ msgstr "Theme Actions"
-
-#~ msgid "Theme Code"
-#~ msgstr "Theme Code"
-
-#~ msgid "Please replace a different 2FA method (e.g. TOTP or Email)."
-#~ msgstr "Please replace a different 2FA method (e.g. TOTP or Email)."
+msgstr ""

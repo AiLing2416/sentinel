@@ -46,7 +46,6 @@ class SentinelApplication(Adw.Application):
             ("quit", self._on_quit, ["<primary>q"]),
             ("about", self._on_about, None),
             ("new-connection", self._on_new_connection, ["<primary>n"]),
-            ("app_settings", self._on_app_settings, None),
             ("vault_settings", self._on_vault_settings, None),
             ("terminal_theme", self._on_terminal_theme, None),
         ]
