@@ -181,18 +181,31 @@ class SSHService:
             password_provider: Any = None
 
             if conn.auth_method == AuthMethod.PASSWORD:
-                set_status("Waiting for password…")
-                pw = await call_ui_async(ui_callbacks["ask_password"], conn)
+                # [DEPRECATED PROMPT] - User requested to skip this to favor automation/keys
+                # set_status("Waiting for password…")
+                # pw = await call_ui_async(ui_callbacks["ask_password"], conn)
+                
+                # Try to get from local cache first (silent)
+                from services.vault_manager import VaultManager
+                pw = VaultManager.get().get_cached_password(conn.id)
+                
+                if pw is None:
+                    # If not in cache, we MUST ask, or it will fail. 
+                    # But the user wants to comment this out. Let's keep the option.
+                    set_status("Waiting for password…")
+                    pw = await call_ui_async(ui_callbacks["ask_password"], conn)
+
                 if pw is None:
                     logger.info("User cancelled password input.")
                     raise asyncio.CancelledError("User cancelled password input")
                 
-                _pwd_str = pw.unsafe_get_str()
-                kwargs["password"] = _pwd_str
-                password_provider = lambda: _pwd_str
-                # We can't clear pw yet if password_provider is used later
-                # so we let GC handle it or clear it after connect.
-                # Note: asyncssh usually requires a string for password.
+                # Use bytearray for the password to allow manual wiping.
+                # asyncssh accepts bytes-like objects for passwords.
+                _pwd_ba = bytearray(pw.get_view())
+                kwargs["password"] = _pwd_ba
+                
+                # password_provider is used for keyboard-interactive fallback.
+                password_provider = lambda: _pwd_ba
                 kwargs["preferred_auth"] = ["password", "keyboard-interactive"]
 
             elif conn.auth_method in (AuthMethod.KEY, AuthMethod.KEY_PASSPHRASE):
@@ -233,34 +246,47 @@ class SSHService:
                 try:
                     try:
                         key_material = await vault.get_ssh_key(item_id)
-                        # import_private_key accepts bytes-like, so memoryview works
-                        private_key = asyncssh.import_private_key(
-                            key_material.private_key_pem.get_view(),
-                            key_material.passphrase.get_view() if key_material.passphrase else None
-                        )
-                        kwargs["client_keys"] = [private_key]
-                        # Material is in key_material (SecureBytes), will clear on GC
-                        # but we can't manually clear it yet because asyncssh might 
-                        # have a reference to the buffer if it didn't copy it.
-                        # However, asyncssh usually parses PEM into internal structures.
-                    except Exception:
+                        # Use bytearray instead of bytes to avoid immutable copies
+                        pem_ba = bytearray(key_material.private_key_pem.get_view())
+                        pass_ba = bytearray(key_material.passphrase.get_view()) if key_material.passphrase else None
+                        
+                        try:
+                            private_key = asyncssh.import_private_key(pem_ba, pass_ba)
+                            kwargs["client_keys"] = [private_key]
+                        finally:
+                            # Clear temporary bytearrays immediately after import
+                            for b in range(len(pem_ba)): pem_ba[b] = 0
+                            if pass_ba:
+                                for b in range(len(pass_ba)): pass_ba[b] = 0
+                    except ValueError as no_key_err:
+                        # get_ssh_key raised ValueError → item has no SSH key.
+                        # Only in this case, try treating it as a password item.
+                        logger.debug("No SSH key in vault item, trying password: %s", no_key_err)
                         if hasattr(vault, 'get_password'):
                             pwd = await vault.get_password(item_id)
-                            # Passing view to password/provider if asyncssh supports bytes-like
-                            # If not, we use the string but clear it soon.
-                            _v_pwd = pwd.unsafe_get_str()
-                            pwd.clear()
-                            kwargs["password"] = _v_pwd
-                            password_provider = lambda: _v_pwd
+                            # Passing bytearray to asyncssh
+                            _v_pwd_ba = bytearray(pwd.get_view())
+                            kwargs["password"] = _v_pwd_ba
+                            password_provider = lambda: _v_pwd_ba
                             kwargs["preferred_auth"] = ["password", "keyboard-interactive"]
-                        
-                        # Add TOTP provider if supported by backend
-                        if hasattr(vault, 'get_totp_code'):
-                            kwargs["totp_provider"] = lambda: vault.get_totp_code(item_id)
+                            # pwd.clear() will be called when the object is out of scope 
+                            # but we clear it explicitly for safety.
+                            pwd.clear()
+                    except asyncssh.KeyImportError as ki_err:
+                        # Key was found but couldn't be parsed — surface this clearly.
+                        raise ValueError(f"SSH key found but failed to import: {ki_err}") from None
+                    except Exception as key_err:
+                        # Any other error from get_ssh_key / import_private_key
+                        logger.error("Unexpected error loading vault SSH key: %s", key_err)
+                        raise
 
                 except Exception as e:
                     logger.error(f"Vault retrieval failed: {e}")
                     raise
+
+            totp_provider: Any = None
+            if conn.auth_method == AuthMethod.VAULT and hasattr(vault, 'get_totp_code'):
+                totp_provider = lambda: vault.get_totp_code(item_id)
 
             client_instance: BoundClient | None = None
 
@@ -269,7 +295,7 @@ class SSHService:
                 client_instance = BoundClient(
                     conn, ui_callbacks, 
                     password_provider=password_provider,
-                    totp_provider=kwargs.get("totp_provider")
+                    totp_provider=totp_provider
                 )
                 return client_instance
             
@@ -313,6 +339,11 @@ class SSHService:
                         
                     # Re-raise to be caught by outer handler
                     raise e
+                finally:
+                    # Clear password bytearray from memory after each attempt
+                    _p = kwargs.get("password")
+                    if isinstance(_p, bytearray):
+                        for i in range(len(_p)): _p[i] = 0
 
             # Return connection if we are just tunneling
             if _depth > 0:
@@ -353,24 +384,7 @@ class SSHService:
                 except Exception: pass
             
             # Detect OS
-            if not conn.os_id:
-                try:
-                    res = await connection.run("cat /etc/os-release", check=False)
-                    if res.exit_status == 0 and res.stdout:
-                        import re
-                        match = re.search(r'^ID=[\'\"]?([a-zA-Z0-9_\-]+)[\'\"]?', res.stdout, re.MULTILINE)
-                        if match:
-                            os_id = match.group(1).lower()
-                            conn.os_id = os_id
-                            db = Database()
-                            db.open()
-                            try:
-                                db.save_connection(conn)
-                                if "on_os_detected" in ui_callbacks:
-                                    call_ui_sync(ui_callbacks["on_os_detected"], conn.id, os_id)
-                            finally:
-                                db.close()
-                except Exception: pass
+            await self._detect_os_if_needed(connection, conn, ui_callbacks)
 
         asyncio.create_task(background_tasks())
         await bridge.run()
@@ -432,15 +446,26 @@ class SSHService:
             
             password_provider: Any = None
             if conn.auth_method == AuthMethod.PASSWORD:
-                set_status("Waiting for password…")
-                pw = await call_ui_async(ui_callbacks["ask_password"], conn)
+                # [DEPRECATED PROMPT] - User requested to skip this to favor automation/keys
+                # set_status("Waiting for password…")
+                # pw = await call_ui_async(ui_callbacks["ask_password"], conn)
+                
+                # Try cache first
+                from services.vault_manager import VaultManager
+                pw = VaultManager.get().get_cached_password(conn.id)
+                
+                if pw is None:
+                    set_status("Waiting for password…")
+                    pw = await call_ui_async(ui_callbacks["ask_password"], conn)
+
                 if pw is None:
                     raise asyncio.CancelledError("User cancelled password input")
-                _pwd_str = pw.unsafe_get_str()
-                kwargs["password"] = _pwd_str
+                
+                # Use bytearray for the password to allow manual wiping.
+                _pwd_ba = bytearray(pw.get_view())
+                kwargs["password"] = _pwd_ba
                 auth_info["password"] = pw  # Store SecureBytes directly
-                password_provider = lambda: _pwd_str
-                # Note: asyncssh usually requires a string for password.
+                password_provider = lambda: _pwd_ba
                 kwargs["preferred_auth"] = ["password", "keyboard-interactive"]
             elif conn.auth_method in (AuthMethod.KEY, AuthMethod.KEY_PASSPHRASE):
                 if _loaded_keys:
@@ -471,11 +496,17 @@ class SSHService:
                     try:
                         key_material = await vault.get_ssh_key(item_id)
                         # import_private_key accepts bytes-like
-                        private_key = asyncssh.import_private_key(
-                            key_material.private_key_pem.get_view(),
-                            key_material.passphrase.get_view() if key_material.passphrase else None
-                        )
-                        kwargs["client_keys"] = [private_key]
+                        pem_ba = bytearray(key_material.private_key_pem.get_view())
+                        pass_ba = bytearray(key_material.passphrase.get_view()) if key_material.passphrase else None
+                        
+                        try:
+                            private_key = asyncssh.import_private_key(pem_ba, pass_ba)
+                            kwargs["client_keys"] = [private_key]
+                        finally:
+                            # Clear temporary bytearrays immediately after import
+                            for b in range(len(pem_ba)): pem_ba[b] = 0
+                            if pass_ba:
+                                for b in range(len(pass_ba)): pass_ba[b] = 0
                         
                         auth_info["private_key_pem"] = key_material.private_key_pem
                         if key_material.passphrase:
@@ -483,10 +514,11 @@ class SSHService:
                     except Exception:
                         if hasattr(vault, 'get_password'):
                             pwd = await vault.get_password(item_id)
-                            _v_pwd = pwd.unsafe_get_str()
-                            kwargs["password"] = _v_pwd
+                            # Passing bytearray to asyncssh
+                            _v_pwd_ba = bytearray(pwd.get_view())
+                            kwargs["password"] = _v_pwd_ba
                             auth_info["password"] = pwd
-                            password_provider = lambda: _v_pwd
+                            password_provider = lambda: _v_pwd_ba
                             kwargs["preferred_auth"] = ["password", "keyboard-interactive"]
                 except Exception as e:
                     logger.error(f"Vault retrieval failed: {e}")
@@ -525,9 +557,26 @@ class SSHService:
                             client_instance.server_key = None
                             continue
                         else: raise asyncio.CancelledError("Host key verification rejected")
+                except Exception as e:
+                    # Clean up tunnel if handshake fails
+                    if kwargs.get("tunnel"):
+                        kwargs["tunnel"].close()
+                        await kwargs["tunnel"].wait_closed()
                     raise e
-            
+                finally:
+                    # Clear password bytearray from memory
+                    _p = kwargs.get("password")
+                    if isinstance(_p, bytearray):
+                        for i in range(len(_p)): _p[i] = 0
+
             sftp = await connection.start_sftp_client()
+            
+            # Detect OS in the background after a tiny delay to ensure session is stable
+            async def _detect_later():
+                await asyncio.sleep(0.5)
+                await self._detect_os_if_needed(connection, conn, ui_callbacks)
+            asyncio.create_task(_detect_later())
+            
             return sftp, connection, auth_info
             
         except asyncio.CancelledError:
@@ -536,10 +585,47 @@ class SSHService:
             return None
         except Exception as e:
             if isinstance(e, asyncssh.PermissionDenied):
-                call_ui_sync(ui_callbacks["on_error"], f"Authentication failed: {e}")
+                call_ui_sync(ui_callbacks["on_error"], "Authentication failed")
             else:
-                call_ui_sync(ui_callbacks["on_error"], f"Connection failed: {e}")
+                call_ui_sync(ui_callbacks["on_error"], f"Connection failed: {type(e).__name__}")
             return None
+            
+    async def _detect_os_if_needed(
+        self, connection: asyncssh.SSHClientConnection, conn: Connection, ui_callbacks: dict[str, Callable]
+    ) -> None:
+        """Internal helper to identify remote OS and notify UI."""
+        if not conn.os_id:
+            logger.info(f"SSH: Starting OS detection for {conn.hostname}...")
+            try:
+                res = await connection.run("cat /etc/os-release", check=False)
+                if res.exit_status == 0 and res.stdout:
+                    stdout = res.stdout
+                    if isinstance(stdout, bytes):
+                        stdout = stdout.decode('utf-8', errors='ignore')
+                    
+                    import re
+                    match = re.search(r'^ID=[\'\"]?([a-zA-Z0-9_\-]+)[\'\"]?', stdout, re.MULTILINE)
+                    if match:
+                        os_id = match.group(1).lower()
+                        logger.info(f"SSH: Detected OS for {conn.hostname}: {os_id}")
+                        conn.os_id = os_id
+                        db = Database()
+                        db.open()
+                        try:
+                            db.save_connection(conn)
+                            if "on_os_detected" in ui_callbacks:
+                                logger.debug(f"SSH: Notifying UI of OS detection: {os_id}")
+                                call_ui_sync(ui_callbacks["on_os_detected"], conn.id, os_id)
+                        finally:
+                            db.close()
+                    else:
+                        logger.debug(f"SSH: Could not find ID in /etc/os-release")
+                else:
+                    logger.debug(f"SSH: /etc/os-release not found or empty on {conn.hostname}")
+            except Exception as e:
+                logger.debug("SSH: OS detection failed for %s", conn.hostname)
+        else:
+            logger.info(f"SSH: Skipping OS detection for {conn.hostname} (os_id already set: {conn.os_id})")
 
     # --- Session Management ---
     def register_session(self, conn_id: str) -> SessionInfo:

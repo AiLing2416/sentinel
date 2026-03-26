@@ -11,7 +11,12 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
+import gettext
+import logging
 from gi.repository import Adw, Gtk, Gdk, Gio  # noqa: E402
+
+_ = gettext.gettext
+logger = logging.getLogger(__name__)
 
 from models.connection import Connection
 
@@ -59,12 +64,12 @@ class ConnectionListSidebar:
         empty_icon.set_pixel_size(48)
         empty_icon.set_opacity(0.3)
         self._empty_box.append(empty_icon)
-
-        empty_title = Gtk.Label(label="No Connections")
+ 
+        empty_title = Gtk.Label(label=_("No Connections"))
         empty_title.add_css_class("empty-sidebar-title")
         self._empty_box.append(empty_title)
 
-        empty_sub = Gtk.Label(label="Press + to add your first\nSSH connection")
+        empty_sub = Gtk.Label(label=_("Press + to add your first\nSSH connection"))
         empty_sub.add_css_class("empty-sidebar-subtitle")
         empty_sub.set_justify(Gtk.Justification.CENTER)
         self._empty_box.append(empty_sub)
@@ -131,34 +136,59 @@ class ConnectionListSidebar:
         """Update only the OS icon widget for a given connection row in place."""
         row = self._row_map.get(conn_id)
         if not row:
+            logger.debug(f"Sidebar: Failed to refresh icon — connection {conn_id} not in row map")
             return
+            
+        logger.info(f"Sidebar: Refreshing OS icon for {conn_id} -> {os_id}")
+            
+        # Update the stored connection object so future re-renders are correct
+        conn = getattr(row, "_connection", None)
+        if conn:
+            conn.os_id = os_id
+
         # The row child is the box, first child is the os_icon_box
         box = row.get_child()
-        if not box:
+        if not (box and isinstance(box, Gtk.Box)):
+            logger.warning(f"Sidebar: Row child for {conn_id} is not a box")
             return
+            
         os_icon_box = box.get_first_child()
-        if not os_icon_box:
+        if not (os_icon_box and isinstance(os_icon_box, Gtk.Box)):
+            logger.warning(f"Sidebar: Could not find os_icon_box for {conn_id}")
             return
-        # Clear existing icon
-        child = os_icon_box.get_first_child()
-        if child:
+
+        # Clear existing icon(s)
+        while child := os_icon_box.get_first_child():
             os_icon_box.remove(child)
-        # Try to load the new icon
+            
+        # Create and append the new icon
+        os_icon = self._get_os_icon_widget(os_id)
+        os_icon_box.append(os_icon)
+        logger.debug(f"Sidebar: OS icon updated for {conn_id}")
+
+    def _get_os_icon_widget(self, os_id: str | None) -> Gtk.Widget:
+        """Helper to create an OS icon widget based on ID."""
+        if not os_id:
+            return Gtk.Image.new_from_icon_name("network-server-symbolic")
+
         from pathlib import Path
         safe_os_id = "".join(c for c in os_id if c.isalnum() or c in "-_").lower()
-        # Prefer -symbolic.svg for theme coloring
-        icon_path = Path(__file__).parent.parent.parent / "data" / "icons" / "os" / f"{safe_os_id}-symbolic.svg"
-        if not icon_path.exists():
-            icon_path = Path(__file__).parent.parent.parent / "data" / "icons" / "os" / f"{safe_os_id}.svg"
-            
-        if icon_path.exists():
-            icon_file = Gio.File.new_for_path(str(icon_path))
-            gicon = Gio.FileIcon.new(icon_file)
-            os_icon = Gtk.Image.new_from_gicon(gicon)
-            os_icon.set_pixel_size(16)
-        else:
-            os_icon = Gtk.Image.new_from_icon_name("network-server-symbolic")
-        os_icon_box.append(os_icon)
+        
+        # Try finding the icon in our data folder
+        icon_dir = Path(__file__).parent.parent.parent / "data" / "icons" / "os"
+        
+        # Check symbolic first, then regular
+        for ext in ["-symbolic.svg", ".svg"]:
+            path = icon_dir / f"{safe_os_id}{ext}"
+            if path.exists():
+                icon_file = Gio.File.new_for_path(str(path))
+                gicon = Gio.FileIcon.new(icon_file)
+                img = Gtk.Image.new_from_gicon(gicon)
+                img.set_pixel_size(16)
+                return img
+
+        # Fallback to default
+        return Gtk.Image.new_from_icon_name("network-server-symbolic")
 
     def _create_row(self, conn: Connection) -> Gtk.ListBoxRow:
         """Create a styled row for a connection."""
@@ -172,27 +202,7 @@ class ConnectionListSidebar:
         # System/OS Icon
         os_icon_box = Gtk.Box(halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER)
         os_icon_box.add_css_class("os-icon-box")
-        
-        os_icon_set = False
-        if conn.os_id:
-            from pathlib import Path
-            safe_os_id = "".join(c for c in conn.os_id if c.isalnum() or c in "-_").lower()
-            icon_path = Path(__file__).parent.parent.parent / "data" / "icons" / "os" / f"{safe_os_id}-symbolic.svg"
-            if not icon_path.exists():
-                icon_path = Path(__file__).parent.parent.parent / "data" / "icons" / "os" / f"{safe_os_id}.svg"
-                
-            if icon_path.exists():
-                icon_file = Gio.File.new_for_path(str(icon_path))
-                gicon = Gio.FileIcon.new(icon_file)
-                os_icon = Gtk.Image.new_from_gicon(gicon)
-                os_icon.set_pixel_size(16)
-                os_icon_box.append(os_icon)
-                os_icon_set = True
-                
-        if not os_icon_set:
-            os_icon = Gtk.Image.new_from_icon_name("network-server-symbolic")
-            os_icon_box.append(os_icon)
-            
+        os_icon_box.append(self._get_os_icon_widget(conn.os_id))
         box.append(os_icon_box)
 
         # Text (Name, Host, and Auth Badge)
@@ -236,11 +246,11 @@ class ConnectionListSidebar:
         # Context menu for right click
         popover = Gtk.PopoverMenu()
         menu_model = Gio.Menu()
-        menu_model.append("Shell", "row.connect_shell")
-        menu_model.append("SFTP", "row.connect_sftp")
-        menu_model.append("Copy Host", "row.copy_host")
-        menu_model.append("Clear Host Key", "row.clear_key")
-        menu_model.append("Edit", "row.edit")
+        menu_model.append(_("Shell"), "row.connect_shell")
+        menu_model.append(_("SFTP"), "row.connect_sftp")
+        menu_model.append(_("Copy Host"), "row.copy_host")
+        menu_model.append(_("Clear Host Key"), "row.clear_key")
+        menu_model.append(_("Edit"), "row.edit")
         popover.set_menu_model(menu_model)
         popover.set_parent(row)
         popover.set_has_arrow(False)

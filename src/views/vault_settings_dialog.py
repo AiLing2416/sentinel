@@ -12,9 +12,13 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
+import gettext
 from gi.repository import Adw, Gtk, GLib
 
+_ = gettext.gettext
+
 from services.vault_service import VaultService
+from services.vault_manager import VaultManager
 from utils.secure import SecureBytes
 from db.database import Database
 import logging
@@ -32,7 +36,7 @@ class VaultManagerWindow(Adw.Window):
     def __init__(self, app: Adw.Application, on_close_callback: Callable[[], None] | None = None) -> None:
         super().__init__(
             application=app,
-            title="Vault Manager",
+            title=_("Vault Manager"),
             default_width=480,
             default_height=560,
             resizable=False,
@@ -72,6 +76,13 @@ class VaultManagerWindow(Adw.Window):
         self._loading_page = self._build_loading_page()
         self._stack.add_named(self._loading_page, "loading")
 
+        # ── Local Vault pages (new) ──
+        self._vault_setup_page = self._build_vault_setup_page()
+        self._stack.add_named(self._vault_setup_page, "vault_setup")
+
+        self._vault_unlock_page = self._build_vault_unlock_page()
+        self._stack.add_named(self._vault_unlock_page, "vault_unlock")
+
         self._login_page = self._build_login_page()
         self._stack.add_named(self._login_page, "login")
 
@@ -98,10 +109,157 @@ class VaultManagerWindow(Adw.Window):
         spinner = Gtk.Spinner(spinning=True)
         spinner.set_size_request(32, 32)
         box.append(spinner)
-        label = Gtk.Label(label="Checking Vault Status…")
+        label = Gtk.Label(label=_("Checking Vault Status…"))
         label.add_css_class("dim-label")
         box.append(label)
         return box
+
+    def _build_vault_setup_page(self) -> Gtk.Widget:
+        """First-time setup: user creates a master password for the local vault."""
+        scroll = Gtk.ScrolledWindow(vexpand=True)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
+        box.set_margin_start(24); box.set_margin_end(24)
+        box.set_margin_top(24); box.set_margin_bottom(24)
+
+        header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        icon = Gtk.Image.new_from_icon_name("preferences-system-privacy-symbolic")
+        icon.set_pixel_size(48); icon.add_css_class("accent"); icon.set_margin_bottom(8)
+        header_box.append(icon)
+
+        title = Gtk.Label(label=_("Set Up Local Vault"))
+        title.add_css_class("title-2")
+        header_box.append(title)
+
+        desc = Gtk.Label(
+            label=_(
+                "Sentinel stores credentials in an encrypted local database. "
+                "Please pick a strong master password. You will only need to enter it once — "
+                "after that, it is stored securely in the system keyring."
+            ),
+            xalign=0.5, wrap=True, justify=Gtk.Justification.CENTER,
+        )
+        desc.add_css_class("dim-label")
+        header_box.append(desc)
+        box.append(header_box)
+
+        list_box = Gtk.ListBox()
+        list_box.add_css_class("boxed-list")
+        list_box.set_selection_mode(Gtk.SelectionMode.NONE)
+
+        self._setup_pwd_entry = Adw.PasswordEntryRow(title=_("Master Password"))
+        list_box.append(self._setup_pwd_entry)
+
+        self._setup_pwd_confirm = Adw.PasswordEntryRow(title=_("Confirm Password"))
+        list_box.append(self._setup_pwd_confirm)
+        box.append(list_box)
+
+        self._setup_btn = Gtk.Button(label=_("Create Vault"))
+        self._setup_btn.add_css_class("suggested-action")
+        self._setup_btn.add_css_class("pill")
+        self._setup_btn.set_hexpand(True)
+        self._setup_btn.connect("clicked", self._on_vault_setup_clicked)
+        self._setup_pwd_confirm.connect("entry-activated", self._on_vault_setup_clicked)
+        box.append(self._setup_btn)
+
+        scroll.set_child(box)
+        return scroll
+
+    def _build_vault_unlock_page(self) -> Gtk.Widget:
+        """Page for entering the master password when auto-unlock from keyring fails."""
+        scroll = Gtk.ScrolledWindow(vexpand=True)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
+        box.set_margin_start(24); box.set_margin_end(24)
+        box.set_margin_top(24); box.set_margin_bottom(24)
+
+        header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        icon = Gtk.Image.new_from_icon_name("channel-secure-symbolic")
+        icon.set_pixel_size(48); icon.add_css_class("warning"); icon.set_margin_bottom(8)
+        header_box.append(icon)
+
+        title = Gtk.Label(label=_("Unlock Local Vault"))
+        title.add_css_class("title-2")
+        header_box.append(title)
+
+        desc = Gtk.Label(
+            label=_("Enter your Sentinel vault master password to continue."),
+            xalign=0.5, wrap=True, justify=Gtk.Justification.CENTER,
+        )
+        desc.add_css_class("dim-label")
+        header_box.append(desc)
+        box.append(header_box)
+
+        list_box = Gtk.ListBox()
+        list_box.add_css_class("boxed-list")
+        list_box.set_selection_mode(Gtk.SelectionMode.NONE)
+        self._vaultunlock_entry = Adw.PasswordEntryRow(title=_("Master Password"))
+        list_box.append(self._vaultunlock_entry)
+        box.append(list_box)
+
+        btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12, halign=Gtk.Align.FILL)
+        btn_box.set_hexpand(True)
+
+        self._vaultunlock_btn = Gtk.Button(label=_("Unlock"))
+        self._vaultunlock_btn.add_css_class("suggested-action")
+        self._vaultunlock_btn.add_css_class("pill")
+        self._vaultunlock_btn.set_hexpand(True)
+        self._vaultunlock_btn.connect("clicked", self._on_local_vault_unlock_clicked)
+        self._vaultunlock_entry.connect("entry-activated", self._on_local_vault_unlock_clicked)
+        btn_box.append(self._vaultunlock_btn)
+        box.append(btn_box)
+
+        scroll.set_child(box)
+        return scroll
+
+    # ── Local Vault Actions ───────────────────────────────────
+
+    def _on_vault_setup_clicked(self, _btn) -> None:
+        pwd = self._setup_pwd_entry.get_text()
+        confirm = self._setup_pwd_confirm.get_text()
+        if not pwd:
+            self._show_toast(_("Please enter a master password."))
+            return
+        if pwd != confirm:
+            self._show_toast(_("Passwords do not match."))
+            return
+        if len(pwd) < 8:
+            self._show_toast(_("Password must be at least 8 characters."))
+            return
+
+        pwd_sb = SecureBytes(pwd)
+        self._setup_pwd_entry.set_text("")
+        self._setup_pwd_confirm.set_text("")
+        self._setup_btn.set_sensitive(False)
+        self._stack.set_visible_child_name("loading")
+
+        try:
+            VaultManager.get().initialize(pwd_sb)
+            pwd_sb.clear()
+            self._show_toast(_("Local vault created successfully."))
+            self._check_status()
+        except Exception as e:
+            pwd_sb.clear()
+            self._setup_btn.set_sensitive(True)
+            self._stack.set_visible_child_name("vault_setup")
+            self._show_toast(_("Failed to create vault: {e}").format(e=e))
+
+    def _on_local_vault_unlock_clicked(self, _btn) -> None:
+        pwd = self._vaultunlock_entry.get_text()
+        if not pwd:
+            return
+        pwd_sb = SecureBytes(pwd)
+        self._vaultunlock_entry.set_text("")
+        self._vaultunlock_btn.set_sensitive(False)
+        self._stack.set_visible_child_name("loading")
+
+        ok = VaultManager.get().unlock(pwd_sb)
+        pwd_sb.clear()
+
+        if ok:
+            self._check_status()
+        else:
+            self._vaultunlock_btn.set_sensitive(True)
+            self._stack.set_visible_child_name("vault_unlock")
+            self._show_toast(_("Wrong master password."))
 
     def _build_login_page(self) -> Gtk.Widget:
         scroll = Gtk.ScrolledWindow(vexpand=True)
@@ -119,12 +277,12 @@ class VaultManagerWindow(Adw.Window):
         icon.set_margin_bottom(8)
         header_box.append(icon)
 
-        title = Gtk.Label(label="Log in to Bitwarden")
+        title = Gtk.Label(label=_("Log in to Bitwarden"))
         title.add_css_class("title-2")
         header_box.append(title)
-
+ 
         desc = Gtk.Label(
-            label="Enter your credentials to access your vault.",
+            label=_("Enter your credentials to access your vault."),
             xalign=0.5,
             wrap=True,
             justify=Gtk.Justification.CENTER,
@@ -140,9 +298,9 @@ class VaultManagerWindow(Adw.Window):
 
         # Server URL (collapsed by default, expand on click)
         self._server_entry = Gtk.Entry()
-        self._server_entry.set_placeholder_text("https://bitwarden.com (leave blank for default)")
+        self._server_entry.set_placeholder_text(_("https://bitwarden.com (leave blank for default)"))
         self._server_entry.set_hexpand(True)
-        srv_row = Adw.ExpanderRow(title="Custom Server", subtitle="For self-hosted Bitwarden / VaultWarden")
+        srv_row = Adw.ExpanderRow(title=_("Custom Server"), subtitle=_("For self-hosted Bitwarden / VaultWarden"))
         self._server_entry.set_margin_top(6)
         self._server_entry.set_margin_bottom(6)
         self._server_entry.set_margin_start(12)
@@ -151,17 +309,23 @@ class VaultManagerWindow(Adw.Window):
         list_box.append(srv_row)
 
         # Email
-        self._email_entry = Adw.EntryRow(title="Email Address")
+        self._email_entry = Adw.EntryRow(title=_("Email Address"))
         list_box.append(self._email_entry)
-
+ 
         # Password
-        self._password_row = Adw.PasswordEntryRow(title="Master Password")
+        self._password_row = Adw.PasswordEntryRow(title=_("Master Password"))
         list_box.append(self._password_row)
 
+        self._login_remember_check = Gtk.CheckButton(label=_("Save master password securely in system keyring"))
+        self._login_remember_check.set_active(True)
+        self._login_remember_check.set_margin_top(8)
+        self._login_remember_check.set_margin_bottom(8)
+        
         box.append(list_box)
+        box.append(self._login_remember_check)
 
         # Login button
-        self._login_btn = Gtk.Button(label="Log In")
+        self._login_btn = Gtk.Button(label=_("Log In"))
         self._login_btn.add_css_class("suggested-action")
         self._login_btn.add_css_class("pill")
         self._login_btn.set_halign(Gtk.Align.FILL)
@@ -189,12 +353,12 @@ class VaultManagerWindow(Adw.Window):
         icon.set_margin_bottom(8)
         header_box.append(icon)
 
-        title = Gtk.Label(label="Two-Step Verification")
+        title = Gtk.Label(label=_("Two-Step Verification"))
         title.add_css_class("title-2")
         header_box.append(title)
-
+ 
         self._2fa_desc_label = Gtk.Label(
-            label="Your account requires two-step verification.",
+            label=_("Your account requires two-step verification."),
             xalign=0.5,
             wrap=True,
             justify=Gtk.Justification.CENTER,
@@ -210,22 +374,22 @@ class VaultManagerWindow(Adw.Window):
 
         # Method names and their corresponding bw --method IDs
         self._2fa_method_labels = [
-            "Authenticator App (TOTP)",
-            "Email",
-            "YubiKey OTP",
-            "Duo",
-            "FIDO2 / WebAuthn (hardware key)",
+            _("Authenticator App (TOTP)"),
+            _("Email"),
+            _("YubiKey OTP"),
+            _("Duo"),
+            _("FIDO2 / WebAuthn (hardware key)"),
         ]
         self._2fa_method_ids = [0, 1, 3, 2, 7]
         self._2fa_method_model = Gtk.StringList.new(self._2fa_method_labels)
         self._2fa_method_row = Adw.ComboRow(
-            title="Verification Method",
+            title=_("Verification Method"),
             model=self._2fa_method_model,
         )
         self._2fa_method_row.connect("notify::selected", self._on_2fa_method_changed)
         list_box.append(self._2fa_method_row)
 
-        self._2fa_code_entry = Adw.EntryRow(title="Verification Code")
+        self._2fa_code_entry = Adw.EntryRow(title=_("Verification Code"))
         self._2fa_code_entry.set_input_purpose(Gtk.InputPurpose.DIGITS)
         list_box.append(self._2fa_code_entry)
         box.append(list_box)
@@ -241,13 +405,13 @@ class VaultManagerWindow(Adw.Window):
         btn_box.set_margin_top(4)
         btn_box.set_hexpand(True)
 
-        back_btn = Gtk.Button(label="Back")
+        back_btn = Gtk.Button(label=_("Back"))
         back_btn.add_css_class("pill")
         back_btn.set_hexpand(True)
         back_btn.connect("clicked", lambda _: self._stack.set_visible_child_name("login"))
         btn_box.append(back_btn)
 
-        self._2fa_submit_btn = Gtk.Button(label="Verify & Log In")
+        self._2fa_submit_btn = Gtk.Button(label=_("Verify & Log In"))
         self._2fa_submit_btn.add_css_class("suggested-action")
         self._2fa_submit_btn.add_css_class("pill")
         self._2fa_submit_btn.set_hexpand(True)
@@ -275,12 +439,12 @@ class VaultManagerWindow(Adw.Window):
         icon.set_margin_bottom(8)
         header_box.append(icon)
 
-        title = Gtk.Label(label="Vault Locked")
+        title = Gtk.Label(label=_("Vault Locked"))
         title.add_css_class("title-2")
         header_box.append(title)
-
+ 
         desc = Gtk.Label(
-            label="Enter your master password to unlock.",
+            label=_("Enter your master password to unlock."),
             xalign=0.5,
             wrap=True,
             justify=Gtk.Justification.CENTER,
@@ -294,21 +458,28 @@ class VaultManagerWindow(Adw.Window):
         list_box.add_css_class("boxed-list")
         list_box.set_selection_mode(Gtk.SelectionMode.NONE)
 
-        self._unlock_entry = Adw.PasswordEntryRow(title="Master Password")
+        self._unlock_entry = Adw.PasswordEntryRow(title=_("Master Password"))
         list_box.append(self._unlock_entry)
+
+        self._unlock_remember_check = Gtk.CheckButton(label=_("Save master password securely in system keyring"))
+        self._unlock_remember_check.set_active(True)
+        self._unlock_remember_check.set_margin_top(8)
+        self._unlock_remember_check.set_margin_bottom(8)
+        
         box.append(list_box)
+        box.append(self._unlock_remember_check)
 
         btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12, halign=Gtk.Align.FILL)
         btn_box.set_hexpand(True)
 
-        logout_btn = Gtk.Button(label="Log Out")
+        logout_btn = Gtk.Button(label=_("Log Out"))
         logout_btn.add_css_class("destructive-action")
         logout_btn.add_css_class("pill")
         logout_btn.set_hexpand(True)
         logout_btn.connect("clicked", self._on_logout_clicked)
         btn_box.append(logout_btn)
 
-        self._unlock_btn = Gtk.Button(label="Unlock")
+        self._unlock_btn = Gtk.Button(label=_("Unlock"))
         self._unlock_btn.add_css_class("suggested-action")
         self._unlock_btn.add_css_class("pill")
         self._unlock_btn.set_hexpand(True)
@@ -329,22 +500,22 @@ class VaultManagerWindow(Adw.Window):
         box.set_margin_bottom(24)
 
         # Auth group
-        auth_group = Adw.PreferencesGroup(title="Account")
+        auth_group = Adw.PreferencesGroup(title=_("Account"))
 
-        self._server_info_row = Adw.ActionRow(title="Server", subtitle="Loading…")
+        self._server_info_row = Adw.ActionRow(title=_("Server"), subtitle=_("Loading…"))
         auth_group.add(self._server_info_row)
-
-        self._account_row = Adw.ActionRow(title="Status", subtitle="Unlocked ✓")
+ 
+        self._account_row = Adw.ActionRow(title=_("Status"), subtitle=_("Unlocked ✓"))
 
         btn_box_auth = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         btn_box_auth.set_valign(Gtk.Align.CENTER)
 
-        lock_btn = Gtk.Button(label="Lock")
+        lock_btn = Gtk.Button(label=_("Lock"))
         lock_btn.add_css_class("flat")
         lock_btn.connect("clicked", self._on_lock_clicked)
         btn_box_auth.append(lock_btn)
 
-        logout_btn = Gtk.Button(label="Log Out")
+        logout_btn = Gtk.Button(label=_("Log Out"))
         logout_btn.add_css_class("flat")
         logout_btn.add_css_class("destructive-action")
         logout_btn.connect("clicked", self._on_logout_clicked)
@@ -352,23 +523,36 @@ class VaultManagerWindow(Adw.Window):
 
         self._account_row.add_suffix(btn_box_auth)
         auth_group.add(self._account_row)
+
+        self._forget_pwd_row = Adw.ActionRow(
+            title=_("Saved Password"), 
+            subtitle=_("Master password is saved in system keyring for auto-unlock")
+        )
+        forget_btn = Gtk.Button(label=_("Forget"))
+        forget_btn.set_valign(Gtk.Align.CENTER)
+        forget_btn.add_css_class("flat")
+        forget_btn.add_css_class("destructive-action")
+        forget_btn.connect("clicked", self._on_forget_password_clicked)
+        self._forget_pwd_row.add_suffix(forget_btn)
+        auth_group.add(self._forget_pwd_row)
+
         box.append(auth_group)
 
         # Folder group
         folder_group = Adw.PreferencesGroup(
-            title="Default Folder for Key Selection",
-            description="Only items inside this folder will appear when picking a vault SSH key in connection settings. Leave as 'All Items' to search everywhere.",
+            title=_("Default Folder for Key Selection"),
+            description=_("Only items inside this folder will appear when picking a vault SSH key in connection settings. Leave as 'All Items' to search everywhere."),
         )
 
         self._folder_items = Gtk.StringList.new()
-        self._folder_combo = Adw.ComboRow(title="Folder", model=self._folder_items)
+        self._folder_combo = Adw.ComboRow(title=_("Folder"), model=self._folder_items)
         self._folder_combo_map: list[str | None] = []
         self._folder_combo.connect("notify::selected", self._on_folder_changed)
         folder_group.add(self._folder_combo)
 
         # Sync button
-        sync_row = Adw.ActionRow(title="Sync Vault", subtitle="Pull the latest items from the server")
-        sync_btn = Gtk.Button(label="Sync Now")
+        sync_row = Adw.ActionRow(title=_("Sync Vault"), subtitle=_("Pull the latest items from the server"))
+        sync_btn = Gtk.Button(label=_("Sync Now"))
         sync_btn.set_valign(Gtk.Align.CENTER)
         sync_btn.add_css_class("flat")
         sync_btn.connect("clicked", self._on_sync_clicked)
@@ -396,12 +580,21 @@ class VaultManagerWindow(Adw.Window):
     def _check_status(self) -> None:
         if not self._vault:
             self._stack.set_visible_child_name("login")
-            self._show_toast("Bitwarden CLI ('bw') not found. Please install it.")
+            self._show_toast(_("Bitwarden CLI ('bw') not found. Please install it."))
             return
 
         self._stack.set_visible_child_name("loading")
 
+        # ── Ensure the local SecureVault is unlocked ──
+        vm = VaultManager.get()
+        if not vm.is_unlocked:
+            vm.startup()  # Auto-initializes on first run; silently no-ops if keyring unavailable
+
+        # ── Check Bitwarden CLI status ──
         async def _do_check():
+            # Trigger backend's is_unlocked() which now includes auto-unlock-from-keyring logic
+            await self._vault.is_unlocked()
+            
             state = "unauthenticated"
             server = ""
             try:
@@ -414,6 +607,11 @@ class VaultManagerWindow(Adw.Window):
                 pass
 
             def _update():
+                # Update Forget button visibility
+                from services.vault_manager import VaultManager
+                has_saved = VaultManager.get().get_bitwarden_password() is not None
+                self._forget_pwd_row.set_visible(has_saved)
+
                 if state == "unauthenticated":
                     self._server_entry.set_text(server or "")
                     self._stack.set_visible_child_name("login")
@@ -422,8 +620,8 @@ class VaultManagerWindow(Adw.Window):
                     self._stack.set_visible_child_name("unlock")
                     self._unlock_entry.grab_focus()
                 elif state == "unlocked":
-                    self._server_info_row.set_subtitle(server or "Official Cloud Server")
-                    self._account_row.set_subtitle("Unlocked ✓")
+                    self._server_info_row.set_subtitle(server or _("Official Cloud Server"))
+                    self._account_row.set_subtitle(_("Unlocked ✓"))
                     self._stack.set_visible_child_name("settings")
                     self._load_folders()
                 else:
@@ -447,7 +645,7 @@ class VaultManagerWindow(Adw.Window):
                 logger.debug(f"_fetch: Returned {len(folders)} folders.")
             except Exception as e:
                 logger.debug(f"_fetch: ERROR: {e}")
-                GLib.idle_add(lambda: self._show_toast(f"Failed to load folders: {e}") and False)
+                GLib.idle_add(lambda: self._show_toast(_("Failed to load folders: {e}").format(e=e)) and False)
                 return
 
             def _update():
@@ -459,7 +657,7 @@ class VaultManagerWindow(Adw.Window):
                 logger.debug("_update: UI reconstruction starting...")
                 self._ignore_folder_changes = True
                 try:
-                    self._folder_items.splice(0, self._folder_items.get_n_items(), ["[All Items]"])
+                    self._folder_items.splice(0, self._folder_items.get_n_items(), [_("[All Items]")])
                     self._folder_combo_map = [None]
 
                     for f in folders:
@@ -511,11 +709,11 @@ class VaultManagerWindow(Adw.Window):
 
     # Maps keywords in bw error output → (display name, method index in _2fa_method_ids)
     _2FA_KEYWORD_MAP = [
-        (["authenticator", "totp", "time-based"], "Authenticator App (TOTP)", 0),
-        (["email"],                               "Email Verification",       1),
-        (["yubikey", "yubi"],                     "YubiKey OTP",              2),
-        (["duo"],                                 "Duo",                      3),
-        (["fido", "webauthn", "hardware"],        "FIDO2 / WebAuthn",         4),
+        (["authenticator", "totp", "time-based"], _("Authenticator App (TOTP)"), 0),
+        (["email"],                               _("Email Verification"),       1),
+        (["yubikey", "yubi"],                     _("YubiKey OTP"),              2),
+        (["duo"],                                 _("Duo"),                      3),
+        (["fido", "webauthn", "hardware"],        _("FIDO2 / WebAuthn"),         4),
     ]
 
     def _detect_2fa_method(self, error_msg: str) -> int:
@@ -542,22 +740,22 @@ class VaultManagerWindow(Adw.Window):
         """Update descriptive hint label and entry placeholder for the selected 2FA method."""
         hints = [
             # TOTP
-            "Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) and enter the 6-digit code.",
+            _("Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) and enter the 6-digit code."),
             # Email
-            "Check your email inbox for a verification code sent by Bitwarden.",
+            _("Check your email inbox for a verification code sent by Bitwarden."),
             # YubiKey
-            "Insert your YubiKey and tap it to generate an OTP.",
+            _("Insert your YubiKey and tap it to generate an OTP."),
             # Duo
-            "Approve the Duo push notification on your device, or enter the Duo passcode.",
+            _("Approve the Duo push notification on your device, or enter the Duo passcode."),
             # FIDO2
-            "Touch your hardware security key when it lights up.",
+            _("Touch your hardware security key when it lights up."),
         ]
         placeholders = [
-            "6-digit TOTP code",
-            "Email verification code",
-            "YubiKey OTP",
-            "Duo passcode (or leave blank for push)",
-            "(Not supported in CLI mode — use another method)",
+            _("6-digit TOTP code"),
+            _("Email verification code"),
+            _("YubiKey OTP"),
+            _("Duo passcode (or leave blank for push)"),
+            _("(Not supported in CLI mode — use another method)"),
         ]
         hint = hints[idx] if idx < len(hints) else ""
         placeholder = placeholders[idx] if idx < len(placeholders) else ""
@@ -570,8 +768,8 @@ class VaultManagerWindow(Adw.Window):
         self._2fa_submit_btn.set_sensitive(not fido_mode)
         if fido_mode:
             self._2fa_hint_label.set_label(
-                "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
-                "Please use a different 2FA method (e.g. TOTP or Email)."
+                _("FIDO2 / WebAuthn is not supported by the Bitwarden CLI. ") +
+                _("Please use a different 2FA method (e.g. TOTP or Email).")
             )
 
     # ── Login Flow ───────────────────────────────────────────
@@ -582,7 +780,7 @@ class VaultManagerWindow(Adw.Window):
         server = self._server_entry.get_text().strip()
 
         if not email or not pwd:
-            self._show_toast("Please provide email and master password.")
+            self._show_toast(_("Please provide email and master password."))
             return
             
         self._login_email = email
@@ -610,7 +808,8 @@ class VaultManagerWindow(Adw.Window):
                         pass
 
                 # Use backend.login which handles stdin securely
-                success = await self._vault.login(self._login_email, self._login_pwd)
+                remember = self._login_remember_check.get_active()
+                success = await self._vault.login(self._login_email, self._login_pwd, remember=remember)
 
                 if success:
                     if self._login_pwd:
@@ -634,7 +833,7 @@ class VaultManagerWindow(Adw.Window):
                         self._switch_to_2fa(err)
                     else:
                         self._stack.set_visible_child_name("login")
-                        self._show_toast(f"Login failed: {err}")
+                        self._show_toast(_("Login failed: {err}").format(err=err))
                     return False
 
                 GLib.idle_add(_fail)
@@ -661,7 +860,7 @@ class VaultManagerWindow(Adw.Window):
         # Duo push (method_id=2): code can be blank (push notification)
         # All other methods need a code
         if not code and method_id != 2:
-            self._show_toast("Please enter your verification code.")
+            self._show_toast(_("Please enter your verification code."))
             return
 
         self._2fa_submit_btn.set_sensitive(False)
@@ -680,9 +879,10 @@ class VaultManagerWindow(Adw.Window):
             try:
                 code_sb = SecureBytes(code)
                 if not self._login_pwd:
-                     raise RuntimeError("Login password missing for 2FA")
+                     raise RuntimeError(_("Login password missing for 2FA"))
                 
-                success = await self._vault.login(self._login_email, self._login_pwd, method=method_id, code=code_sb)
+                remember = self._login_remember_check.get_active()
+                success = await self._vault.login(self._login_email, self._login_pwd, method=method_id, code=code_sb, remember=remember)
                 code_sb.clear()
                 
                 if success:
@@ -702,7 +902,7 @@ class VaultManagerWindow(Adw.Window):
                 def _fail(err=str(e)):
                     self._2fa_submit_btn.set_sensitive(True)
                     self._stack.set_visible_child_name("two_factor")
-                    self._show_toast(f"Verification failed: {err}")
+                    self._show_toast(_("Verification failed: {err}").format(err=err))
                     return False
                 GLib.idle_add(_fail)
 
@@ -721,7 +921,8 @@ class VaultManagerWindow(Adw.Window):
         async def _do_unlock():
             pwd_sb = SecureBytes(self._unlock_entry.get_text())
             self._unlock_entry.set_text("")
-            success = await self._vault.unlock(pwd_sb)
+            remember = self._unlock_remember_check.get_active()
+            success = await self._vault.unlock(pwd_sb, remember=remember)
             pwd_sb.clear()
 
             def _update():
@@ -729,7 +930,7 @@ class VaultManagerWindow(Adw.Window):
                 if success:
                     self._check_status()
                 else:
-                    self._show_toast("Incorrect master password, or unlock failed.")
+                    self._show_toast(_("Incorrect master password, or unlock failed."))
                     self._stack.set_visible_child_name("unlock")
                 return False
 
@@ -759,16 +960,22 @@ class VaultManagerWindow(Adw.Window):
 
         self._run_coroutine(_do_logout())
 
+    def _on_forget_password_clicked(self, _btn) -> None:
+        from services.vault_manager import VaultManager
+        VaultManager.get().clear_bitwarden_password()
+        self._forget_pwd_row.set_visible(False)
+        self._show_toast(_("Saved master password removed from keyring."))
+
     def _on_sync_clicked(self, _btn) -> None:
-        self._show_toast("Syncing vault…")
+        self._show_toast(_("Syncing vault…"))
 
         async def _do_sync():
             try:
                 await self._vault._run_bw(["sync"])
-                GLib.idle_add(lambda: self._show_toast("Sync completed.") or False)
+                GLib.idle_add(lambda: self._show_toast(_("Sync completed.")) or False)
                 self._load_folders()
             except Exception as e:
-                GLib.idle_add(lambda: self._show_toast(f"Sync failed: {e}") or False)
+                GLib.idle_add(lambda: self._show_toast(_("Sync failed: {e}").format(e=e)) or False)
 
         self._run_coroutine(_do_sync())
 

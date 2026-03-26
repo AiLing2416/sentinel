@@ -2,11 +2,798 @@ msgid ""
 msgstr ""
 "Project-Id-Version: sentinel\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-12 08:00+0000\n"
-"PO-Revision-Date: 2026-03-12 08:00+0000\n"
+"POT-Creation-Date: 2026-03-22 08:30+0000\n"
+"PO-Revision-Date: 2026-03-22 08:30+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "App Settings"
+msgstr "App Settings"
+
+msgid "General"
+msgstr "General"
+
+msgid "Language"
+msgstr "Language"
+
+msgid "Requires an application restart to fully apply"
+msgstr "Requires an application restart to fully apply"
+
+msgid "Please restart the application for language changes to take effect."
+msgstr "Please restart the application for language changes to take effect."
+
+msgid "Vault Manager"
+msgstr "Vault Manager"
+
+msgid "Log in to Bitwarden"
+msgstr "Log in to Bitwarden"
+
+msgid "Enter your credentials to access your vault."
+msgstr "Enter your credentials to access your vault."
+
+msgid "Custom Server"
+msgstr "Custom Server"
+
+msgid "For self-hosted Bitwarden / VaultWarden"
+msgstr "For self-hosted Bitwarden / VaultWarden"
+
+msgid "Email Address"
+msgstr "Email Address"
+
+msgid "Master Password"
+msgstr "Master Password"
+
+msgid "Log In"
+msgstr "Log In"
+
+msgid "Two-Step Verification"
+msgstr "Two-Step Verification"
+
+msgid "Your account requires two-step verification."
+msgstr "Your account requires two-step verification."
+
+msgid "Verification Code"
+msgstr "Verification Code"
+
+msgid "Back"
+msgstr "Back"
+
+msgid "Verify & Log In"
+msgstr "Verify & Log In"
+
+msgid "Vault Locked"
+msgstr "Vault Locked"
+
+msgid "Enter your master password to unlock."
+msgstr "Enter your master password to unlock."
+
+msgid "Log Out"
+msgstr "Log Out"
+
+msgid "Unlock"
+msgstr "Unlock"
+
+msgid "Account"
+msgstr "Account"
+
+msgid "Server"
+msgstr "Server"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Unlocked ✓"
+msgstr "Unlocked ✓"
+
+msgid "Lock"
+msgstr "Lock"
+
+msgid "Sync Vault"
+msgstr "Sync Vault"
+
+msgid "Pull the latest items from the server"
+msgstr "Pull the latest items from the server"
+
+msgid "Sync Now"
+msgstr "Sync Now"
+
+msgid "New Connection"
+msgstr "New Connection"
+
+msgid "Connections"
+msgstr "Connections"
+
+msgid "Close tab"
+msgstr "Close tab"
+
+msgid "Settings"
+msgstr "Settings"
+
+msgid "About Sentinel"
+msgstr "About Sentinel"
+
+msgid "Shell"
+msgstr "Shell"
+
+msgid "SFTP"
+msgstr "SFTP"
+
+msgid "Copy Host"
+msgstr "Copy Host"
+
+msgid "Clear Host Key"
+msgstr "Clear Host Key"
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "Rename"
+msgstr "Rename"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Properties"
+msgstr "Properties"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Confirm"
+msgstr "Confirm"
+
+msgid "Connect"
+msgstr "Connect"
+
+msgid "Select"
+msgstr "Select"
+
+msgid "Close"
+msgstr "Close"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Reject"
+msgstr "Reject"
+
+msgid "Accept and Connect"
+msgstr "Accept and Connect"
+
+msgid "No Connections"
+msgstr "No Connections"
+
+msgid ""
+"Press + to add your first\n"
+"SSH connection"
+msgstr ""
+"Press + to add your first\n"
+"SSH connection"
+
+msgid "File"
+msgstr "File"
+
+msgid "Directory"
+msgstr "Directory"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Size"
+msgstr "Size"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Last Modified"
+msgstr "Last Modified"
+
+msgid "Permissions"
+msgstr "Permissions"
+
+msgid "Owner"
+msgstr "Owner"
+
+msgid "Remote Path"
+msgstr "Remote Path"
+
+msgid "New File"
+msgstr "New File"
+
+msgid "New Folder"
+msgstr "New Folder"
+
+msgid "New..."
+msgstr "New..."
+
+msgid "View Options"
+msgstr "View Options"
+
+msgid "Show Hidden Files"
+msgstr "Show Hidden Files"
+
+msgid "Auto-sync on Save"
+msgstr "Auto-sync on Save"
+
+msgid "Connecting…"
+msgstr "Connecting…"
+
+msgid "Connected to {hostname}"
+msgstr "Connected to {hostname}"
+
+msgid "Loading {path}…"
+msgstr "Loading {path}…"
+
+msgid "Calculating size for {name}..."
+msgstr "Calculating size for {name}..."
+
+msgid "Synchronizing {name}..."
+msgstr "Synchronizing {name}..."
+
+msgid "Deleted {name}"
+msgstr "Deleted {name}"
+
+msgid "Renamed to {name}"
+msgstr "Renamed to {name}"
+
+msgid "Created file {name}"
+msgstr "Created file {name}"
+
+msgid "Created folder {name}"
+msgstr "Created folder {name}"
+
+msgid "Enter name for the new folder:"
+msgstr "Enter name for the new folder:"
+
+msgid "Enter name for the new file:"
+msgstr "Enter name for the new file:"
+
+msgid "Enter new name for {name}:"
+msgstr "Enter new name for {name}:"
+
+msgid ""
+"Are you sure you want to delete '{name}'?\n"
+"This action cannot be undone."
+msgstr ""
+"Are you sure you want to delete '{name}'?\n"
+"This action cannot be undone."
+
+msgid "File Updated Locally"
+msgstr "File Updated Locally"
+
+msgid ""
+"The file '{name}' has been modified and saved.\n"
+"Update the remote copy on the server?"
+msgstr ""
+"The file '{name}' has been modified and saved.\n"
+"Update the remote copy on the server?"
+
+msgid "Update Remote"
+msgstr "Update Remote"
+
+msgid "Password for {hostname}"
+msgstr "Password for {hostname}"
+
+msgid "Unlock SSH Key"
+msgstr "Unlock SSH Key"
+
+msgid "Enter passphrase for {path}"
+msgstr "Enter passphrase for {path}"
+
+msgid "Unknown Host Key ({hostname})"
+msgstr "Unknown Host Key ({hostname})"
+
+msgid ""
+"The authenticity of host '{hostname}' can't be established.\n"
+"\n"
+msgstr ""
+"The authenticity of host '{hostname}' can't be established.\n"
+"\n"
+
+msgid "Algorithm: {algorithm}\n"
+msgstr "Algorithm: {algorithm}\n"
+
+msgid ""
+"Fingerprint: {fingerprint}\n"
+"\n"
+msgstr ""
+"Fingerprint: {fingerprint}\n"
+"\n"
+
+msgid "Are you sure you want to continue connecting?"
+msgstr "Are you sure you want to continue connecting?"
+
+msgid "Properties: {name}"
+msgstr "Properties: {name}"
+
+msgid "UID: {uid} / GID: {gid}"
+msgstr "UID: {uid} / GID: {gid}"
+
+msgid "Terminal Theme"
+msgstr "Terminal Theme"
+
+msgid "The quick brown fox jumps over the lazy dog"
+msgstr "The quick brown fox jumps over the lazy dog"
+
+msgid "Custom"
+msgstr "Custom"
+
+msgid "Presets"
+msgstr "Presets"
+
+msgid "Theme Presets"
+msgstr "Theme Presets"
+
+msgid "Customization"
+msgstr "Customization"
+
+msgid "Foreground"
+msgstr "Foreground"
+
+msgid "Background"
+msgstr "Background"
+
+msgid "Cursor"
+msgstr "Cursor"
+
+msgid "Selection Background"
+msgstr "Selection Background"
+
+msgid "ANSI Colors Palette"
+msgstr "ANSI Colors Palette"
+
+msgid "Catppuccin Mocha"
+msgstr "Catppuccin Mocha"
+
+msgid "Nord"
+msgstr "Nord"
+
+msgid "Solarized Dark"
+msgstr "Solarized Dark"
+
+msgid "Dracula"
+msgstr "Dracula"
+
+msgid "GNOME Dark"
+msgstr "GNOME Dark"
+
+msgid "New Custom Theme"
+msgstr "New Custom Theme"
+
+msgid "Select Theme"
+msgstr "Select Theme"
+
+msgid "Active Theme Settings"
+msgstr "Active Theme Settings"
+
+msgid "Rename or delete your custom theme"
+msgstr "Rename or delete your custom theme"
+
+msgid "Theme Actions"
+msgstr "Theme Actions"
+
+msgid "Copy Code"
+msgstr "Copy Code"
+
+msgid "Import..."
+msgstr "Import..."
+
+msgid "Import from Code"
+msgstr "Import from Code"
+
+msgid "Paste a theme code to import"
+msgstr "Paste a theme code to import"
+
+msgid "Rename Theme"
+msgstr "Rename Theme"
+
+msgid "Enter a new name for this theme"
+msgstr "Enter a new name for this theme"
+
+msgid "Delete Theme?"
+msgstr "Delete Theme?"
+
+msgid "Are you sure you want to delete '{name}'?"
+msgstr "Are you sure you want to delete '{name}'?"
+
+msgid "Theme code copied to clipboard"
+msgstr "Theme code copied to clipboard"
+
+msgid "Theme Code"
+msgstr "Theme Code"
+
+msgid "Import Theme"
+msgstr "Import Theme"
+
+msgid "Paste the theme code below:"
+msgstr "Paste the theme code below:"
+
+msgid "Imported Theme"
+msgstr "Imported Theme"
+
+msgid "Terminal"
+msgstr "Terminal"
+
+msgid "Welcome"
+msgstr "Welcome"
+
+msgid "Vault"
+msgstr "Vault"
+
+msgid "Username"
+msgstr "Username"
+
+msgid "Untitled"
+msgstr "Untitled"
+
+msgid "Sync completed."
+msgstr "Sync completed."
+
+msgid "Syncing vault…"
+msgstr "Syncing vault…"
+
+msgid "Wrong master password."
+msgstr "Wrong master password."
+
+msgid "Verification Method"
+msgstr "Verification Method"
+
+msgid "Verification failed: {err}"
+msgstr "Verification failed: {err}"
+
+msgid "YubiKey OTP"
+msgstr "YubiKey OTP"
+
+msgid "Touch your hardware security key when it lights up."
+msgstr "Touch your hardware security key when it lights up."
+
+msgid "Vault Settings"
+msgstr "Vault Settings"
+
+msgid "Unlock Local Vault"
+msgstr "Unlock Local Vault"
+
+msgid "Set Up Local Vault"
+msgstr "Set Up Local Vault"
+
+msgid "Unlock {vault_name}"
+msgstr "Unlock {vault_name}"
+
+msgid "Theme Management"
+msgstr "Theme Management"
+
+msgid "This connection will be permanently removed."
+msgstr "This connection will be permanently removed."
+
+msgid "Transfer failed: {err}"
+msgstr "Transfer failed: {err}"
+
+msgid "Transferring: {percent}%"
+msgstr "Transferring: {percent}%"
+
+msgid "Uploaded successfully"
+msgstr "Uploaded successfully"
+
+msgid "Uploading {count} items..."
+msgstr "Uploading {count} items..."
+
+msgid "Updated: {name}"
+msgstr "Updated: {name}"
+
+msgid "Synchronized {name}"
+msgstr "Synchronized {name}"
+
+msgid "Synchronize"
+msgstr "Synchronize"
+
+msgid "Sync failed: {e}"
+msgstr "Sync failed: {e}"
+
+msgid "Sync error: {e}"
+msgstr "Sync error: {e}"
+
+msgid "Starting cross-server transfer from {hostname}..."
+msgstr "Starting cross-server transfer from {hostname}..."
+
+msgid "Source SFTP session must be active to perform transfer."
+msgstr "Source SFTP session must be active to perform transfer."
+
+msgid "Source connection not found in database."
+msgstr "Source connection not found in database."
+
+msgid "SSH Agent"
+msgstr "SSH Agent"
+
+msgid "SSH Key"
+msgstr "SSH Key"
+
+msgid "SSH Key from Vault"
+msgstr "SSH Key from Vault"
+
+msgid "Size of {name}: {size}"
+msgstr "Size of {name}: {size}"
+
+msgid "Size calculation failed: {msg}"
+msgstr "Size calculation failed: {msg}"
+
+msgid "The directory occupies: {size}"
+msgstr "The directory occupies: {size}"
+
+msgid "Sentinel"
+msgstr "Sentinel"
+
+msgid "Sentinel Contributors"
+msgstr "Sentinel Contributors"
+
+msgid "© 2026 Sentinel Contributors"
+msgstr "© 2026 Sentinel Contributors"
+
+msgid ""
+"A secure GNOME SSH connection manager\n"
+"with password manager integration."
+msgstr ""
+"A secure GNOME SSH connection manager\n"
+"with password manager integration."
+
+msgid "Apply"
+msgstr "Apply"
+
+msgid "Paste code here..."
+msgstr "Paste code here..."
+
+msgid "Import"
+msgstr "Import"
+
+msgid "Authentication"
+msgstr "Authentication"
+
+msgid "Authenticator App (TOTP)"
+msgstr "Authenticator App (TOTP)"
+
+msgid "Basic"
+msgstr "Basic"
+
+msgid "Bitwarden CLI ('bw') not found. Please install it."
+msgstr "Bitwarden CLI ('bw') not found. Please install it."
+
+msgid "Check your email inbox for a verification code sent by Bitwarden."
+msgstr "Check your email inbox for a verification code sent by Bitwarden."
+
+msgid "Checking Vault Status…"
+msgstr "Checking Vault Status…"
+
+msgid "Creating folder {name}..."
+msgstr "Creating folder {name}..."
+
+msgid "Create Vault"
+msgstr "Create Vault"
+
+msgid "Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"
+msgstr "Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"
+
+msgid "Duo"
+msgstr "Duo"
+
+msgid "Duo passcode (or leave blank for push)"
+msgstr "Duo passcode (or leave blank for push)"
+
+msgid "Email verification code"
+msgstr "Email verification code"
+
+msgid "Enter your Sentinel vault master password to continue."
+msgstr "Enter your Sentinel vault master password to continue."
+
+msgid "Error: {msg}"
+msgstr "Error: {msg}"
+
+msgid "Failed to create vault: {e}"
+msgstr "Failed to create vault: {e}"
+
+msgid "Failed to load folders: {e}"
+msgstr "Failed to load folders: {e}"
+
+msgid "FIDO2 / WebAuthn (hardware key)"
+msgstr "FIDO2 / WebAuthn (hardware key)"
+
+msgid "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
+msgstr "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
+
+msgid "Find next"
+msgstr "Find next"
+
+msgid "Find previous"
+msgstr "Find previous"
+
+msgid "Forget"
+msgstr "Forget"
+
+msgid "https://bitwarden.com (leave blank for default)"
+msgstr "https://bitwarden.com (leave blank for default)"
+
+msgid "Insert your YubiKey and tap it to generate an OTP."
+msgstr "Insert your YubiKey and tap it to generate an OTP."
+
+msgid "Key File Path (optional)"
+msgstr "Key File Path (optional)"
+
+msgid "Key + Passphrase"
+msgstr "Key + Passphrase"
+
+msgid "Login password missing for 2FA"
+msgstr "Login password missing for 2FA"
+
+msgid "Master password is saved in system keyring for auto-unlock"
+msgstr "Master password is saved in system keyring for auto-unlock"
+
+msgid "Menu"
+msgstr "Menu"
+
+msgid "Merge all tabs into another window and close"
+msgstr "Merge all tabs into another window and close"
+
+msgid "Method"
+msgstr "Method"
+
+msgid "Mount failed, using GVFS fallback. (Error: {err}...)"
+msgstr "Mount failed, using GVFS fallback. (Error: {err}...)"
+
+msgid "No password found in item. Check item ID '{id}'."
+msgstr "No password found in item. Check item ID '{id}'."
+
+msgid "Notes"
+msgstr "Notes"
+
+msgid "Not selected"
+msgstr "Not selected"
+
+msgid "(Not supported in CLI mode — use another method)"
+msgstr "(Not supported in CLI mode — use another method)"
+
+msgid "Official Cloud Server"
+msgstr "Official Cloud Server"
+
+msgid "Opened {name} with {app}"
+msgstr "Opened {name} with {app}"
+
+msgid "Open Local Shell (Ctrl+T)"
+msgstr "Open Local Shell (Ctrl+T)"
+
+msgid "Open With..."
+msgstr "Open With..."
+
+msgid "Password must be at least 8 characters."
+msgstr "Password must be at least 8 characters."
+
+msgid "Paste"
+msgstr "Paste"
+
+msgid "Please enter your verification code."
+msgstr "Please enter your verification code."
+
+msgid "Please log in / unlock Bitwarden via Vault Settings first."
+msgstr "Please log in / unlock Bitwarden via Vault Settings first."
+
+msgid "Please use a different 2FA method (e.g. TOTP or Email)."
+msgstr "Please use a different 2FA method (e.g. TOTP or Email)."
+
+msgid "Port"
+msgstr "Port"
+
+msgid "Quit"
+msgstr "Quit"
+
+msgid "Read-only"
+msgstr "Read-only"
+
+msgid "Retrieving data from Vault..."
+msgstr "Retrieving data from Vault..."
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Saved master password removed from keyring."
+msgstr "Saved master password removed from keyring."
+
+msgid "Save master password securely in system keyring"
+msgstr "Save master password securely in system keyring"
+
+msgid "Secure SSH Connection Manager"
+msgstr "Secure SSH Connection Manager"
+
+msgid "Select the vault item that stores the SSH private key"
+msgstr "Select the vault item that stores the SSH private key"
+
+msgid "Spawning local shell..."
+msgstr "Spawning local shell..."
+
+msgid "Local Shell"
+msgstr "Local Shell"
+
+msgid "Connecting to {title}…"
+msgstr "Connecting to {title}…"
+
+msgid "Connected — {title}"
+msgstr "Connected — {title}"
+
+msgid "Disconnected: {exc}"
+msgstr "Disconnected: {exc}"
+
+msgid "Disconnected"
+msgstr "Disconnected"
+
+msgid "Exited with code {exit_status}"
+msgstr "Exited with code {exit_status}"
+
+msgid "Error: {error}"
+msgstr "Error: {error}"
+
+msgid "Exited code {exit_status}"
+msgstr "Exited code {exit_status}"
+
+msgid "Reconnecting…"
+msgstr "Reconnecting…"
+
+msgid "Searching connections…"
+msgstr "Searching connections…"
+
+msgid "Select SSH key from Vault"
+msgstr "Select SSH key from Vault"
+
+msgid "Select SSH Key from Vault"
+msgstr "Select SSH Key from Vault"
+
+msgid "Size of {name}"
+msgstr "Size of {name}"
+
+msgid "Renaming to {name}..."
+msgstr "Renaming to {name}..."
+
+msgid "Rename Item"
+msgstr "Rename Item"
+
+msgid "Rename failed: {e}"
+msgstr "Rename failed: {e}"
+
+msgid "Please enter a master password."
+msgstr "Please enter a master password."
+
+msgid "Passwords do not match."
+msgstr "Passwords do not match."
+
+msgid "Local vault created successfully."
+msgstr "Local vault created successfully."
+
+msgid "Please enter your master password to access {vault_name} credentials."
+msgstr "Please enter your master password to access {vault_name} credentials."
+
+msgid "Please provide email and master password."
+msgstr "Please provide email and master password."
+
+msgid "Email Verification"
+msgstr "Email Verification"
+
+msgid "FIDO2 / WebAuthn"
+msgstr "FIDO2 / WebAuthn"
+
+msgid ""
+"Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) "
+"and enter the 6-digit code."
+msgstr ""
+"Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) "
+"and enter the 6-digit code."
+
+msgid ""
+"Approve the Duo push notification on your device, or enter the Duo passcode."
+msgstr ""
+"Approve the Duo push notification on your device, or enter the Duo passcode."
+
+msgid "6-digit TOTP code"
+msgstr "6-digit TOTP code"
+
+msgid "Please replace a different 2FA method (e.g. TOTP or Email)."
+msgstr "Please replace a different 2FA method (e.g. TOTP or Email)."

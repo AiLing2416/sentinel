@@ -16,7 +16,10 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
+import gettext
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk, Pango, Vte, GObject  # noqa: E402
+
+_ = gettext.gettext
 
 from models.connection import Connection
 from services.ssh_service import SSHService
@@ -96,7 +99,7 @@ class SftpTab(Gtk.Box):
         self._active_edits: dict[str, str] = {} # remote_path -> local_path
         
         import tempfile
-        self._temp_dir = tempfile.mkdtemp(prefix=f"sentinel_edit_{connection.id}_")
+        self._temp_dir = tempfile.mkdtemp(prefix="sentinel_edit_{id}_".format(id=connection.id))
         
         self._show_hidden = False
         self._auto_sync = False
@@ -135,10 +138,10 @@ class SftpTab(Gtk.Box):
         header_bar.append(refresh_btn)
 
         # New... Menu
-        self._new_btn = Gtk.MenuButton(icon_name="list-add-symbolic", tooltip_text="New...")
+        self._new_btn = Gtk.MenuButton(icon_name="list-add-symbolic", tooltip_text=_("New..."))
         new_menu = Gio.Menu()
-        new_menu.append("New File", "sftp.new-file")
-        new_menu.append("New Folder", "sftp.new-folder")
+        new_menu.append(_("New File"), "sftp.new-file")
+        new_menu.append(_("New Folder"), "sftp.new-folder")
         self._new_btn.set_menu_model(new_menu)
         header_bar.append(self._new_btn)
 
@@ -148,17 +151,17 @@ class SftpTab(Gtk.Box):
         header_bar.append(self._path_entry)
 
         # View Options (Nautilus style)
-        self._view_opts_btn = Gtk.MenuButton(icon_name="view-more-symbolic", tooltip_text="View Options")
+        self._view_opts_btn = Gtk.MenuButton(icon_name="view-more-symbolic", tooltip_text=_("View Options"))
         self._view_opts_menu = Gio.Menu()
         
         # Section for filters
         filter_section = Gio.Menu()
-        filter_section.append("Show Hidden Files", "sftp.show-hidden")
+        filter_section.append(_("Show Hidden Files"), "sftp.show-hidden")
         self._view_opts_menu.append_section(None, filter_section)
         
         # Section for edit behavior
         edit_section = Gio.Menu()
-        edit_section.append("Auto-sync on Save", "sftp.auto-sync")
+        edit_section.append(_("Auto-sync on Save"), "sftp.auto-sync")
         self._view_opts_menu.append_section(None, edit_section)
         
         self._view_opts_btn.set_menu_model(self._view_opts_menu)
@@ -195,7 +198,7 @@ class SftpTab(Gtk.Box):
         name_factory = Gtk.SignalListItemFactory()
         name_factory.connect("setup", self._setup_name_column)
         name_factory.connect("bind", self._bind_name_column)
-        name_col = Gtk.ColumnViewColumn(title="Name", factory=name_factory)
+        name_col = Gtk.ColumnViewColumn(title=_("Name"), factory=name_factory)
         name_col.set_expand(True)
         name_col.set_resizable(True)
         
@@ -221,7 +224,7 @@ class SftpTab(Gtk.Box):
         size_factory = Gtk.SignalListItemFactory()
         size_factory.connect("setup", self._setup_text_column)
         size_factory.connect("bind", self._bind_size_column)
-        size_col = Gtk.ColumnViewColumn(title="Size", factory=size_factory)
+        size_col = Gtk.ColumnViewColumn(title=_("Size"), factory=size_factory)
         size_col.set_fixed_width(100)
         size_col.set_resizable(True)
         
@@ -240,7 +243,7 @@ class SftpTab(Gtk.Box):
         time_factory = Gtk.SignalListItemFactory()
         time_factory.connect("setup", self._setup_text_column)
         time_factory.connect("bind", self._bind_time_column)
-        time_col = Gtk.ColumnViewColumn(title="Date Modified", factory=time_factory)
+        time_col = Gtk.ColumnViewColumn(title=_("Date Modified"), factory=time_factory)
         time_col.set_fixed_width(160)
         time_col.set_resizable(True)
         
@@ -261,18 +264,18 @@ class SftpTab(Gtk.Box):
 
         # Context Menu
         self._menu_model = Gio.Menu()
-        self._menu_model.append("Edit", "sftp.edit")
-        self._menu_model.append("Open With...", "sftp.open-with")
-        self._menu_model.append("Copy", "sftp.copy")
-        self._menu_model.append("Paste", "sftp.paste")
-        self._menu_model.append("Synchronize", "sftp.sync")
-        self._menu_model.append("Download", "sftp.download")
-        self._menu_model.append("Calculate Size", "sftp.calculate-size")
+        self._menu_model.append(_("Edit"), "sftp.edit")
+        self._menu_model.append(_("Open With..."), "sftp.open-with")
+        self._menu_model.append(_("Copy"), "sftp.copy")
+        self._menu_model.append(_("Paste"), "sftp.paste")
+        self._menu_model.append(_("Synchronize"), "sftp.sync")
+        self._menu_model.append(_("Download"), "sftp.download")
+        self._menu_model.append(_("Calculate Size"), "sftp.calculate-size")
         # Danger zone
         danger_section = Gio.Menu()
-        danger_section.append("Rename", "sftp.rename")
-        danger_section.append("Delete", "sftp.delete")
-        danger_section.append("Properties", "sftp.properties")
+        danger_section.append(_("Rename"), "sftp.rename")
+        danger_section.append(_("Delete"), "sftp.delete")
+        danger_section.append(_("Properties"), "sftp.properties")
         self._menu_model.append_section(None, danger_section)
 
         self._action_group = Gio.SimpleActionGroup.new()
@@ -425,8 +428,8 @@ class SftpTab(Gtk.Box):
         self._status_icon_stack.add_named(self._check_icon, "check")
         
         self._status_bar.append(self._status_icon_stack)
-
-        self._status_label = Gtk.Label(label="Connecting…", xalign=0, hexpand=True)
+ 
+        self._status_label = Gtk.Label(label=_("Connecting…"), xalign=0, hexpand=True)
         self._status_label.add_css_class("dim-label")
         self._status_label.add_css_class("caption")
         self._status_bar.append(self._status_label)
@@ -609,9 +612,9 @@ class SftpTab(Gtk.Box):
         from views.dialogs import prompt_password, prompt_host_key, prompt_vault_unlock, prompt_vault_item_selection, prompt_entry, prompt_confirmation
         
         def _ask_password(conn, resolve):
-            prompt_password(self.get_root(), f"Password for {conn.hostname}", f"{conn.username}@{conn.hostname}", resolve)
+            prompt_password(self.get_root(), _("Password for {hostname}").format(hostname=conn.hostname), "{username}@{hostname}".format(username=conn.username, hostname=conn.hostname), resolve)
         def _ask_passphrase(key_path, resolve):
-            prompt_password(self.get_root(), "Unlock SSH Key", f"Enter passphrase for {key_path}", resolve)
+            prompt_password(self.get_root(), _("Unlock SSH Key"), _("Enter passphrase for {path}").format(path=key_path), resolve)
         def _ask_host_key(hostname, fingerprint, alg, resolve):
             prompt_host_key(self.get_root(), hostname, fingerprint, alg, resolve)
         def _ask_vault_unlock(vault_name, resolve):
@@ -665,7 +668,7 @@ class SftpTab(Gtk.Box):
             self._status_icon_stack.set_visible_child_name("check")
 
     def _on_sftp_connected(self) -> None:
-        self._status_label.set_label(f"Connected to {self._connection.hostname}")
+        self._status_label.set_label(_("Connected to {hostname}").format(hostname=self._connection.hostname))
         self._load_path(self._current_path)
         
         # Trigger background mount early to prepare for copy/paste
@@ -679,7 +682,7 @@ class SftpTab(Gtk.Box):
 
     def _load_path(self, path: str) -> None:
         logger.info(f"SFTP: Loading path: {path}")
-        self._status_label.set_label(f"Loading {path}…")
+        self._status_label.set_label(_("Loading {path}…").format(path=path))
         self._set_loading(True)
         
         async def _fetch():
@@ -720,7 +723,7 @@ class SftpTab(Gtk.Box):
             except Exception as e:
                 err_msg = str(e)
                 def _on_fetch_error():
-                    self._status_label.set_label(f"Error: {err_msg}")
+                    self._status_label.set_label(_("Error: {msg}").format(msg=err_msg))
                     self._set_loading(False)
                 GLib.idle_add(_on_fetch_error)
         
@@ -772,24 +775,24 @@ class SftpTab(Gtk.Box):
             if not name: return
             path = os.path.join(self._current_path, name)
             self._set_loading(True)
-            self._status_label.set_label(f"Creating folder {name}...")
+            self._status_label.set_label(_("Creating folder {name}...").format(name=name))
             
             async def _bg_mkdir():
                 try:
                     await self._sftp.mkdir(path)
-                    GLib.idle_add(self._on_transfer_finish, True, f"Created folder {name}")
+                    GLib.idle_add(self._on_transfer_finish, True, _("Created folder {name}").format(name=name))
                 except Exception as e:
                     logger.error(f"Mkdir failed: {e}")
-                    GLib.idle_add(self._on_transfer_finish, False, f"Error: {e}")
+                    GLib.idle_add(self._on_transfer_finish, False, _("Error: {e}").format(e=e))
             
             self._bg_task = self._ssh_service.engine.run_coroutine(_bg_mkdir())
 
         prompt_entry(
             self.get_root(),
-            "New Folder",
-            "Enter name for the new folder:",
-            "New Folder",
-            "Folder name",
+            _("New Folder"),
+            _("Enter name for the new folder:"),
+            _("New Folder"),
+            _("Folder name"),
             _on_done
         )
 
@@ -799,26 +802,26 @@ class SftpTab(Gtk.Box):
             if not name: return
             path = os.path.join(self._current_path, name)
             self._set_loading(True)
-            self._status_label.set_label(f"Creating file {name}...")
+            self._status_label.set_label(_("Creating file {name}...").format(name=name))
             
             async def _bg_mkfile():
                 try:
                     # Create empty file
                     async with self._sftp.open(path, 'w') as f:
                         pass
-                    GLib.idle_add(self._on_transfer_finish, True, f"Created file {name}")
+                    GLib.idle_add(self._on_transfer_finish, True, _("Created file {name}").format(name=name))
                 except Exception as e:
                     logger.error(f"File creation failed: {e}")
-                    GLib.idle_add(self._on_transfer_finish, False, f"Error: {e}")
+                    GLib.idle_add(self._on_transfer_finish, False, _("Error: {e}").format(e=e))
             
             self._bg_task = self._ssh_service.engine.run_coroutine(_bg_mkfile())
 
         prompt_entry(
             self.get_root(),
-            "New File",
-            "Enter name for the new file:",
+            _("New File"),
+            _("Enter name for the new file:"),
             "new_file.txt",
-            "File name",
+            _("File name"),
             _on_done
         )
 
@@ -916,7 +919,7 @@ class SftpTab(Gtk.Box):
         from services.rclone_service import RcloneService
         
         self._set_loading(True)
-        self._status_label.set_label("Ensuring Rclone FUSE3 mount...")
+        self._status_label.set_label(_("Ensuring Rclone FUSE3 mount..."))
         
         async def _bg_mount():
             rclone = RcloneService.get()
@@ -935,7 +938,7 @@ class SftpTab(Gtk.Box):
                 else:
                     logger.error(f"Failed to mount via Rclone: {error}")
                     # Fallback to GVFS URI if mount failed
-                    self._status_label.set_label(f"Mount failed, using GVFS fallback. (Error: {error[:30]}...)")
+                    self._status_label.set_label(_("Mount failed, using GVFS fallback. (Error: {err}...)").format(err=error[:30]))
                     self._set_clipboard_union(internal_uri, gvfs_fallback_uri, file_obj.name)
                     
             GLib.idle_add(_done)
@@ -948,7 +951,7 @@ class SftpTab(Gtk.Box):
         
         union = Gdk.ContentProvider.new_union([prov_text, prov_uri_list])
         self.get_clipboard().set_content(union)
-        self._status_label.set_label(f"Copied {name} to clipboard")
+        self._status_label.set_label(_("Copied {name} to clipboard").format(name=name))
 
     def _rename_selected(self) -> bool:
         pos = self._selection_model.get_selected()
@@ -967,24 +970,24 @@ class SftpTab(Gtk.Box):
             new_path = os.path.join(self._current_path, new_name)
             
             self._set_loading(True)
-            self._status_label.set_label(f"Renaming to {new_name}...")
+            self._status_label.set_label(_("Renaming to {name}...").format(name=new_name))
             
             async def _bg_rename():
                 try:
                     await self._sftp.rename(old_path, new_path)
-                    GLib.idle_add(self._on_transfer_finish, True, f"Renamed to {new_name}")
+                    GLib.idle_add(self._on_transfer_finish, True, _("Renamed to {name}").format(name=new_name))
                 except Exception as e:
                     logger.error(f"Rename failed: {e}")
-                    GLib.idle_add(self._on_transfer_finish, False, f"Rename failed: {e}")
+                    GLib.idle_add(self._on_transfer_finish, False, _("Rename failed: {e}").format(e=e))
             
             self._bg_task = self._ssh_service.engine.run_coroutine(_bg_rename())
 
         prompt_entry(
             self.get_root(),
-            "Rename Item",
-            f"Enter new name for {file_obj.name}:",
+            _("Rename Item"),
+            _("Enter new name for {name}:").format(name=file_obj.name),
             file_obj.name,
-            "New name",
+            _("New name"),
             _on_rename
         )
         return True
@@ -999,7 +1002,7 @@ class SftpTab(Gtk.Box):
         rclone = RcloneService.get()
         
         self._set_loading(True)
-        self._status_label.set_label("Ensuring mount for editing...")
+        self._status_label.set_label(_("Ensuring mount for editing..."))
         
         async def _mount_and_open():
             logger.info("SFTP Edit: Triggering rclone mount...")
@@ -1020,7 +1023,7 @@ class SftpTab(Gtk.Box):
                     GLib.idle_add(lambda: _launch(local_path, remote_path, file_obj.name))
                 except Exception as e:
                     logger.error(f"Fallback download failed: {e}")
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(f"Fallback failed: {e}")))
+                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Fallback failed: {e}").format(e=e))))
                 return
             
             mount_path = rclone.get_mount_path(self._connection.id)
@@ -1048,7 +1051,7 @@ class SftpTab(Gtk.Box):
                     await self._sftp.get(remote_path, local_path)
                     GLib.idle_add(lambda: _launch(local_path, remote_path, file_obj.name))
                 except Exception as e:
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(f"Download failed: {e}")))
+                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Download failed: {e}").format(e=e))))
                 return
 
             # Copy to temp edit location
@@ -1059,7 +1062,7 @@ class SftpTab(Gtk.Box):
                 try:
                     await self._sftp.get(remote_path, local_path)
                 except Exception as ef:
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(f"Download failed: {ef}")))
+                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Download failed: {e}").format(e=ef))))
                     return
 
             GLib.idle_add(lambda: _launch(local_path, remote_path, file_obj.name))
@@ -1079,15 +1082,15 @@ class SftpTab(Gtk.Box):
                     if text_handler:
                         text_handler.launch([gfile], None)
                         self._start_monitoring(local_path, remote_path, name)
-                        self._status_label.set_label(f"Opened {name} with {text_handler.get_display_name()}")
+                        self._status_label.set_label(_("Opened {name} with {app}").format(name=name, app=text_handler.get_display_name()))
                         return
 
                 Gio.AppInfo.launch_default_for_uri(gfile.get_uri(), None)
                 self._start_monitoring(local_path, remote_path, name)
-                self._status_label.set_label(f"Opening {name}...")
+                self._status_label.set_label(_("Opening {name}...").format(name=name))
             except Exception as e:
                 logger.error(f"Launch failed: {e}")
-                self._status_label.set_label(f"Failed to open: {e}")
+                self._status_label.set_label(_("Failed to open: {e}").format(e=e))
 
         self._ssh_service.engine.run_coroutine(_mount_and_open())
 
@@ -1101,7 +1104,7 @@ class SftpTab(Gtk.Box):
         rclone = RcloneService.get()
         
         self._set_loading(True)
-        self._status_label.set_label("Ensuring mount for Open With...")
+        self._status_label.set_label(_("Ensuring mount for Open With..."))
         
         async def _mount_and_pick():
             mount_uri, error = await rclone.mount(self._connection, self._auth_info)
@@ -1119,7 +1122,7 @@ class SftpTab(Gtk.Box):
                     await self._sftp.get(remote_path, local_path)
                     GLib.idle_add(lambda: _choose(local_path, remote_path, file_obj.name))
                 except Exception as e:
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(f"Fallback failed: {e}")))
+                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Fallback failed: {e}").format(e=e))))
                 return
             
             mount_path = rclone.get_mount_path(self._connection.id)
@@ -1137,7 +1140,7 @@ class SftpTab(Gtk.Box):
                     await self._sftp.get(remote_path, local_path)
                     GLib.idle_add(lambda: _choose(local_path, remote_path, file_obj.name))
                 except Exception as e:
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(f"Download failed: {e}")))
+                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Download failed: {e}").format(e=e))))
                 return
 
             try:
@@ -1149,7 +1152,7 @@ class SftpTab(Gtk.Box):
                     await self._sftp.get(remote_path, local_path)
                     GLib.idle_add(lambda: _choose(local_path, remote_path, file_obj.name))
                 except Exception as ef:
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(f"Download failed: {ef}")))
+                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Download failed: {e}").format(e=ef))))
 
         def _choose(local_path: str, remote_path: str, name: str):
             self._set_loading(False)
@@ -1175,9 +1178,9 @@ class SftpTab(Gtk.Box):
                         try:
                             appinfo.launch([gfile], None)
                             self._start_monitoring(local_path, remote_path, name)
-                            self._status_label.set_label(f"Opened {name} with {appinfo.get_display_name()}")
+                            self._status_label.set_label(_("Opened {name} with {app}").format(name=name, app=appinfo.get_display_name()))
                         except Exception as e:
-                            self._status_label.set_label(f"Launch failed: {e}")
+                            self._status_label.set_label(_("Launch failed: {e}").format(e=e))
                 d.destroy()
             
             dialog.connect("response", _on_response)
@@ -1328,9 +1331,9 @@ class SftpTab(Gtk.Box):
         else:
             prompt_confirmation(
                 self.get_root(),
-                "File Updated Locally",
-                f"The file '{name}' has been modified and saved.\nUpdate the remote copy on the server?",
-                "Update Remote",
+                _("File Updated Locally"),
+                _("The file '{name}' has been modified and saved.\nUpdate the remote copy on the server?").format(name=name),
+                _("Update Remote"),
                 False,
                 _on_response
             )
@@ -1356,18 +1359,18 @@ class SftpTab(Gtk.Box):
                              callback: Callable[[], None] | None = None) -> None:
         logger.info(f"Starting force sync: {local_path} -> {remote_path}")
         self._set_loading(True)
-        self._status_label.set_label(f"Synchronizing {name}...")
+        self._status_label.set_label(_("Synchronizing {name}...").format(name=name))
         
         async def _bg_sync():
             try:
                 await self._sftp.put(local_path, remote_path)
                 def _done():
-                    self._on_transfer_finish(True, f"Synchronized {name}")
+                    self._on_transfer_finish(True, _("Synchronized {name}").format(name=name))
                     if callback: callback()
                 GLib.idle_add(_done)
             except Exception as e:
                 logger.error(f"Sync failed: {e}")
-                GLib.idle_add(self._on_transfer_finish, False, f"Sync error: {e}")
+                GLib.idle_add(self._on_transfer_finish, False, _("Sync error: {e}").format(e=e))
                 
         self._ssh_service.engine.run_coroutine(_bg_sync())
 
@@ -1386,7 +1389,7 @@ class SftpTab(Gtk.Box):
             
             path = os.path.join(self._current_path, file_obj.name)
             self._set_loading(True)
-            self._status_label.set_label(f"Deleting {file_obj.name}...")
+            self._status_label.set_label(_("Deleting {name}...").format(name=file_obj.name))
             
             async def _bg_delete():
                 try:
@@ -1397,18 +1400,18 @@ class SftpTab(Gtk.Box):
                         await self._sftp.rmdir(path)
                     else:
                         await self._sftp.remove(path)
-                    GLib.idle_add(self._on_transfer_finish, True, f"Deleted {file_obj.name}")
+                    GLib.idle_add(self._on_transfer_finish, True, _("Deleted {name}").format(name=file_obj.name))
                 except Exception as e:
                     logger.error(f"Delete failed: {e}")
-                    GLib.idle_add(self._on_transfer_finish, False, f"Delete failed: {e}")
+                    GLib.idle_add(self._on_transfer_finish, False, _("Delete failed: {e}").format(e=e))
             
             self._bg_task = self._ssh_service.engine.run_coroutine(_bg_delete())
 
         prompt_confirmation(
             self.get_root(),
-            "Delete Item",
-            f"Are you sure you want to delete '{file_obj.name}'?\nThis action cannot be undone.",
-            "Delete",
+            _("Delete Item"),
+            _("Are you sure you want to delete '{name}'?\nThis action cannot be undone.").format(name=file_obj.name),
+            _("Delete"),
             True,
             _on_confirm
         )
@@ -1424,10 +1427,10 @@ class SftpTab(Gtk.Box):
 
         dialog = Gtk.FileDialog.new()
         if file_obj.is_dir:
-            dialog.set_title(f"Download Directory: {file_obj.name}")
+            dialog.set_title(_("Download Directory: {name}").format(name=file_obj.name))
             dialog.select_folder(self.get_root(), None, self._on_download_folder_cb, file_obj)
         else:
-            dialog.set_title(f"Download File: {file_obj.name}")
+            dialog.set_title(_("Download File: {name}").format(name=file_obj.name))
             dialog.set_initial_name(file_obj.name)
             dialog.save(self.get_root(), None, self._on_download_file_cb, file_obj)
 
@@ -1451,12 +1454,12 @@ class SftpTab(Gtk.Box):
         import os, asyncssh
         src_path = os.path.join(self._current_path, file_obj.name)
         self._set_loading(True)
-        self._status_label.set_label(f"Downloading {file_obj.name}...")
+        self._status_label.set_label(_("Downloading {name}...").format(name=file_obj.name))
         
         async def _bg_download():
             try:
                 await asyncssh.scp((self._ssh_conn, src_path), target_path, preserve=True, recurse=True)
-                GLib.idle_add(self._on_transfer_finish, True, f"Downloaded {file_obj.name} to local system")
+                GLib.idle_add(self._on_transfer_finish, True, _("Downloaded {name} to local system").format(name=file_obj.name))
             except Exception as e:
                 GLib.idle_add(self._on_transfer_finish, False, str(e))
         self._bg_task = self._ssh_service.engine.run_coroutine(_bg_download())
@@ -1510,13 +1513,13 @@ class SftpTab(Gtk.Box):
                     db.close()
                     
                     if not src_conn:
-                        GLib.idle_add(lambda: self._status_label.set_label("Source connection not found in database."))
+                        GLib.idle_add(lambda: self._status_label.set_label(_("Source connection not found in database.")))
                         return
 
                     # We don't have auth_info. For now, require the tab to be open.
                     # In a future version, we could prompt for auth here.
                     def _err_no_auth():
-                        self._status_label.set_label("Source SFTP session must be active to perform transfer.")
+                        self._status_label.set_label(_("Source SFTP session must be active to perform transfer."))
                         self._set_loading(False)
                     GLib.idle_add(_err_no_auth)
                     return
@@ -1525,7 +1528,7 @@ class SftpTab(Gtk.Box):
                 
                 # 2. Execute transfer
                 self._set_loading(True)
-                self._status_label.set_label(f"Starting cross-server transfer from {src_conn.hostname}...")
+                self._status_label.set_label(_("Starting cross-server transfer from {hostname}...").format(hostname=src_conn.hostname))
                 
                 final_dst = os.path.join(dst_path, os.path.basename(src_path))
                 if src_path.endswith("/"): final_dst += "/"
@@ -1534,7 +1537,7 @@ class SftpTab(Gtk.Box):
                     rclone = RcloneService.get()
                     
                     def _prog(percent, line):
-                        GLib.idle_add(lambda: self._status_label.set_label(f"Transferring: {int(percent)}%"))
+                        GLib.idle_add(lambda: self._status_label.set_label(_("Transferring: {percent}%").format(percent=int(percent))))
 
                     success, err = await rclone.transfer(
                         src_conn, src_auth, src_path,
@@ -1543,9 +1546,9 @@ class SftpTab(Gtk.Box):
                     )
                     
                     if success:
-                        GLib.idle_add(self._on_transfer_finish, True, "Cross-server transfer complete")
+                        GLib.idle_add(self._on_transfer_finish, True, _("Cross-server transfer complete"))
                     else:
-                        GLib.idle_add(self._on_transfer_finish, False, f"Transfer failed: {err}")
+                        GLib.idle_add(self._on_transfer_finish, False, _("Transfer failed: {err}").format(err=err))
                 
                 self._bg_task = self._ssh_service.engine.run_coroutine(_bg_rclone_transfer())
                 return
@@ -1561,12 +1564,12 @@ class SftpTab(Gtk.Box):
             
             if local_paths:
                 self._set_loading(True)
-                self._status_label.set_label(f"Uploading {len(local_paths)} items...")
+                self._status_label.set_label(_("Uploading {count} items...").format(count=len(local_paths)))
                 
                 async def _bg_upload():
                     try:
                         await asyncssh.scp(local_paths, (self._ssh_conn, dst_path), preserve=True, recurse=True)
-                        GLib.idle_add(self._on_transfer_finish, True, "Uploaded successfully")
+                        GLib.idle_add(self._on_transfer_finish, True, _("Uploaded successfully"))
                     except Exception as e:
                         GLib.idle_add(self._on_transfer_finish, False, str(e))
                 self._bg_task = self._ssh_service.engine.run_coroutine(_bg_upload())
@@ -1586,7 +1589,7 @@ class SftpTab(Gtk.Box):
                 continue
             self._file_store.append(f)
             count += 1
-        self._status_label.set_label(f"{count} items in {self._current_path}")
+        self._status_label.set_label(_("{count} items in {path}").format(count=count, path=self._current_path))
 
     def _on_toggle_show_hidden(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
         self._show_hidden = not self._show_hidden
@@ -1599,9 +1602,9 @@ class SftpTab(Gtk.Box):
         self._auto_sync = not self._auto_sync
         action.set_state(GLib.Variant.new_boolean(self._auto_sync))
         if self._auto_sync:
-            self._status_label.set_label("Auto-sync enabled for this session.")
+            self._status_label.set_label(_("Auto-sync enabled for this session."))
         else:
-            self._status_label.set_label("Auto-sync disabled.")
+            self._status_label.set_label(_("Auto-sync disabled."))
 
     def terminate(self) -> None:
         # Use list() to avoid "dictionary changed size during iteration"
@@ -1650,7 +1653,7 @@ class SftpTab(Gtk.Box):
             return False
 
         path = os.path.join(self._current_path, file_obj.props.name)
-        self._status_label.set_label(f"Calculating size for {file_obj.props.name}...")
+        self._status_label.set_label(_("Calculating size for {name}...").format(name=file_obj.props.name))
         
         async def _run_calc():
             try:
@@ -1661,12 +1664,12 @@ class SftpTab(Gtk.Box):
                     size_val = res.stdout.split()[0]
                     def _update_ui():
                         from views.dialogs import show_info
-                        show_info(self.get_root(), f"Size of {file_obj.props.name}", f"The directory occupies: {size_val}")
-                        self._status_label.set_label(f"Size of {file_obj.props.name}: {size_val}")
+                        show_info(self.get_root(), _("Size of {name}").format(name=file_obj.props.name), _("The directory occupies: {size}").format(size=size_val))
+                        self._status_label.set_label(_("Size of {name}: {size}").format(name=file_obj.props.name, size=size_val))
                     GLib.idle_add(_update_ui)
             except Exception as e:
                 msg = str(e)
-                GLib.idle_add(lambda: self._status_label.set_label(f"Size calculation failed: {msg}"))
+                GLib.idle_add(lambda: self._status_label.set_label(_("Size calculation failed: {msg}").format(msg=msg)))
         
         self._ssh_service.engine.run_coroutine(_run_calc())
         return True
@@ -1695,4 +1698,4 @@ class SftpTab(Gtk.Box):
 
     @property
     def title(self) -> str:
-        return f"SFTP: {self._connection.hostname}"
+        return _("SFTP: {hostname}").format(hostname=self._connection.hostname)

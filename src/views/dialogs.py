@@ -4,8 +4,11 @@
 
 import asyncio
 from typing import Callable
-from utils.secure import SecureBytes
+import gettext
 from gi.repository import Adw, Gtk, GLib, Gdk
+from utils.secure import SecureBytes
+
+_ = gettext.gettext
 
 
 def prompt_password(parent: Gtk.Window, title: str, subtitle: str, callback: Callable[[SecureBytes | None], None]) -> None:
@@ -14,8 +17,8 @@ def prompt_password(parent: Gtk.Window, title: str, subtitle: str, callback: Cal
         heading=title,
         body=subtitle,
     )
-    dialog.add_response("cancel", "Cancel")
-    dialog.add_response("ok", "Connect")
+    dialog.add_response("cancel", _("Cancel"))
+    dialog.add_response("ok", _("Connect"))
     dialog.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
     dialog.set_default_response("ok")
     dialog.set_close_response("cancel")
@@ -65,16 +68,16 @@ def prompt_host_key(
 ) -> None:
     """Ask the user to verify a new SSH host key."""
     dialog = Adw.MessageDialog(
-        heading=f"Unknown Host Key ({hostname})",
+        heading=_("Unknown Host Key ({hostname})").format(hostname=hostname),
         body=(
-            f"The authenticity of host '{hostname}' can't be established.\n\n"
-            f"Algorithm: {algorithm}\n"
-            f"Fingerprint: {fingerprint}\n\n"
-            "Are you sure you want to continue connecting?"
+            _("The authenticity of host '{hostname}' can't be established.\n\n").format(hostname=hostname) +
+            _("Algorithm: {algorithm}\n").format(algorithm=algorithm) +
+            _("Fingerprint: {fingerprint}\n\n").format(fingerprint=fingerprint) +
+            _("Are you sure you want to continue connecting?")
         )
     )
-    dialog.add_response("no", "Reject")
-    dialog.add_response("yes", "Accept and Connect")
+    dialog.add_response("no", _("Reject"))
+    dialog.add_response("yes", _("Accept and Connect"))
     dialog.set_response_appearance("yes", Adw.ResponseAppearance.SUGGESTED)
 
     def _on_response(d: Adw.MessageDialog, response: str) -> None:
@@ -96,11 +99,11 @@ def prompt_vault_unlock(
 ) -> None:
     """Prompt the user for the vault's master password."""
     dialog = Adw.MessageDialog(
-        heading=f"Unlock {vault_name}",
-        body=f"Please enter your master password to access {vault_name} credentials."
+        heading=_("Unlock {vault_name}").format(vault_name=vault_name),
+        body=_("Please enter your master password to access {vault_name} credentials.").format(vault_name=vault_name)
     )
-    dialog.add_response("cancel", "Cancel")
-    dialog.add_response("ok", "Unlock")
+    dialog.add_response("cancel", _("Cancel"))
+    dialog.add_response("ok", _("Unlock"))
     dialog.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
     dialog.set_default_response("ok")
     dialog.set_modal(True)
@@ -147,7 +150,7 @@ class VaultKeyPickerDialog(Adw.Window):
         self._callback = callback
         self._done = False
         
-        self.set_title("Select SSH Key from Vault")
+        self.set_title(_("Select SSH Key from Vault"))
         self.set_default_size(420, 480)
         self.set_resizable(True)
         self.set_modal(True)
@@ -160,8 +163,8 @@ class VaultKeyPickerDialog(Adw.Window):
         self._toolbar = Adw.ToolbarView()
         self._header = Adw.HeaderBar()
         self._toolbar.add_top_bar(self._header)
-
-        cancel_btn = Gtk.Button(label="Cancel")
+ 
+        cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.add_css_class("flat")
         cancel_btn.connect("clicked", lambda _: self._finish(None, ""))
         self._header.pack_start(cancel_btn)
@@ -174,7 +177,7 @@ class VaultKeyPickerDialog(Adw.Window):
         self._spinner = Gtk.Spinner()
         self._spinner.set_size_request(32, 32)
         loading_box.append(self._spinner)
-        loading_box.append(Gtk.Label(label="Retrieving data from Vault..."))
+        loading_box.append(Gtk.Label(label=_("Retrieving data from Vault...")))
         self._main_stack.add_named(loading_box, "loading")
         
         # 2. Content State
@@ -185,7 +188,7 @@ class VaultKeyPickerDialog(Adw.Window):
         self._content_box.set_margin_end(12)
         
         hint = Gtk.Label(
-            label="Choose the vault item that contains the SSH private key for this connection.",
+            label=_("Choose the vault item that contains the SSH private key for this connection."),
             wrap=True, xalign=0,
         )
         hint.add_css_class("dim-label")
@@ -231,8 +234,8 @@ class VaultKeyPickerDialog(Adw.Window):
                 key_icon = Gtk.Image.new_from_icon_name("channel-secure-symbolic")
                 key_icon.set_opacity(0.8)
                 row.add_suffix(key_icon)
-
-            select_btn = Gtk.Button(label="Select")
+ 
+            select_btn = Gtk.Button(label=_("Select"))
             select_btn.add_css_class("suggested-action")
             select_btn.add_css_class("flat")
             select_btn.set_valign(Gtk.Align.CENTER)
@@ -282,8 +285,8 @@ def prompt_entry(
 ) -> None:
     """Prompt the user for a single line of text."""
     dialog = Adw.MessageDialog(heading=title, body=body)
-    dialog.add_response("cancel", "Cancel")
-    dialog.add_response("ok", "Confirm")
+    dialog.add_response("cancel", _("Cancel"))
+    dialog.add_response("ok", _("Confirm"))
     dialog.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
     dialog.set_default_response("ok")
     dialog.set_close_response("cancel")
@@ -323,7 +326,7 @@ def prompt_confirmation(
 ) -> None:
     """Ask for confirmation."""
     dialog = Adw.MessageDialog(heading=title, body=body)
-    dialog.add_response("no", "Cancel")
+    dialog.add_response("no", _("Cancel"))
     dialog.add_response("yes", confirm_label)
     if is_destructive:
         dialog.set_response_appearance("yes", Adw.ResponseAppearance.DESTRUCTIVE)
@@ -348,7 +351,7 @@ def prompt_confirmation(
 def show_info(parent: Gtk.Window, title: str, body: str) -> None:
     """Show an information dialog."""
     dialog = Adw.MessageDialog(heading=title, body=body)
-    dialog.add_response("ok", "OK")
+    dialog.add_response("ok", _("OK"))
     dialog.set_default_response("ok")
     dialog.set_close_response("ok")
 
@@ -368,7 +371,7 @@ class FilePropertiesDialog(Adw.Window):
     
     def __init__(self, parent: Gtk.Window, file_info: dict) -> None:
         super().__init__()
-        self.set_title(f"Properties: {file_info.get('name', 'File')}")
+        self.set_title(_("Properties: {name}").format(name=file_info.get('name', _('File'))))
         self.set_default_size(400, -1)
         self.set_modal(True)
         self.set_resizable(False)
@@ -413,18 +416,18 @@ class FilePropertiesDialog(Adw.Window):
             
             list_box.append(row)
 
-        add_row("Name", file_info.get("name"))
-        add_row("Type", "Directory" if file_info.get("is_dir") else "File")
-        add_row("Size", file_info.get("size_str"))
-        add_row("Last Modified", file_info.get("mtime_str"))
-        add_row("Permissions", file_info.get("permissions_oct"), file_info.get("permissions_oct"))
-        add_row("Owner", f"UID: {file_info.get('uid')} / GID: {file_info.get('gid')}")
-        add_row("Remote Path", file_info.get("path"), file_info.get("path"))
+        add_row(_("Name"), file_info.get("name"))
+        add_row(_("Type"), _("Directory") if file_info.get("is_dir") else _("File"))
+        add_row(_("Size"), file_info.get("size_str"))
+        add_row(_("Last Modified"), file_info.get("mtime_str"))
+        add_row(_("Permissions"), file_info.get("permissions_oct"), file_info.get("permissions_oct"))
+        add_row(_("Owner"), _("UID: {uid} / GID: {gid}").format(uid=file_info.get('uid'), gid=file_info.get('gid')))
+        add_row(_("Remote Path"), file_info.get("path"), file_info.get("path"))
 
         content.append(list_box)
         
         # Close button at bottom
-        close_btn = Gtk.Button(label="Close")
+        close_btn = Gtk.Button(label=_("Close"))
         close_btn.set_margin_start(12)
         close_btn.set_margin_end(12)
         close_btn.set_margin_bottom(12)

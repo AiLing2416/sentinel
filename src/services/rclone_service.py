@@ -18,6 +18,9 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 RCLONE_BIN = str(PROJECT_ROOT / "bin" / "rclone")
 SENTINEL_MOUNTS_DIR = os.path.expanduser("~/.cache/sentinel/mounts")
 
+# Security: Expected SHA256 of the bundled binary
+RCLONE_SHA256 = "66222d029e8135c0aedd239cc79c66ce5a7aa2063a97731ba7df4ec8e22e60cf"
+
 class RcloneService:
     """Provides transparent FUSE mount using rclone for SFTP connections."""
     
@@ -38,12 +41,33 @@ class RcloneService:
         return connection_id in self._active_mounts
 
     async def ensure_rclone(self) -> bool:
-        """Verify rclone bundled binary exists."""
+        """Verify rclone bundled binary exists and is authentic."""
         if os.path.exists(RCLONE_BIN) and os.access(RCLONE_BIN, os.X_OK):
-            return True
+            if await self._verify_binary(RCLONE_BIN, RCLONE_SHA256):
+                return True
+            else:
+                logger.error("Rclone binary integrity check FAILED! Security risk detected.")
+                return False
             
         logger.error(f"Bundled rclone binary not found or not executable at {RCLONE_BIN}")
         return False
+
+    async def _verify_binary(self, path: str, expected_sha: str) -> bool:
+        """Verify the SHA256 hash of a file."""
+        import hashlib
+        try:
+            def _calc():
+                h = hashlib.sha256()
+                with open(path, "rb") as f:
+                    while chunk := f.read(8192):
+                        h.update(chunk)
+                return h.hexdigest()
+            
+            actual = await asyncio.to_thread(_calc)
+            return actual == expected_sha
+        except Exception as e:
+            logger.error(f"Binary verification failed for {path}: {e}")
+            return False
 
     async def _obscure_password(self, password: SecureBytes | str) -> str:
         """Obscure password using rclone obscure via stdin."""
@@ -146,32 +170,14 @@ class RcloneService:
         if conn.username:
             args.extend(["--sftp-user", conn.username])
             
-        # Securely pass keys or passwords
-        temp_key_file = None
+        # Securely pass keys or passwords via temporary config
+        config_path = None
         try:
-            if "password" in auth_info and auth_info["password"]:
-                obs = await self._obscure_password(auth_info["password"])
-                args.extend(["--sftp-pass", obs])
-                
-            if "key_passphrase" in auth_info and auth_info["key_passphrase"]:
-                obs = await self._obscure_password(auth_info["key_passphrase"])
-                args.extend(["--sftp-key-file-pass", obs])
-
-            if "key_path" in auth_info and auth_info["key_path"]:
-                args.extend(["--sftp-key-file", auth_info["key_path"]])
-            elif "private_key_pem" in auth_info and auth_info["private_key_pem"]:
-                # Write to temp file with secure permissions
-                fd, temp_key_file = tempfile.mkstemp(prefix="sentinel_sftp_key_")
-                pem_data = auth_info["private_key_pem"]
-                if isinstance(pem_data, SecureBytes):
-                    pem_view = pem_data.get_view()
-                else:
-                    pem_view = pem_data.encode() if isinstance(pem_data, str) else pem_data
-                
-                os.write(fd, pem_view)
-                os.close(fd)
-                os.chmod(temp_key_file, 0o600)
-                args.extend(["--sftp-key-file", temp_key_file])
+            config_path, _ = await self._write_temp_config(conn, auth_info, "mount_remote")
+            args.extend(["--config", config_path])
+            
+            # Use the remote name defined in the config
+            args[2] = "mount_remote:/"
             
             # Clean start: Ensure it's not mounted and path is clear
             await self._unmount_if_stale(mount_path)
@@ -224,14 +230,14 @@ class RcloneService:
                 return None, err_summary
 
             # Process is running and mount is ready
-            self._active_mounts[conn.id] = dict(proc=proc, temp_key=temp_key_file)
+            self._active_mounts[conn.id] = dict(proc=proc, config_path=config_path)
             
             # Monitor loop
             async def _monitor_mount():
                 await proc.wait()
                 logger.info(f"Rclone mount for {conn.hostname} terminated (code {proc.returncode})")
-                if temp_key_file and os.path.exists(temp_key_file):
-                    try: os.remove(temp_key_file)
+                if config_path and os.path.exists(config_path):
+                    try: os.remove(config_path)
                     except: pass
                 self._active_mounts.pop(conn.id, None)
                 await self._unmount_if_stale(mount_path)
@@ -241,8 +247,8 @@ class RcloneService:
                 
         except Exception as e:
             logger.error(f"Failed to mount rclone: {e}")
-            if temp_key_file and os.path.exists(temp_key_file):
-                try: os.remove(temp_key_file)
+            if config_path and os.path.exists(config_path):
+                try: os.remove(config_path)
                 except: pass
             return None, str(e)
 
@@ -346,11 +352,15 @@ class RcloneService:
                 try: os.remove(config_path)
                 except: pass
 
-    async def _generate_transfer_config(self, src_conn, src_auth, dst_conn, dst_auth) -> tuple[str, list[str]]:
-        """Generate a temporary rclone config file and return (path, list_of_temp_keys)."""
-        temp_keys = []
+    async def _write_temp_config(self, 
+                               src_conn: Connection, src_auth: dict, 
+                               dst_conn: Connection | str = "dst", dst_auth: dict | None = None) -> tuple[str, list[str]]:
+        """Generate a temporary rclone config file. Handles both mount and transfer cases.
+        Uses key_pem where supported to avoid extra temp files.
+        """
+        temp_files = []
         
-        async def _prep_remote(conn, auth, prefix):
+        async def _prep_lines(conn, auth, prefix):
             lines = [
                 f"[{prefix}]",
                 "type = sftp",
@@ -366,18 +376,15 @@ class RcloneService:
             if "key_path" in auth and auth["key_path"]:
                 lines.append(f"key_file = {auth['key_path']}")
             elif "private_key_pem" in auth and auth["private_key_pem"]:
-                fd, path = tempfile.mkstemp(prefix=f"sentinel_transfer_key_{prefix}_")
                 pem_data = auth["private_key_pem"]
                 if isinstance(pem_data, SecureBytes):
-                    pem_view = pem_data.get_view()
+                    pem_str = pem_data.unsafe_get_str()
                 else:
-                    pem_view = pem_data.encode() if isinstance(pem_data, str) else pem_data
+                    pem_str = pem_data.decode() if isinstance(pem_data, bytes) else pem_data
                 
-                os.write(fd, pem_view)
-                os.close(fd)
-                os.chmod(path, 0o600)
-                temp_keys.append(path)
-                lines.append(f"key_file = {path}")
+                # Format PEM for rclone config (indented)
+                formatted_pem = pem_str.strip().replace("\n", "\n    ")
+                lines.append(f"key_pem = {formatted_pem}")
                 
             if "key_passphrase" in auth and auth["key_passphrase"]:
                  obs = await self._obscure_password(auth["key_passphrase"])
@@ -385,15 +392,24 @@ class RcloneService:
                  
             return lines
 
-        src_lines = await _prep_remote(src_conn, src_auth, "src")
-        dst_lines = await _prep_remote(dst_conn, dst_auth, "dst")
+        final_lines = []
+        if dst_auth is None:
+            # Single remote (mount case)
+            # If dst_conn is a string, it's our prefix name
+            prefix = dst_conn if isinstance(dst_conn, str) else "mount_remote"
+            final_lines.extend(await _prep_lines(src_conn, src_auth, prefix))
+        else:
+            # Dual remote (transfer case)
+            final_lines.extend(await _prep_lines(src_conn, src_auth, "src"))
+            final_lines.extend([""])
+            final_lines.extend(await _prep_lines(dst_conn, dst_auth, "dst"))
         
         conf_fd, conf_path = tempfile.mkstemp(prefix="sentinel_rclone_conf_")
         with os.fdopen(conf_fd, 'w') as f:
-            f.write("\n".join(src_lines) + "\n\n" + "\n".join(dst_lines) + "\n")
+            f.write("\n".join(final_lines) + "\n")
         
         os.chmod(conf_path, 0o600)
-        return conf_path, temp_keys
+        return conf_path, temp_files
 
     def unmount_all(self):
         """Cleanly unmount all existing mounts."""
@@ -401,11 +417,11 @@ class RcloneService:
         items = list(self._active_mounts.items())
         for conn_id, data in items:
             proc = data["proc"]
-            temp_key = data.get("temp_key")
+            config_path = data.get("config_path")
             if proc.returncode is None:
                 proc.terminate()
-            if temp_key and os.path.exists(temp_key):
-                try: os.remove(temp_key)
+            if config_path and os.path.exists(config_path):
+                try: os.remove(config_path)
                 except: pass
                 
             mount_path = self.get_mount_path(conn_id)

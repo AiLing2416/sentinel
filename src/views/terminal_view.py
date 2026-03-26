@@ -5,9 +5,13 @@
 from __future__ import annotations
 
 import logging
+import gettext
 from typing import Callable, Any
 
+_ = gettext.gettext
 import gi
+import os
+import termios
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -17,6 +21,10 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk, Pango, Vte  # noqa: E402
 
 from models.connection import Connection
 from services.ssh_service import SSHService
+
+import json
+from db.database import Database
+from utils.themes import DEFAULT_THEME, ThemeDict
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +38,7 @@ class TerminalTab(Gtk.Box):
         ssh_command: Any | None, # LocalCommand or None
         ssh_service: SSHService,
         on_close: Callable[[], None] | None = None,
+        on_os_detected: Callable[[str, str], None] | None = None,
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
 
@@ -37,12 +46,15 @@ class TerminalTab(Gtk.Box):
         self._ssh_command = ssh_command
         self._ssh_service = ssh_service
         self._on_close = on_close
-        self._on_os_detected: Callable[[str, str], None] | None = None
+        self._on_os_detected = on_os_detected
         
         # State
         self._child_pid: int | None = None
         self._session_bridge: Any | None = None
         self._bg_task: Any = None
+        self._pty: Vte.Pty | None = None
+        self._pty_watch_id: int = 0
+        self._read_only = False
         self.is_remote = self._connection is not None
         
         self._build_ui()
@@ -60,7 +72,7 @@ class TerminalTab(Gtk.Box):
     def title(self) -> str:
         if self._connection:
             return f"{self._connection.username}@{self._connection.hostname}" if self._connection.username else self._connection.hostname
-        return "Local Shell"
+        return _("Local Shell")
 
     @property
     def is_running(self) -> bool:
@@ -96,15 +108,97 @@ class TerminalTab(Gtk.Box):
         self._apply_theme()
         self._terminal.set_allow_hyperlink(True)
 
-        # Signals
+        # Signals & Event Handling
         if self.is_remote:
-            self._terminal_commit_sid = self._terminal.connect("commit", self._on_vte_commit)
+            # Use a PTY bridge to capture ALL keyboard input (Control keys, Esc, Arrows, Fn keys, etc.)
+            # This allows full interactive TUI support (vim, htop, etc.)
+            try:
+                self._pty = Vte.Pty.new_sync(Vte.PtyFlags.DEFAULT)
+                self._terminal.set_pty(self._pty)
+                self._pty_fd = self._pty.get_fd()
+                
+                # To capture user input from VTE, we must read from the PTY Slave.
+                try:
+                    # Get the slave path from the master FD
+                    slave_path = os.ptsname(self._pty_fd)
+                    # Open with O_NONBLOCK to play nice with GLib watch
+                    self._slave_fd = os.open(slave_path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+                    
+                    # IMPORTANT: Set the SLAVE side to raw mode.
+                    # We must disable ECHO to prevent local characters from being sent back to VTE.
+                    # We must disable ICANON to get key presses immediately (not line by line).
+                    # We must disable ISIG so Ctrl+C is treated as data.
+                    attrs = termios.tcgetattr(self._slave_fd)
+                    # iflags
+                    attrs[0] &= ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP
+                                | termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON)
+                    # oflags
+                    attrs[1] &= ~termios.OPOST
+                    # lflags
+                    attrs[3] &= ~(termios.ECHO | termios.ECHONL | termios.ICANON | termios.ISIG | termios.IEXTEN)
+                    # cflags
+                    attrs[2] &= ~(termios.CSIZE | termios.PARENB)
+                    attrs[2] |= termios.CS8
+                    
+                    termios.tcsetattr(self._slave_fd, termios.TCSANOW, attrs)
+                    
+                    logger.info(f"TerminalTab: PTY Bridge active on slave: {slave_path}")
+
+                    # Watch the SLAVE FD for data coming FROM the VTE widget (user input)
+                    self._pty_watch_id = GLib.io_add_watch(
+                        self._slave_fd, 
+                        GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR, 
+                        self._on_pty_input
+                    )
+                except Exception as te:
+                    logger.error(f"TerminalTab: Failed to setup PTY bridge: {te}")
+            except Exception as e:
+                logger.error(f"Failed to initialize PTY bridge for remote terminal: {e}")
+
             self._terminal.connect("notify::columns", self._on_vte_resize)
             self._terminal.connect("notify::rows", self._on_vte_resize)
         else:
             self._terminal.connect("child-exited", self._on_local_child_exited)
             
         self._terminal.connect("window-title-changed", self._on_title_changed)
+
+        # Right-click context menu
+        self._setup_context_menu()
+
+        # Search bar
+        self._search_bar = Gtk.SearchBar(halign=Gtk.Align.FILL)
+        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        search_box.add_css_class("toolbar")
+        search_box.set_margin_start(12)
+        search_box.set_margin_end(12)
+        search_box.set_margin_top(6)
+        search_box.set_margin_bottom(6)
+
+        self._search_entry = Gtk.SearchEntry(hexpand=True)
+        self._search_entry.set_placeholder_text(_("Find in terminal..."))
+        search_box.append(self._search_entry)
+
+        next_btn = Gtk.Button.new_from_icon_name("go-down-symbolic")
+        next_btn.set_tooltip_text(_("Find next"))
+        next_btn.connect("clicked", lambda *_: self._on_search_next())
+        search_box.append(next_btn)
+
+        prev_btn = Gtk.Button.new_from_icon_name("go-up-symbolic")
+        prev_btn.set_tooltip_text(_("Find previous"))
+        prev_btn.connect("clicked", lambda *_: self._on_search_prev())
+        search_box.append(prev_btn)
+
+        close_btn = Gtk.Button.new_from_icon_name("window-close-symbolic")
+        close_btn.add_css_class("flat")
+        close_btn.connect("clicked", lambda *_: self._search_bar.set_search_mode(False))
+        search_box.append(close_btn)
+
+        self._search_bar.set_child(search_box)
+        self._search_bar.connect_entry(self._search_entry)
+        self._search_entry.connect("search-changed", self._on_search_changed)
+        self._search_entry.connect("activate", lambda *_: self._on_search_next())
+
+        self.prepend(self._search_bar)
 
         # Scrolled container
         scroll = Gtk.ScrolledWindow(vexpand=True, hexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
@@ -116,7 +210,7 @@ class TerminalTab(Gtk.Box):
         self._status_bar.add_css_class("toolbar")
 
         self._status_label = Gtk.Label(
-            label=f"Connecting to {self.title}…" if self.is_remote else "Spawning local shell...",
+            label=_("Connecting to {title}…").format(title=self.title) if self.is_remote else _("Spawning local shell..."),
             xalign=0,
             hexpand=True,
             ellipsize=3,
@@ -127,24 +221,51 @@ class TerminalTab(Gtk.Box):
         self.append(self._status_bar)
 
     def _apply_theme(self) -> None:
+        db = Database()
+        db.open()
+        theme_json = db.get_meta("terminal_theme", "")
+        db.close()
+
+        if theme_json:
+            try:
+                theme = json.loads(theme_json)
+            except:
+                theme = DEFAULT_THEME
+        else:
+            theme = DEFAULT_THEME
+
         bg = Gdk.RGBA()
-        bg.parse("#1e1e2e")
+        bg.parse(theme["background"])
         fg = Gdk.RGBA()
-        fg.parse("#cdd6f4")
-        hex_colors = [
-            "#45475a", "#f38ba8", "#a6e3a1", "#f9e2af", "#89b4fa", "#f5c2e7", "#94e2d5", "#bac2de",
-            "#585b70", "#f38ba8", "#a6e3a1", "#f9e2af", "#89b4fa", "#f5c2e7", "#94e2d5", "#a6adc8"
-        ]
+        fg.parse(theme["foreground"])
+        
         palette = []
-        for h in hex_colors:
+        for h in theme["palette"]:
             c = Gdk.RGBA()
             c.parse(h)
             palette.append(c)
         self._terminal.set_colors(fg, bg, palette)
 
+        # Cursor color
+        cursor_rgba = Gdk.RGBA()
+        if cursor_rgba.parse(theme.get("cursor", theme["foreground"])):
+            # VTE 0.70+ uses these
+            self._terminal.set_color_cursor(cursor_rgba)
+
+        # Emphasis for search matches and selection
+        highlight_bg = Gdk.RGBA()
+        highlight_bg.parse(theme.get("highlight_bg", "#f9e2af"))
+        
+        highlight_fg = Gdk.RGBA()
+        highlight_fg.parse(theme.get("highlight_fg", theme["background"]))
+        
+        self._terminal.set_color_highlight(highlight_bg)
+        self._terminal.set_color_highlight_foreground(highlight_fg)
+
     # ── Remote Process ─────────────────────────────────────────
 
     def _connect_remote(self) -> None:
+        logger.info(f"TerminalTab: Starting remote connection to {self.title}")
         from views.dialogs import prompt_password, prompt_host_key, prompt_vault_unlock, prompt_vault_item_selection
         from services.vault_service import VaultService
         
@@ -186,6 +307,7 @@ class TerminalTab(Gtk.Box):
             "on_cancelled": self.request_close,
         }
         if self._on_os_detected:
+            logger.info(f"TerminalTab: OS detection callback attached for {self.title}")
             callbacks["on_os_detected"] = self._on_os_detected
 
         coro = self._ssh_service.connect_and_start_session(
@@ -199,7 +321,7 @@ class TerminalTab(Gtk.Box):
 
     def _on_remote_connected(self, bridge: Any) -> None:
         self._session_bridge = bridge
-        self._status_label.set_label(f"Connected — {self.title}")
+        self._status_label.set_label(_("Connected — {title}").format(title=self.title))
         cols, rows = self._terminal.get_column_count(), self._terminal.get_row_count()
         bridge.resize(cols, rows)
 
@@ -209,16 +331,31 @@ class TerminalTab(Gtk.Box):
         self._show_reconnect_prompt()
         
     def _on_remote_disconnected(self, exc: Exception | None) -> None:
-        self._status_label.set_label(f"Disconnected: {exc}" if exc else "Disconnected")
+        self._status_label.set_label(_("Disconnected: {exc}").format(exc=exc) if exc else _("Disconnected"))
         self._session_bridge = None
         self._show_reconnect_prompt()
         
     def _on_remote_output(self, data: bytes) -> None:
         self._terminal.feed(data)
         
-    def _on_vte_commit(self, terminal: Vte.Terminal, text: str, size: int) -> None:
-        if self._session_bridge:
-            self._session_bridge.write(text.encode("utf-8"))
+    def _on_pty_input(self, fd: int, condition: GLib.IOCondition) -> bool:
+        """Called when there is data to read from the PTY Slave (user input from VTE)."""
+        if condition & (GLib.IOCondition.HUP | GLib.IOCondition.ERR):
+            logger.info("TerminalTab: PTY Slave connection closed/error.")
+            return False
+
+        if condition & GLib.IOCondition.IN:
+            try:
+                # Read what VTE wrote to the PTY Master -> received at Slave
+                data = os.read(fd, 4096)
+                if data:
+                    # logger.info(f"TerminalTab: Captured User Input: {data!r}")
+                    if self._session_bridge and not self._read_only:
+                        self._session_bridge.write(data)
+            except (OSError, Exception) as e:
+                logger.error(f"TerminalTab: PTY read error: {e}")
+                return False
+        return True
             
     def _on_vte_resize(self, terminal: Vte.Terminal, param_spec: Any) -> None:
         if self._session_bridge:
@@ -226,7 +363,7 @@ class TerminalTab(Gtk.Box):
             self._session_bridge.resize(cols, rows)
 
     def _on_remote_exited(self, exit_status: int) -> None:
-        self._status_label.set_label(f"Exited with code {exit_status}")
+        self._status_label.set_label(_("Exited with code {exit_status}").format(exit_status=exit_status))
         self._session_bridge = None
         self._show_reconnect_prompt()
 
@@ -246,14 +383,14 @@ class TerminalTab(Gtk.Box):
 
     def _on_local_spawn_complete(self, terminal: Vte.Terminal, pid: int, error: GLib.Error | None) -> None:
         if error:
-            self._status_label.set_label(f"Error: {error.message}")
+            self._status_label.set_label(_("Error: {error}").format(error=error.message))
             return
         self._child_pid = pid
-        self._status_label.set_label("Local Shell")
+        self._status_label.set_label(_("Local Shell"))
 
     def _on_local_child_exited(self, terminal: Vte.Terminal, exit_status: int) -> None:
         self._child_pid = None
-        self._status_label.set_label(f"Exited code {exit_status >> 8}")
+        self._status_label.set_label(_("Exited code {exit_status}").format(exit_status=exit_status >> 8))
         self._show_reconnect_prompt()
 
     # ── Shared ────────────────────────────────────────────────
@@ -271,7 +408,7 @@ class TerminalTab(Gtk.Box):
             self.request_close()
         elif "\r" in text or "\n" in text:
             terminal.disconnect(self._reconnect_sid)
-            self._status_label.set_label(f"Reconnecting…")
+            self._status_label.set_label(_("Reconnecting…"))
             self._terminal.reset(True, True)
             if self.is_remote:
                 self._connect_remote()
@@ -280,6 +417,114 @@ class TerminalTab(Gtk.Box):
 
     def _on_title_changed(self, terminal: Vte.Terminal) -> None:
         pass
+
+    def _setup_context_menu(self) -> None:
+        """Create a right-click context menu for the terminal."""
+        menu = Gio.Menu()
+        
+        section_edit = Gio.Menu()
+        section_edit.append(_("Copy"), "term.copy")
+        section_edit.append(_("Paste"), "term.paste")
+        menu.append_section(None, section_edit)
+        
+        section_tools = Gio.Menu()
+        section_tools.append(_("Find…"), "term.find")
+        section_tools.append(_("Read-only"), "term.read-only")
+        menu.append_section(None, section_tools)
+        
+        section_view = Gio.Menu()
+        section_view.append(_("Select All"), "term.select-all")
+        section_view.append(_("Clear"), "term.clear")
+        menu.append_section(None, section_view)
+
+        self._popover = Gtk.PopoverMenu.new_from_model(menu)
+        self._popover.set_parent(self._terminal)
+        self._popover.set_has_arrow(False)
+
+        action_group = Gio.SimpleActionGroup()
+        
+        copy_action = Gio.SimpleAction.new("copy", None)
+        copy_action.connect("activate", lambda *_: self.copy_clipboard())
+        action_group.add_action(copy_action)
+        
+        paste_action = Gio.SimpleAction.new("paste", None)
+        paste_action.connect("activate", lambda *_: self.paste_clipboard())
+        action_group.add_action(paste_action)
+
+        select_all_action = Gio.SimpleAction.new("select-all", None)
+        select_all_action.connect("activate", lambda *_: self._terminal.select_all())
+        action_group.add_action(select_all_action)
+
+        clear_action = Gio.SimpleAction.new("clear", None)
+        clear_action.connect("activate", lambda *_: self._on_clear_terminal())
+        action_group.add_action(clear_action)
+
+        find_action = Gio.SimpleAction.new("find", None)
+        find_action.connect("activate", lambda *_: self._search_bar.set_search_mode(True))
+        action_group.add_action(find_action)
+
+        ro_action = Gio.SimpleAction.new_stateful("read-only", None, GLib.Variant.new_boolean(False))
+        ro_action.connect("change-state", self._on_read_only_change)
+        action_group.add_action(ro_action)
+
+        self._terminal.insert_action_group("term", action_group)
+
+        # Right-click gesture
+        click_gesture = Gtk.GestureClick.new()
+        click_gesture.set_button(3)  # Secondary button
+        click_gesture.connect("pressed", self._on_right_click)
+        self._terminal.add_controller(click_gesture)
+
+    def _on_right_click(self, gesture: Gtk.GestureClick, n_press: int, x: float, y: float) -> None:
+        # Move popover to the click location
+        rect = Gdk.Rectangle()
+        rect.x, rect.y = int(x), int(y)
+        rect.width = rect.height = 1
+        self._popover.set_pointing_to(rect)
+        self._popover.popup()
+
+    def _on_read_only_change(self, action: Gio.SimpleAction, state: GLib.Variant) -> None:
+        self._read_only = state.get_boolean()
+        self._terminal.set_input_enabled(not self._read_only)
+        action.set_state(state)
+        
+        # Visual feedback in status
+        if self._read_only:
+            self._status_label.add_css_class("error") # Just to make it stand out or a new color
+        else:
+            self._status_label.remove_css_class("error")
+
+    def _on_search_changed(self, entry: Gtk.SearchEntry) -> None:
+        text = entry.get_text()
+        if not text:
+            self._terminal.search_set_regex(None, 0)
+            self._terminal.unselect_all()
+            return
+
+        try:
+            # REGEX_FLAGS_DEFAULT should be available
+            regex = Vte.Regex.new_for_search(text, -1, 0)
+            self._terminal.search_set_regex(regex, 0)
+            self._terminal.search_set_wrap_around(True)
+            self._on_search_next()
+        except:
+            pass
+
+    def _on_search_next(self) -> None:
+        self._terminal.search_find_next()
+
+    def _on_search_prev(self) -> None:
+        self._terminal.search_find_previous()
+
+    def _on_clear_terminal(self) -> None:
+        """Reset terminal and send a clear signal to the shell."""
+        self._terminal.reset(True, True)
+        if self._session_bridge:
+            # Send Ctrl+L to remote shell to get a new prompt
+            self._session_bridge.write(b"\x0c")
+        else:
+            # Send Ctrl+L to local shell
+            self._terminal.feed_child(b"\x0c")
 
     def copy_clipboard(self) -> None:
         self._terminal.copy_clipboard_format(Vte.Format.TEXT)
@@ -291,6 +536,16 @@ class TerminalTab(Gtk.Box):
         return self._terminal.grab_focus()
 
     def terminate(self) -> None:
+        if self._pty_watch_id:
+            GLib.source_remove(self._pty_watch_id)
+            self._pty_watch_id = 0
+            
+        if hasattr(self, "_slave_fd") and self._slave_fd:
+            try:
+                os.close(self._slave_fd)
+                self._slave_fd = 0
+            except: pass
+
         if self._bg_task and not self._bg_task.done():
             self._bg_task.cancel()
             
@@ -352,8 +607,8 @@ class TerminalTabView:
             connection=connection,
             ssh_command=None,
             ssh_service=self._ssh_service,
+            on_os_detected=on_os_detected,
         )
-        terminal_tab._on_os_detected = on_os_detected
 
         page = self._tab_view.append(terminal_tab)
         terminal_tab._on_close = lambda t=terminal_tab: self._close_specific_tab_by_widget(t)
@@ -380,7 +635,7 @@ class TerminalTabView:
         page = self._tab_view.append(terminal_tab)
         terminal_tab._on_close = lambda t=terminal_tab: self._close_specific_tab_by_widget(t)
         
-        page.set_title("Local Shell")
+        page.set_title(_("Local Shell"))
         page.set_icon(Gio.ThemedIcon.new("computer-symbolic"))
 
         self._tab_view.set_selected_page(page)
@@ -464,6 +719,22 @@ class TerminalTabView:
         if hasattr(child, "connection") and child.connection:
             self._tabs.pop(child.connection.id, None)
 
+    def notify_connection_updated(self, connection: Connection) -> None:
+        """Update any open tabs that are using this connection."""
+        page = self._tabs.get(connection.id)
+        if page:
+            logger.info(f"TerminalTabView: Syncing open tab for connection {connection.id}")
+            child = page.get_child()
+            if hasattr(child, "_connection") and child._connection:
+                # Update critical fields in place to keep references valid but data fresh
+                old_os = child._connection.os_id
+                child._connection.os_id = connection.os_id
+                logger.info(f"TerminalTabView: Updated child connection os_id for {connection.id} from '{old_os}' to '{connection.os_id}'")
+                child._connection.name = connection.name
+                child._connection.hostname = connection.hostname
+                child._connection.username = connection.username
+                child._connection.port = connection.port
+                
     def find_sftp_tab_data(self, connection_id: str) -> tuple[Connection, dict] | None:
         """Find authentication info for an active SFTP tab."""
         for i in range(self._tab_view.get_n_pages()):
@@ -474,3 +745,11 @@ class TerminalTabView:
                 if hasattr(child, "_connection") and child._connection.id == connection_id:
                     return child._connection, child._auth_info
         return None
+
+    def refresh_theme(self) -> None:
+        """Refresh theme for all open terminal tabs."""
+        for i in range(self._tab_view.get_n_pages()):
+            page = self._tab_view.get_nth_page(i)
+            child = page.get_child()
+            if hasattr(child, "_apply_theme"):
+                child._apply_theme()

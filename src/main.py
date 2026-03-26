@@ -6,6 +6,7 @@
 
 import os
 import sys
+import logging
 
 # Allow running from source tree during development
 _src_dir = os.path.dirname(os.path.abspath(__file__))
@@ -31,7 +32,11 @@ def _setup_language() -> None:
     db.close()
 
     domain = 'sentinel'
-    localedir = os.path.join(_src_dir, '..', 'build', 'po')
+    # Development: .mo files are compiled to build/locale/ by run_dev.sh
+    localedir = os.path.join(_src_dir, '..', 'build', 'locale')
+    if not os.path.isdir(localedir):
+        # Fallback: system-installed location
+        localedir = os.path.join(_src_dir, '..', 'build', 'po')
 
     if lang_code:
         os.environ['LANGUAGE'] = lang_code
@@ -48,6 +53,26 @@ def _setup_language() -> None:
 
 def main() -> int:
     """Launch the Sentinel application."""
+    # Configure logging to show INFO and higher by default for development
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+        datefmt='%H:%M:%S'
+    )
+    logger = logging.getLogger("Sentinel")
+    logger.info("Application starting...")
+
+    # Initialize and attempt auto-unlock of local secure vault
+    try:
+        from services.vault_manager import VaultManager
+        vm = VaultManager.get()
+        if vm.startup():
+            logger.info("Local vault: auto-unlocked via keyring.")
+        else:
+            logger.info("Local vault: manual unlock required (will prompt in UI).")
+    except Exception as _ve:
+        logger.warning("Local vault startup failed: %s", _ve)
+
     _setup_language()
     app = SentinelApplication()
     ret = app.run(sys.argv)
@@ -56,7 +81,6 @@ def main() -> int:
         from services.rclone_service import RcloneService
         RcloneService.get().unmount_all()
     except Exception as e:
-        import logging
         logging.error(f"Failed to unmount active FUSE directories: {e}")
 
     return ret

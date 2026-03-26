@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import os
 import gettext
 import gi
 
@@ -14,13 +13,16 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk  # noqa: E402
 from db.database import Database
 
+_ = gettext.gettext
+
+
 class AppSettingsWindow(Adw.Window):
     """A standalone window for managing Application settings."""
 
     def __init__(self, app: Adw.Application) -> None:
         super().__init__(
             application=app,
-            title="App Settings",
+            title=_("App Settings"),
             default_width=500,
             default_height=300,
         )
@@ -40,11 +42,11 @@ class AppSettingsWindow(Adw.Window):
         page = Adw.PreferencesPage()
 
         # General Group
-        general_group = Adw.PreferencesGroup(title="General")
+        general_group = Adw.PreferencesGroup(title=_("General"))
 
         # Language Dropdown
-        self._language_row = Adw.ComboRow(title="Language")
-        self._language_row.set_subtitle("Requires an application restart to fully apply")
+        self._language_row = Adw.ComboRow(title=_("Language"))
+        self._language_row.set_subtitle(_("Requires an application restart to fully apply"))
 
         # Available languages mapping
         # Index corresponds to the position in the ComboRow
@@ -60,7 +62,7 @@ class AppSettingsWindow(Adw.Window):
         model = Gtk.StringList.new(lang_list)
         self._language_row.set_model(model)
 
-        self._language_row.connect("notify::selected", self._on_language_changed)
+        self._language_changed_handler = self._language_row.connect("notify::selected", self._on_language_changed)
 
         general_group.add(self._language_row)
         page.add(general_group)
@@ -74,6 +76,7 @@ class AppSettingsWindow(Adw.Window):
 
     def _load_settings(self) -> None:
         lang_code = self._db.get_meta("app_language", "")
+        self._current_lang_code = lang_code
 
         # Find index of language
         idx = 0
@@ -82,12 +85,22 @@ class AppSettingsWindow(Adw.Window):
                 idx = i
                 break
 
+        # Block the signal while restoring the saved selection so that
+        # _on_language_changed is not triggered during initialization.
+        self._language_row.handler_block(self._language_changed_handler)
         self._language_row.set_selected(idx)
+        self._language_row.handler_unblock(self._language_changed_handler)
 
     def _on_language_changed(self, *args) -> None:
         idx = self._language_row.get_selected()
         if 0 <= idx < len(self._languages):
             lang_code = self._languages[idx][1]
+
+            # Skip if the selection didn't actually change
+            if lang_code == self._current_lang_code:
+                return
+
+            self._current_lang_code = lang_code
             self._db.set_meta("app_language", lang_code)
 
             # Show a toast about restart
@@ -97,7 +110,7 @@ class AppSettingsWindow(Adw.Window):
                 windows = app.get_windows()
                 for w in windows:
                     if hasattr(w, "_show_toast"):
-                        w._show_toast("Please restart the application for language changes to take effect.")
+                        w._show_toast(_("Please restart the application for language changes to take effect."))
                         break
 
     def do_close_request(self) -> bool:

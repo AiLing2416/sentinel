@@ -36,6 +36,17 @@
   </requires>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.2.0" date="2026-03-25">
+      <description>
+        <ul>
+          <li>Enhanced security: Zero-string copy memory management</li>
+          <li>Refactored Secure Vault with binary packing</li>
+          <li>Improved terminal keyboard handling and theme consistency</li>
+          <li>Added German and Traditional Chinese translations</li>
+          <li>Process-level credential protection improvements</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-03-12" />
   </releases>
   <developer_name>ailing2416</developer_name>

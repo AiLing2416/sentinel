@@ -43,7 +43,7 @@ def _setup_language() -> None:
     db.close()
 
     domain = 'sentinel'
-    localedir = os.path.join(pkgdatadir, 'locale') if not pkgdatadir.startswith('@') else os.path.join(_src_dir, '..', 'build', 'po')
+    localedir = os.path.join(pkgdatadir, 'locale') if not pkgdatadir.startswith('@') else os.path.join(_src_dir, '..', 'build', 'locale')
 
     if lang_code:
         os.environ['LANGUAGE'] = lang_code

@@ -9,6 +9,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
+import gettext
+import logging
 from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
 
 from db.database import Database
@@ -16,6 +18,9 @@ from models.connection import AuthMethod, Connection, ValidationError
 from services.ssh_service import SSHService
 from views.connection_list import ConnectionListSidebar
 from views.terminal_view import TerminalTabView
+
+_ = gettext.gettext
+logger = logging.getLogger(__name__)
 
 
 class SentinelWindow(Adw.ApplicationWindow):
@@ -25,7 +30,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         super().__init__(
             default_width=1100,
             default_height=700,
-            title="Sentinel",
+            title=_("Sentinel"),
             **kwargs,
         )
 
@@ -51,30 +56,31 @@ class SentinelWindow(Adw.ApplicationWindow):
         self._split_view.set_max_sidebar_width(380)
 
         # ─── Sidebar ─────────────────────────────────────────
-        sidebar_page = Adw.NavigationPage(title="Connections")
+        sidebar_page = Adw.NavigationPage(title=_("Connections"))
         sidebar_toolbar = Adw.ToolbarView()
-
+ 
         sidebar_header = Adw.HeaderBar()
         sidebar_header.set_show_title(True)
-
-        add_btn = Gtk.Button(icon_name="list-add-symbolic", tooltip_text="New Connection  (Ctrl+N)")
+ 
+        add_btn = Gtk.Button(icon_name="list-add-symbolic", tooltip_text=_("New Connection  (Ctrl+N)"))
         add_btn.connect("clicked", lambda _: self.show_connection_editor())
         sidebar_header.pack_start(add_btn)
-
+ 
         # Menu
-        menu_btn = Gtk.MenuButton(icon_name="open-menu-symbolic", tooltip_text="Menu")
+        menu_btn = Gtk.MenuButton(icon_name="open-menu-symbolic", tooltip_text=_("Menu"))
         menu_model = Gio.Menu()
-        menu_model.append("App Settings", "app.app_settings")
-        menu_model.append("Vault Settings", "app.vault_settings")
-        menu_model.append("About Sentinel", "app.about")
-        menu_model.append("Quit", "app.quit")
+        menu_model.append(_("Terminal Theme"), "app.terminal_theme")
+        menu_model.append(_("App Settings"), "app.app_settings")
+        menu_model.append(_("Vault Settings"), "app.vault_settings")
+        menu_model.append(_("About Sentinel"), "app.about")
+        menu_model.append(_("Quit"), "app.quit")
         menu_btn.set_menu_model(menu_model)
         sidebar_header.pack_end(menu_btn)
 
         sidebar_toolbar.add_top_bar(sidebar_header)
 
         # Search
-        self._search_entry = Gtk.SearchEntry(placeholder_text="Search connections…")
+        self._search_entry = Gtk.SearchEntry(placeholder_text=_("Search connections…"))
         self._search_entry.set_margin_start(8)
         self._search_entry.set_margin_end(8)
         self._search_entry.set_margin_top(4)
@@ -105,7 +111,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         sidebar_page.set_child(sidebar_toolbar)
 
         # ─── Content area ────────────────────────────────────
-        content_page = Adw.NavigationPage(title="Sentinel")
+        content_page = Adw.NavigationPage(title=_("Sentinel"))
         content_toolbar = Adw.ToolbarView()
 
         # Content stack: welcome page OR terminal area
@@ -126,7 +132,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         content_header = Adw.HeaderBar()
         
         # Give the window a nice dynamic title
-        self._window_title = Adw.WindowTitle(title="Terminal", subtitle="")
+        self._window_title = Adw.WindowTitle(title=_("Terminal"), subtitle="")
         content_header.set_title_widget(self._window_title)
 
         # Utilize native Adw.TabBar for bulletproof window drag, tab drag, & tear-offs
@@ -143,7 +149,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         # Local Shell Button (back to HeaderBar)
         shell_btn = Gtk.Button(
             icon_name="computer-symbolic",
-            tooltip_text="Open Local Shell (Ctrl+T)"
+            tooltip_text=_("Open Local Shell (Ctrl+T)")
         )
         shell_btn.add_css_class("flat")
         shell_btn.set_valign(Gtk.Align.CENTER)
@@ -153,7 +159,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         # "Merge All" button for TabBar (for secondary windows)
         self._merge_btn = Gtk.Button(
             icon_name="list-remove-symbolic",
-            tooltip_text="Merge all tabs into another window and close"
+            tooltip_text=_("Merge all tabs into another window and close")
         )
         self._merge_btn.add_css_class("flat")
         self._merge_btn.set_valign(Gtk.Align.CENTER)
@@ -206,11 +212,11 @@ class SentinelWindow(Adw.ApplicationWindow):
         icon.add_css_class("welcome-icon")
         box.append(icon)
 
-        title = Gtk.Label(label="Sentinel")
+        title = Gtk.Label(label=_("Sentinel"))
         title.add_css_class("welcome-title")
         box.append(title)
-
-        subtitle = Gtk.Label(label="Secure SSH Connection Manager")
+ 
+        subtitle = Gtk.Label(label=_("Secure SSH Connection Manager"))
         subtitle.add_css_class("welcome-subtitle")
         box.append(subtitle)
 
@@ -221,13 +227,13 @@ class SentinelWindow(Adw.ApplicationWindow):
             margin_top=24,
         )
 
-        add_btn = Gtk.Button(label="New Connection")
+        add_btn = Gtk.Button(label=_("New Connection"))
         add_btn.add_css_class("suggested-action")
         add_btn.add_css_class("pill")
         add_btn.connect("clicked", lambda _: self.show_connection_editor())
         btn_box.append(add_btn)
-
-        shell_btn = Gtk.Button(label="Local Shell")
+ 
+        shell_btn = Gtk.Button(label=_("Local Shell"))
         shell_btn.add_css_class("pill")
         shell_btn.connect("clicked", lambda _: self._open_local_shell())
         btn_box.append(shell_btn)
@@ -236,7 +242,7 @@ class SentinelWindow(Adw.ApplicationWindow):
 
         # Keyboard hints
         hints = Gtk.Label(
-            label="Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search",
+            label=_("Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"),
         )
         hints.add_css_class("dim-label")
         hints.add_css_class("caption")
@@ -251,7 +257,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         """Open the connection editor dialog."""
         is_edit = connection is not None
         dialog = Adw.Dialog()
-        dialog.set_title("Edit Connection" if is_edit else "New Connection")
+        dialog.set_title(_("Edit Connection") if is_edit else _("New Connection"))
         dialog.set_content_width(480)
         dialog.set_content_height(520)
 
@@ -259,11 +265,11 @@ class SentinelWindow(Adw.ApplicationWindow):
         header = Adw.HeaderBar()
         toolbar.add_top_bar(header)
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.connect("clicked", lambda _: dialog.close())
         header.pack_start(cancel_btn)
-
-        save_btn = Gtk.Button(label="Save")
+ 
+        save_btn = Gtk.Button(label=_("Save"))
         save_btn.add_css_class("suggested-action")
         header.pack_end(save_btn)
 
@@ -271,25 +277,25 @@ class SentinelWindow(Adw.ApplicationWindow):
         form_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 
         # ─── Basic group ───
-        basic_group = Adw.PreferencesGroup(title="Basic")
+        basic_group = Adw.PreferencesGroup(title=_("Basic"))
         basic_group.add_css_class("editor-page")
-
-        name_row = Adw.EntryRow(title="Name")
+ 
+        name_row = Adw.EntryRow(title=_("Name"))
         if connection:
             name_row.set_text(connection.name)
         basic_group.add(name_row)
-
-        host_row = Adw.EntryRow(title="Hostname")
+ 
+        host_row = Adw.EntryRow(title=_("Hostname"))
         if connection:
             host_row.set_text(connection.hostname)
         basic_group.add(host_row)
-
+ 
         port_row = Adw.SpinRow.new_with_range(1, 65535, 1)
-        port_row.set_title("Port")
+        port_row.set_title(_("Port"))
         port_row.set_value(connection.port if connection else 22)
         basic_group.add(port_row)
 
-        user_row = Adw.EntryRow(title="Username")
+        user_row = Adw.EntryRow(title=_("Username"))
         if connection:
             user_row.set_text(connection.username)
         basic_group.add(user_row)
@@ -297,13 +303,13 @@ class SentinelWindow(Adw.ApplicationWindow):
         form_box.append(basic_group)
 
         # ─── Auth group ───
-        auth_group = Adw.PreferencesGroup(title="Authentication")
+        auth_group = Adw.PreferencesGroup(title=_("Authentication"))
         auth_group.add_css_class("editor-page")
 
         auth_items = Gtk.StringList.new(
-            ["SSH Key", "Password", "Key + Passphrase", "SSH Agent", "Vault"]
+            [_("SSH Key"), _("Password"), _("Key + Passphrase"), _("SSH Agent"), _("Vault")]
         )
-        auth_row = Adw.ComboRow(title="Method", model=auth_items)
+        auth_row = Adw.ComboRow(title=_("Method"), model=auth_items)
         auth_map = {
             AuthMethod.KEY: 0, AuthMethod.PASSWORD: 1,
             AuthMethod.KEY_PASSPHRASE: 2, AuthMethod.AGENT: 3, AuthMethod.VAULT: 4,
@@ -313,7 +319,7 @@ class SentinelWindow(Adw.ApplicationWindow):
             auth_row.set_selected(auth_map.get(connection.auth_method, 0))
         auth_group.add(auth_row)
 
-        key_row = Adw.EntryRow(title="Key File Path (optional)")
+        key_row = Adw.EntryRow(title=_("Key File Path (optional)"))
         if connection and connection.key_path:
             key_row.set_text(connection.key_path)
         auth_group.add(key_row)
@@ -332,26 +338,26 @@ class SentinelWindow(Adw.ApplicationWindow):
         def _vault_sel_id() -> str | None:
             return _vault_sel[0]
 
-        vault_row = Adw.ActionRow(title="SSH Key from Vault")
-        vault_row.set_subtitle("Select the vault item that stores the SSH private key")
+        vault_row = Adw.ActionRow(title=_("SSH Key from Vault"))
+        vault_row.set_subtitle(_("Select the vault item that stores the SSH private key"))
 
         vault_label = Gtk.Label()
         vault_label.set_valign(Gtk.Align.CENTER)
         vault_label.add_css_class("dim-label")
         vault_label.add_css_class("caption")
         if connection and connection.vault_item_id:
-            vault_label.set_label(connection.vault_item_id[:20] + "…" if len(connection.vault_item_id or "") > 20 else connection.vault_item_id or "Not selected")
+            vault_label.set_label(connection.vault_item_id[:20] + "…" if len(connection.vault_item_id or "") > 20 else connection.vault_item_id or _("Not selected"))
         else:
-            vault_label.set_label("Not selected")
+            vault_label.set_label(_("Not selected"))
 
         vault_clear_btn = Gtk.Button(icon_name="edit-clear-symbolic")
-        vault_clear_btn.set_tooltip_text("Clear vault key selection")
+        vault_clear_btn.set_tooltip_text(_("Clear vault key selection"))
         vault_clear_btn.set_valign(Gtk.Align.CENTER)
         vault_clear_btn.add_css_class("flat")
         vault_clear_btn.add_css_class("circular")
 
-        vault_browse_btn = Gtk.Button(label="Select…")
-        vault_browse_btn.set_tooltip_text("Select SSH key from Vault")
+        vault_browse_btn = Gtk.Button(label=_("Select…"))
+        vault_browse_btn.set_tooltip_text(_("Select SSH key from Vault"))
         vault_browse_btn.set_valign(Gtk.Align.CENTER)
         vault_browse_btn.add_css_class("flat")
 
@@ -368,7 +374,7 @@ class SentinelWindow(Adw.ApplicationWindow):
                 display = name if name else (item_id[:18] + "…" if len(item_id) > 18 else item_id)
                 vault_label.set_label(display)
             else:
-                vault_label.set_label("Not selected")
+                vault_label.set_label(_("Not selected"))
 
         def _on_vault_clear(_btn) -> None:
             _update_vault_label(None)
@@ -383,7 +389,7 @@ class SentinelWindow(Adw.ApplicationWindow):
 
             vault = VaultService.get().get_backend("bitwarden")
             if not vault or not vault.is_available:
-                self._show_toast("Bitwarden CLI not found. Install it first.")
+                self._show_toast(_("Bitwarden CLI not found. Install it first."))
                 return
 
             # Show dialog immediately in loading state
@@ -400,7 +406,7 @@ class SentinelWindow(Adw.ApplicationWindow):
                 if not is_unlocked:
                     def _notify_locked():
                         picker.destroy()
-                        self._show_toast("Please log in / unlock Bitwarden via Vault Settings first.")
+                        self._show_toast(_("Please log in / unlock Bitwarden via Vault Settings first."))
                         self.get_application().lookup_action("vault_settings").activate(None)
                         return False
                     _GLib.idle_add(_notify_locked)
@@ -412,7 +418,7 @@ class SentinelWindow(Adw.ApplicationWindow):
                 except Exception as fetch_err:
                     def _on_error():
                         picker.destroy()
-                        self._show_toast(f"Failed to fetch vault items: {fetch_err}")
+                        self._show_toast(_("Failed to fetch vault items: {fetch_err}").format(fetch_err=fetch_err))
                         return False
                     _GLib.idle_add(_on_error)
 
@@ -426,9 +432,9 @@ class SentinelWindow(Adw.ApplicationWindow):
         form_box.append(auth_group)
 
         # ─── Notes group ───
-        notes_group = Adw.PreferencesGroup(title="Notes")
+        notes_group = Adw.PreferencesGroup(title=_("Notes"))
         notes_group.add_css_class("editor-page")
-        notes_row = Adw.EntryRow(title="Notes")
+        notes_row = Adw.EntryRow(title=_("Notes"))
         if connection:
             notes_row.set_text(connection.notes)
         notes_group.add(notes_row)
@@ -445,7 +451,7 @@ class SentinelWindow(Adw.ApplicationWindow):
 
         if is_edit and connection:
             delete_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, halign=Gtk.Align.CENTER)
-            delete_btn = Gtk.Button(label="Delete Connection")
+            delete_btn = Gtk.Button(label=_("Delete Connection"))
             delete_btn.add_css_class("destructive-action")
             delete_btn.set_margin_top(24)
             delete_btn.set_margin_bottom(24)
@@ -490,7 +496,8 @@ class SentinelWindow(Adw.ApplicationWindow):
 
             self._load_connections()
             dialog.close()
-            self._show_toast(f"{'Updated' if is_edit else 'Added'}: {conn.name}")
+            msg = _("Updated: {name}") if is_edit else _("Added: {name}")
+            self._show_toast(msg.format(name=conn.name))
 
         save_btn.connect("clicked", on_save)
 
@@ -515,7 +522,7 @@ class SentinelWindow(Adw.ApplicationWindow):
             conn.last_connected = datetime.now(timezone.utc)
             self._db.save_connection(conn)
         except Exception as e:
-            self._show_toast(f"Connection error: {e}")
+            self._show_toast(_("Connection error: {e}").format(e=e))
 
     def _open_local_shell(self) -> None:
         """Open a local shell tab."""
@@ -538,7 +545,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         n_pages = tab_view.get_n_pages()
         if n_pages == 0:
             self._content_stack.set_visible_child_name("welcome")
-            self._window_title.set_title("Welcome")
+            self._window_title.set_title(_("Welcome"))
             self._window_title.set_subtitle("")
             
             # If this is not the only window, close it automatically when it becomes empty
@@ -559,7 +566,7 @@ class SentinelWindow(Adw.ApplicationWindow):
             child = page.get_child()
             
             # Simple title extraction based on what the page holds
-            title = page.get_title()
+            title = page.get_title() or _("Untitled")
             subtitle = ""
             
             if hasattr(child, "connection") and child.connection:
@@ -625,11 +632,11 @@ class SentinelWindow(Adw.ApplicationWindow):
 
     def _on_delete_selected(self, conn: Connection, parent_dialog: Adw.Dialog) -> None:
         dialog = Adw.AlertDialog(
-            heading=f'Delete "{conn.name}"?',
-            body="This connection will be permanently removed.",
+            heading=_('Delete "{name}"?').format(name=conn.name),
+            body=_("This connection will be permanently removed."),
         )
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("delete", "Delete")
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("delete", _("Delete"))
         dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.set_default_response("cancel")
         
@@ -637,7 +644,7 @@ class SentinelWindow(Adw.ApplicationWindow):
             if response == "delete":
                 self._db.delete_connection(conn.id)
                 self._load_connections()
-                self._show_toast(f"Deleted: {conn.name}")
+                self._show_toast(_("Deleted: {name}").format(name=conn.name))
                 parent_dialog.close()
                 self._content_stack.set_visible_child_name(
                     "terminal" if self._terminal_tab_view.has_tabs else "welcome"
@@ -647,12 +654,23 @@ class SentinelWindow(Adw.ApplicationWindow):
         dialog.present(parent_dialog)
 
     def _on_clear_host_key(self, conn: Connection) -> None:
-        """Clear the host key from the database."""
+        """Clear the host key and OS detection info from the database."""
+        logger.info(f"UI: Clearing host key and OS info for {conn.hostname}")
         deleted_count = self._db.delete_known_hosts(conn.hostname, conn.port)
+        
+        # Also clear OS detection info
+        conn.os_id = None
+        self._db.save_connection(conn)
+        self._load_connections()  # Refresh sidebar icons immediately
+        
+        # Notify open tabs to clear their stale OS info so they re-detect on reconnect
+        logger.debug(f"UI: Notifying open tabs about connection update for {conn.id}")
+        self._terminal_tab_view.notify_connection_updated(conn)
+
         if deleted_count > 0:
-            self._show_toast(f"Cleared host key for {conn.hostname}")
+            self._show_toast(_("Cleared host key and OS info for {hostname}").format(hostname=conn.hostname))
         else:
-            self._show_toast(f"No saved host keys found for {conn.hostname}")
+            self._show_toast(_("Cleared OS info for {hostname}").format(hostname=conn.hostname))
 
     def _on_search_changed(self, entry: Gtk.SearchEntry) -> None:
         query = entry.get_text().strip()
@@ -662,6 +680,11 @@ class SentinelWindow(Adw.ApplicationWindow):
         )
         self._sidebar.set_connections(connections)
 
+    def refresh_terminal_themes(self) -> None:
+        """Call refresh_theme on the terminal tab view."""
+        if hasattr(self, "_terminal_tab_view"):
+            self._terminal_tab_view.refresh_theme()
+
     # ── Data ──────────────────────────────────────────────────
 
     def _load_connections(self) -> None:
@@ -670,23 +693,29 @@ class SentinelWindow(Adw.ApplicationWindow):
     # ── Shortcuts ─────────────────────────────────────────────
 
     def _setup_shortcuts(self) -> None:
-        controller = Gtk.ShortcutController()
+        # Use CAPTURE phase to ensure shortcuts like Ctrl+Shift+C/V are intercepted 
+        # before the VTE terminal widget consumes them.
+        controller = Gtk.ShortcutController.new()
+        controller.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+
+        def _wrap(func):
+            def callback(*_):
+                func()
+                return True
+            return callback
 
         shortcuts = [
-            ("<primary>f", self._focus_search),
-            ("<primary>t", lambda *_: (self._open_local_shell(), True)[1]),
-            ("<primary>w", lambda *_: (self._close_current_tab(), True)[1]),
-            ("<primary><shift>c", lambda *_: (self._copy_terminal(), True)[1]),
-            ("<primary><shift>v", lambda *_: (self._paste_terminal(), True)[1]),
+            ("<Control>f", self._focus_search),
+            ("<Control>t", _wrap(self._open_local_shell)),
+            ("<Control>w", _wrap(self._close_current_tab)),
+            ("<Control><Shift>c", _wrap(self._copy_terminal)),
+            ("<Control><Shift>v", _wrap(self._paste_terminal)),
         ]
 
         for accel, callback in shortcuts:
-            controller.add_shortcut(
-                Gtk.Shortcut(
-                    trigger=Gtk.ShortcutTrigger.parse_string(accel),
-                    action=Gtk.CallbackAction.new(callback),
-                )
-            )
+            trigger = Gtk.ShortcutTrigger.parse_string(accel)
+            action = Gtk.CallbackAction.new(callback)
+            controller.add_shortcut(Gtk.Shortcut.new(trigger, action))
 
         self.add_controller(controller)
 

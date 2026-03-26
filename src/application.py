@@ -9,7 +9,10 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
+import gettext
 from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
+
+_ = gettext.gettext
 
 
 class SentinelApplication(Adw.Application):
@@ -45,6 +48,7 @@ class SentinelApplication(Adw.Application):
             ("new-connection", self._on_new_connection, ["<primary>n"]),
             ("app_settings", self._on_app_settings, None),
             ("vault_settings", self._on_vault_settings, None),
+            ("terminal_theme", self._on_terminal_theme, None),
         ]
         for name, callback, accels in actions:
             action = Gio.SimpleAction.new(name, None)
@@ -58,15 +62,15 @@ class SentinelApplication(Adw.Application):
 
     def _on_about(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
         about = Adw.AboutDialog(
-            application_name="Sentinel",
+            application_name=_("Sentinel"),
             application_icon="utilities-terminal",
-            developer_name="Sentinel Contributors",
-            version="0.1.0",
-            developers=["Sentinel Contributors"],
-            copyright="© 2026 Sentinel Contributors",
+            developer_name=_("Sentinel Contributors"),
+            version="0.2.0",
+            developers=[_("Sentinel Contributors")],
+            copyright=_("© 2026 Sentinel Contributors"),
             license_type=Gtk.License.GPL_3_0,
-            comments="A secure GNOME SSH connection manager\nwith password manager integration.",
-            website="https://github.com/sentinel/sentinel",
+            comments=_("A secure GNOME SSH connection manager\nwith password manager integration."),
+            website="https://github.com/AiLing2416/sentinel",
         )
         about.present(self.props.active_window)
 
@@ -92,6 +96,20 @@ class SentinelApplication(Adw.Application):
         vault_win.set_transient_for(win)
         vault_win.set_modal(False)  # Non-modal: user can still use the main window
         vault_win.present()
+
+    def _on_terminal_theme(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            from views.terminal_theme_dialog import TerminalThemeWindow
+            win = self.props.active_window
+            logger.info("Opening Terminal Theme window...")
+            theme_win = TerminalThemeWindow(app=self)
+            theme_win.set_transient_for(win)
+            theme_win.set_modal(False)
+            theme_win.present()
+        except Exception as e:
+            logger.error(f"Failed to open Terminal Theme window: {e}", exc_info=True)
 
     # ── CSS ───────────────────────────────────────────────────
     def _load_css(self) -> None:
