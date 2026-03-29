@@ -47,9 +47,3 @@ Built with Python 3, PyGObject, and GTK4, following the GNOME Human Interface Gu
 - **Process Management**: Fixed `Ctrl+D` behavior to ensure terminal tabs close correctly upon shell exit. Refined connection interruption handling.
 - **Icon Intelligence**: Improved SSH host OS detection and automatic icon refreshing in the sidebar.
 - **Bug Fixes**: Addressed multiple connection duplication issues and refined SFTP mount stability.
-
-## Previous Release (v0.2.0)
-
-- **Enhanced Security**: Implemented zero-string copy memory management for credentials.
-- **Refactored Vault**: New binary packing for the local secure vault, removing JSON intermediate states.
-- **Localization**: Added support for German, Simplified Chinese, and Traditional Chinese.
