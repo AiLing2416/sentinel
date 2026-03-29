@@ -54,6 +54,7 @@ class TerminalTab(Gtk.Box):
         self._bg_task: Any = None
         self._pty: Vte.Pty | None = None
         self._pty_watch_id: int = 0
+        self._vte_resize_timer_id: int = 0
         self._read_only = False
         self.is_remote = self._connection is not None
         
@@ -155,8 +156,8 @@ class TerminalTab(Gtk.Box):
             except Exception as e:
                 logger.error(f"Failed to initialize PTY bridge for remote terminal: {e}")
 
-            self._terminal.connect("notify::columns", self._on_vte_resize)
-            self._terminal.connect("notify::rows", self._on_vte_resize)
+            self._terminal.connect("notify::column-count", self._on_vte_resize_property)
+            self._terminal.connect("notify::row-count", self._on_vte_resize_property)
         else:
             self._terminal.connect("child-exited", self._on_local_child_exited)
             
@@ -200,10 +201,21 @@ class TerminalTab(Gtk.Box):
 
         self.prepend(self._search_bar)
 
-        # Scrolled container
-        scroll = Gtk.ScrolledWindow(vexpand=True, hexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
-        scroll.set_child(self._terminal)
-        self.append(scroll)
+        # Scrolled container: In GTK4, for VTE it's more stable to use a Box + Scrollbar
+        terminal_container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, vexpand=True, hexpand=True)
+        self._terminal.set_hexpand(True)
+        self._terminal.set_vexpand(True)
+        # Set a generous scrollback limit (100k lines)
+        self._terminal.set_scrollback_lines(100000)
+        
+        terminal_container.append(self._terminal)
+        
+        # Add the vertical scrollbar and link it to the terminal's adjustment
+        scrollbar = Gtk.Scrollbar(orientation=Gtk.Orientation.VERTICAL)
+        scrollbar.set_adjustment(self._terminal.get_vadjustment())
+        terminal_container.append(scrollbar)
+        
+        self.append(terminal_container)
 
         # Status bar
         self._status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -322,8 +334,22 @@ class TerminalTab(Gtk.Box):
     def _on_remote_connected(self, bridge: Any) -> None:
         self._session_bridge = bridge
         self._status_label.set_label(_("Connected — {title}").format(title=self.title))
+        
+        # Immediate sync if we already have a size
         cols, rows = self._terminal.get_column_count(), self._terminal.get_row_count()
-        bridge.resize(cols, rows)
+        if cols > 0 and rows > 0:
+            logger.info(f"TerminalTab: Initial PTY resize to {cols}x{rows}")
+            bridge.resize(cols, rows)
+        
+        # Delayed sync to ensure GTK layout is fully settled after being shown
+        def _delayed_resize():
+            if self._session_bridge:
+                c, r = self._terminal.get_column_count(), self._terminal.get_row_count()
+                if c > 0 and r > 0:
+                    logger.debug(f"TerminalTab: Settled PTY resize to {c}x{r}")
+                    self._session_bridge.resize(c, r)
+            return False
+        GLib.timeout_add(250, _delayed_resize)
 
     def _on_remote_error(self, msg: str) -> None:
         self._status_label.set_label(msg)
@@ -357,10 +383,26 @@ class TerminalTab(Gtk.Box):
                 return False
         return True
             
-    def _on_vte_resize(self, terminal: Vte.Terminal, param_spec: Any) -> None:
+    def _on_vte_resize_property(self, terminal: Vte.Terminal, pspec: Any) -> None:
+        """Handler for column/row notifications. Uses debouncing for remote PTY."""
+        if not self._session_bridge:
+            return
+
+        if self._vte_resize_timer_id:
+            GLib.source_remove(self._vte_resize_timer_id)
+            self._vte_resize_timer_id = 0
+
+        # Debounce for 100ms
+        self._vte_resize_timer_id = GLib.timeout_add(100, self._do_vte_resize, terminal)
+
+    def _do_vte_resize(self, terminal: Vte.Terminal) -> bool:
+        self._vte_resize_timer_id = 0
         if self._session_bridge:
             cols, rows = terminal.get_column_count(), terminal.get_row_count()
-            self._session_bridge.resize(cols, rows)
+            if cols > 0 and rows > 0:
+                logger.info(f"TerminalTab: Auto-resize to {cols}x{rows}")
+                self._session_bridge.resize(cols, rows)
+        return False
 
     def _on_remote_exited(self, exit_status: int) -> None:
         self._status_label.set_label(_("Exited with code {exit_status}").format(exit_status=exit_status))
@@ -539,6 +581,10 @@ class TerminalTab(Gtk.Box):
         if self._pty_watch_id:
             GLib.source_remove(self._pty_watch_id)
             self._pty_watch_id = 0
+            
+        if self._vte_resize_timer_id:
+            GLib.source_remove(self._vte_resize_timer_id)
+            self._vte_resize_timer_id = 0
             
         if hasattr(self, "_slave_fd") and self._slave_fd:
             try:

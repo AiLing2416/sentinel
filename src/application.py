@@ -64,7 +64,7 @@ class SentinelApplication(Adw.Application):
             application_name=_("Sentinel"),
             application_icon="utilities-terminal",
             developer_name=_("Sentinel Contributors"),
-            version="0.2.2",
+            version="0.2.3",
             developers=[_("Sentinel Contributors")],
             copyright=_("© 2026 Sentinel Contributors"),
             license_type=Gtk.License.GPL_3_0,

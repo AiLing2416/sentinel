@@ -207,6 +207,21 @@ class VaultManagerWindow(Adw.Window):
         btn_box.append(self._vaultunlock_btn)
         box.append(btn_box)
 
+        # ── RESET OPTION ──
+        reset_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, halign=Gtk.Align.CENTER)
+        reset_box.set_margin_top(20)
+        reset_label = Gtk.Label(label=_("Lost your master password?"))
+        reset_label.add_css_class("caption")
+        reset_label.add_css_class("dim-label")
+        reset_box.append(reset_label)
+
+        reset_btn = Gtk.Button(label=_("Reset & Start Fresh"))
+        reset_btn.add_css_class("flat")
+        reset_btn.add_css_class("destructive-action")
+        reset_btn.connect("clicked", self._on_local_vault_reset_clicked)
+        reset_box.append(reset_btn)
+        box.append(reset_box)
+
         scroll.set_child(box)
         return scroll
 
@@ -260,6 +275,39 @@ class VaultManagerWindow(Adw.Window):
             self._vaultunlock_btn.set_sensitive(True)
             self._stack.set_visible_child_name("vault_unlock")
             self._show_toast(_("Wrong master password."))
+
+    def _on_local_vault_reset_clicked(self, _btn) -> None:
+        """Confirm and destroy the local vault DB to allow fresh start."""
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading=_("Destroy Local Vault?"),
+            body=_(
+                "This will permanently erase your local cache of Bitwarden passwords and SSH keys. "
+                "The actual data inside Bitwarden is NOT affected. "
+                "Use this only if you lost your master key and cannot unlock Sentinel."
+            ),
+        )
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("destroy", _("Destroy Everything"))
+        dialog.set_response_appearance("destroy", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+
+        def _on_response(_d, response):
+            if response == "destroy":
+                self._stack.set_visible_child_name("loading")
+                try:
+                    VaultManager.get().destroy_vault()
+                    # Re-open the vault immediately (will recreate tables)
+                    VaultManager.get()._vault.open() 
+                    self._show_toast(_("Local vault destroyed. Please set it up again."))
+                    self._check_status()
+                except Exception as e:
+                    self._show_toast(_("Failed to destroy vault: {e}").format(e=e))
+                    self._check_status()
+
+        dialog.connect("response", _on_response)
+        dialog.present()
 
     def _build_login_page(self) -> Gtk.Widget:
         scroll = Gtk.ScrolledWindow(vexpand=True)
@@ -588,7 +636,19 @@ class VaultManagerWindow(Adw.Window):
         # ── Ensure the local SecureVault is unlocked ──
         vm = VaultManager.get()
         if not vm.is_unlocked:
-            vm.startup()  # Auto-initializes on first run; silently no-ops if keyring unavailable
+            success = vm.startup()  # Try auto-unlock/auto-init
+            if not success:
+               # Vault exists but is locked
+               if vm.is_initialized:
+                   self._stack.set_visible_child_name("vault_unlock")
+                   return
+               else:
+                   # This should not happen since startup() auto-initializes if missing,
+                   # but here for safety.
+                   self._stack.set_visible_child_name("vault_setup")
+                   return
+        
+        # Vault is confirmed unlocked now. Proceed to check status.
 
         # ── Check Bitwarden CLI status ──
         async def _do_check():

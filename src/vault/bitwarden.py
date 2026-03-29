@@ -228,8 +228,11 @@ class BitwardenBackend(VaultBackend):
 
             if process.returncode != 0:
                 err_msg = stderr.decode().strip()
-                logger.error(f"Bitwarden login CLI error: {err_msg}")
-                raise RuntimeError(err_msg)
+                if "already logged in" in err_msg.lower():
+                    logger.info("Bitwarden: CLI reports already logged in. Attempting to proceed.")
+                else:
+                    logger.error(f"Bitwarden login CLI error: {err_msg}")
+                    raise RuntimeError(err_msg)
 
             token = stdout.decode().strip()
             if token:
@@ -257,7 +260,7 @@ class BitwardenBackend(VaultBackend):
                 if remember:
                     try:
                         from services.vault_manager import VaultManager
-                        VaultManager.get().save_bitwarden_password(master_password)
+                        VaultManager.get().save_bitwarden_password(password)
                         logger.info("Bitwarden: Master password saved to keyring for future auto-unlock.")
                     except Exception as _e:
                         logger.warning("Bitwarden: Failed to save password to keyring: %s", _e)

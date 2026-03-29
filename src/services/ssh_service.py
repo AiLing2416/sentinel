@@ -88,9 +88,24 @@ class SSHService:
         self._sessions: dict[str, SessionInfo] = {}
 
     def build_local_shell_command(self) -> LocalCommand:
-        """Build a command for a local shell tab."""
+        """Build a command for a local shell tab. 
+        Detects if running inside Flatpak and uses host spawner if needed.
+        """
+        # Strategy: 1. If inside Flatpak, use flatpak-spawn to get a host shell.
+        # 2. Otherwise use standard login shell.
+        import os
+        is_flatpak = os.path.exists("/.flatpak-info")
+        
+        if is_flatpak:
+            spawn_host = shutil.which("flatpak-spawn") or "/usr/bin/flatpak-spawn"
+            # Use 'script' to create a real PTY on the host, restoring job control and fixing ioctl warnings.
+            return LocalCommand(
+                argv=[spawn_host, "--host", "script", "-q", "-c", "bash -l", "/dev/null"], 
+                display_label="Host Shell"
+            )
+            
         shell = shutil.which("bash") or shutil.which("sh") or "/bin/sh"
-        return LocalCommand(argv=[shell])
+        return LocalCommand(argv=[shell, "-l"])
 
     async def _get_connection_by_id(self, conn_id: str) -> Connection | None:
         """Fetch connection from database by ID."""
@@ -361,6 +376,7 @@ class SSHService:
         session = await connection.create_process(
             term_type="xterm-256color",
             request_pty="force",
+            # Removing custom term_modes for now - some servers hang on unmapped string keys
             encoding=None,
         )
         

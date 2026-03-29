@@ -14,7 +14,10 @@ finish-args:
   - --filesystem=xdg-run/app/io.github.ailing2416.sentinel:create
   - --filesystem=~/.config/Bitwarden:ro
   - --talk-name=org.gtk.vfs.*
+  - --talk-name=org.freedesktop.secrets
+  - --talk-name=org.freedesktop.Flatpak
   - --system-talk-name=org.freedesktop.NetworkManager
+  - --device=all
 
 modules:
   - name: rclone
