@@ -38,7 +38,7 @@ flatpak run io.github.ailing2416.sentinel
 
 Built with Python 3, PyGObject, and GTK4, following the GNOME Human Interface Guidelines (Adwaita). The project uses the Meson build system and supports Flatpak packaging.
 
-## Release Notes (v0.2.3)
+## Release Notes (v0.2.4)
 
 - **UI Refinement (Zen Mode)**: Redesigned the welcome page for a minimalist, focused experience. Removed cluttered icons and centered all labels for visual balance.
 - **New Terminal Themes**: Added the **GNOME Light** theme, matching the Adwaita light palette for high-contrast environments.
