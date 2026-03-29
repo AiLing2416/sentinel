@@ -156,12 +156,15 @@ class TerminalTab(Gtk.Box):
             except Exception as e:
                 logger.error(f"Failed to initialize PTY bridge for remote terminal: {e}")
 
-            self._terminal.connect("notify::column-count", self._on_vte_resize_property)
-            self._terminal.connect("notify::row-count", self._on_vte_resize_property)
+        # Signal connections for both local and remote for logging & sync
+        self._terminal.connect("notify::column-count", self._on_vte_resize_property)
+        self._terminal.connect("notify::row-count", self._on_vte_resize_property)
+
+        if self.is_remote:
+            self._terminal.connect("window-title-changed", self._on_title_changed)
         else:
             self._terminal.connect("child-exited", self._on_local_child_exited)
-            
-        self._terminal.connect("window-title-changed", self._on_title_changed)
+            self._terminal.connect("window-title-changed", self._on_title_changed)
 
         # Right-click context menu
         self._setup_context_menu()
@@ -384,10 +387,7 @@ class TerminalTab(Gtk.Box):
         return True
             
     def _on_vte_resize_property(self, terminal: Vte.Terminal, pspec: Any) -> None:
-        """Handler for column/row notifications. Uses debouncing for remote PTY."""
-        if not self._session_bridge:
-            return
-
+        """Handler for column/row notifications. Uses debouncing."""
         if self._vte_resize_timer_id:
             GLib.source_remove(self._vte_resize_timer_id)
             self._vte_resize_timer_id = 0
@@ -397,10 +397,15 @@ class TerminalTab(Gtk.Box):
 
     def _do_vte_resize(self, terminal: Vte.Terminal) -> bool:
         self._vte_resize_timer_id = 0
+        
+        cols, rows = terminal.get_column_count(), terminal.get_row_count()
+        width, height = terminal.get_width(), terminal.get_height()
+        
+        logger.info(f"TerminalTab: Resize Event - Pixels: {width}x{height}, Grid: {cols}x{rows}, Remote: {self.is_remote}")
+        
         if self._session_bridge:
-            cols, rows = terminal.get_column_count(), terminal.get_row_count()
             if cols > 0 and rows > 0:
-                logger.info(f"TerminalTab: Auto-resize to {cols}x{rows}")
+                logger.info(f"TerminalTab: Syncing remote PTY to {cols}x{rows}")
                 self._session_bridge.resize(cols, rows)
         return False
 
