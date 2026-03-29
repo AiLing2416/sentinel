@@ -38,10 +38,18 @@ flatpak run io.github.ailing2416.sentinel
 
 Built with Python 3, PyGObject, and GTK4, following the GNOME Human Interface Guidelines (Adwaita). The project uses the Meson build system and supports Flatpak packaging.
 
-## Release Notes (v0.2.0)
+## Release Notes (v0.2.3)
+
+- **UI Refinement (Zen Mode)**: Redesigned the welcome page for a minimalist, focused experience. Removed cluttered icons and centered all labels for visual balance.
+- **New Terminal Themes**: Added the **GNOME Light** theme, matching the Adwaita light palette for high-contrast environments.
+- **Connection Editor Fixes**: Resolved a persistent issue where "Hostname" was incorrectly labeled as "Username" in English locales.
+- **Terminal Stability**: Optimized PTY resizing logic and local shell environment synchronization. Improved host-shell integration within the Flatpak sandbox.
+- **Process Management**: Fixed `Ctrl+D` behavior to ensure terminal tabs close correctly upon shell exit. Refined connection interruption handling.
+- **Icon Intelligence**: Improved SSH host OS detection and automatic icon refreshing in the sidebar.
+- **Bug Fixes**: Addressed multiple connection duplication issues and refined SFTP mount stability.
+
+## Previous Release (v0.2.0)
 
 - **Enhanced Security**: Implemented zero-string copy memory management for credentials.
 - **Refactored Vault**: New binary packing for the local secure vault, removing JSON intermediate states.
-- **Terminal Fixes**: Improved keyboard input handling and visual theme consistency.
 - **Localization**: Added support for German, Simplified Chinese, and Traditional Chinese.
-- **CI/CD**: Automatic Flatpak builds on every release.

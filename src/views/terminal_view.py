@@ -12,6 +12,7 @@ _ = gettext.gettext
 import gi
 import os
 import termios
+import time
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -56,6 +57,8 @@ class TerminalTab(Gtk.Box):
         self._pty_watch_id: int = 0
         self._vte_resize_timer_id: int = 0
         self._read_only = False
+        self._last_eof_time: float = 0
+        self._reconnect_sid: int = 0
         self.is_remote = self._connection is not None
         
         self._build_ui()
@@ -63,7 +66,7 @@ class TerminalTab(Gtk.Box):
         if self.is_remote:
             self._connect_remote()
         else:
-            self._spawn_local()
+            self._start_local_session()
 
     @property
     def connection(self) -> Connection | None:
@@ -110,56 +113,45 @@ class TerminalTab(Gtk.Box):
         self._terminal.set_allow_hyperlink(True)
 
         # Signals & Event Handling
-        if self.is_remote:
-            # Use a PTY bridge to capture ALL keyboard input (Control keys, Esc, Arrows, Fn keys, etc.)
-            # This allows full interactive TUI support (vim, htop, etc.)
+        # Use a PTY bridge to capture ALL keyboard input (Control keys, Esc, Arrows, Fn keys, etc.)
+        # This allows full interactive TUI support (vim, htop, etc.) for both local and remote.
+        try:
+            self._pty = Vte.Pty.new_sync(Vte.PtyFlags.DEFAULT)
+            self._terminal.set_pty(self._pty)
+            self._pty_fd = self._pty.get_fd()
+            
+            # To capture user input from VTE, we must read from the PTY Slave.
             try:
-                self._pty = Vte.Pty.new_sync(Vte.PtyFlags.DEFAULT)
-                self._terminal.set_pty(self._pty)
-                self._pty_fd = self._pty.get_fd()
+                # Get the slave path from the master FD
+                slave_path = os.ptsname(self._pty_fd)
+                # Open with O_NONBLOCK to play nice with GLib watch
+                self._slave_fd = os.open(slave_path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
                 
-                # To capture user input from VTE, we must read from the PTY Slave.
-                try:
-                    # Get the slave path from the master FD
-                    slave_path = os.ptsname(self._pty_fd)
-                    # Open with O_NONBLOCK to play nice with GLib watch
-                    self._slave_fd = os.open(slave_path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
-                    
-                    # IMPORTANT: Set the SLAVE side to raw mode.
-                    # We must disable ECHO to prevent local characters from being sent back to VTE.
-                    # We must disable ICANON to get key presses immediately (not line by line).
-                    # We must disable ISIG so Ctrl+C is treated as data.
-                    attrs = termios.tcgetattr(self._slave_fd)
-                    # iflags
-                    attrs[0] &= ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP
-                                | termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON)
-                    # oflags
-                    attrs[1] &= ~termios.OPOST
-                    # lflags
-                    attrs[3] &= ~(termios.ECHO | termios.ECHONL | termios.ICANON | termios.ISIG | termios.IEXTEN)
-                    # cflags
-                    attrs[2] &= ~(termios.CSIZE | termios.PARENB)
-                    attrs[2] |= termios.CS8
-                    
-                    termios.tcsetattr(self._slave_fd, termios.TCSANOW, attrs)
-                    
-                    logger.info(f"TerminalTab: PTY Bridge active on slave: {slave_path}")
+                # IMPORTANT: Set the SLAVE side to raw mode.
+                attrs = termios.tcgetattr(self._slave_fd)
+                attrs[0] &= ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP
+                            | termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON)
+                attrs[1] &= ~termios.OPOST
+                attrs[3] &= ~(termios.ECHO | termios.ECHONL | termios.ICANON | termios.ISIG | termios.IEXTEN)
+                attrs[2] &= ~(termios.CSIZE | termios.PARENB)
+                attrs[2] |= termios.CS8
+                
+                termios.tcsetattr(self._slave_fd, termios.TCSANOW, attrs)
+                
+                logger.info(f"TerminalTab: PTY Bridge active on slave: {slave_path}")
 
-                    # Watch the SLAVE FD for data coming FROM the VTE widget (user input)
-                    self._pty_watch_id = GLib.io_add_watch(
-                        self._slave_fd, 
-                        GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR, 
-                        self._on_pty_input
-                    )
-                except Exception as te:
-                    logger.error(f"TerminalTab: Failed to setup PTY bridge: {te}")
-            except Exception as e:
-                logger.error(f"Failed to initialize PTY bridge for remote terminal: {e}")
+                # Watch the SLAVE FD for data coming FROM the VTE widget (user input)
+                self._pty_watch_id = GLib.io_add_watch(
+                    self._slave_fd, 
+                    GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR, 
+                    self._on_pty_input
+                )
+            except Exception as te:
+                logger.error(f"TerminalTab: Failed to setup PTY bridge: {te}")
+        except Exception as e:
+            logger.error(f"TerminalTab: Failed to initialize PTY bridge: {e}")
 
         # Signal connections for both local and remote for logging & sync
-        self._terminal.connect("notify::column-count", self._on_vte_resize_property)
-        self._terminal.connect("notify::row-count", self._on_vte_resize_property)
-
         if self.is_remote:
             self._terminal.connect("window-title-changed", self._on_title_changed)
         else:
@@ -211,7 +203,21 @@ class TerminalTab(Gtk.Box):
         # Set a generous scrollback limit (100k lines)
         self._terminal.set_scrollback_lines(100000)
         
-        terminal_container.append(self._terminal)
+        # GTK4 Hack: Reliable resize detection via DrawingArea in an Overlay
+        # (Standard signals like size-allocate are gone or unreliable on VTE in GTK4)
+        self._resize_sensor = Gtk.DrawingArea()
+        self._resize_sensor.set_hexpand(True)
+        self._resize_sensor.set_vexpand(True)
+        # Handle resize via simple lambda to our existing logic
+        self._resize_sensor.connect("resize", lambda _da, _w, _h: self._on_vte_resize_property())
+        
+        overlay = Gtk.Overlay(hexpand=True, vexpand=True)
+        overlay.set_child(self._terminal)
+        overlay.add_overlay(self._resize_sensor)
+        # In GTK4, to make an overlay pass through mouse events, set its target property.
+        self._resize_sensor.set_can_target(False)
+
+        terminal_container.append(overlay)
         
         # Add the vertical scrollbar and link it to the terminal's adjustment
         scrollbar = Gtk.Scrollbar(orientation=Gtk.Orientation.VERTICAL)
@@ -280,6 +286,11 @@ class TerminalTab(Gtk.Box):
     # ── Remote Process ─────────────────────────────────────────
 
     def _connect_remote(self) -> None:
+        """Start the remote SSH connection and session."""
+        if self._bg_task:
+            self._bg_task.cancel()
+            self._bg_task = None
+            
         logger.info(f"TerminalTab: Starting remote connection to {self.title}")
         from views.dialogs import prompt_password, prompt_host_key, prompt_vault_unlock, prompt_vault_item_selection
         from services.vault_service import VaultService
@@ -362,7 +373,10 @@ class TerminalTab(Gtk.Box):
     def _on_remote_disconnected(self, exc: Exception | None) -> None:
         self._status_label.set_label(_("Disconnected: {exc}").format(exc=exc) if exc else _("Disconnected"))
         self._session_bridge = None
-        self._show_reconnect_prompt()
+        # Only show reconnect if the background task has truly finished
+        # This prevents the prompt during host key trust retries
+        if self._bg_task and self._bg_task.done():
+            self._show_reconnect_prompt()
         
     def _on_remote_output(self, data: bytes) -> None:
         self._terminal.feed(data)
@@ -378,6 +392,10 @@ class TerminalTab(Gtk.Box):
                 # Read what VTE wrote to the PTY Master -> received at Slave
                 data = os.read(fd, 4096)
                 if data:
+                    # Detect Ctrl+D (EOF) to potentially auto-close tab on exit
+                    if b"\x04" in data:
+                        self._last_eof_time = time.time()
+                        
                     # logger.info(f"TerminalTab: Captured User Input: {data!r}")
                     if self._session_bridge and not self._read_only:
                         self._session_bridge.write(data)
@@ -386,18 +404,19 @@ class TerminalTab(Gtk.Box):
                 return False
         return True
             
-    def _on_vte_resize_property(self, terminal: Vte.Terminal, pspec: Any) -> None:
-        """Handler for column/row notifications. Uses debouncing."""
+    def _on_vte_resize_property(self, *args: Any) -> None:
+        """Handler for resize events (from DrawingArea sensor). Uses debouncing."""
         if self._vte_resize_timer_id:
             GLib.source_remove(self._vte_resize_timer_id)
             self._vte_resize_timer_id = 0
 
         # Debounce for 100ms
-        self._vte_resize_timer_id = GLib.timeout_add(100, self._do_vte_resize, terminal)
+        self._vte_resize_timer_id = GLib.timeout_add(100, self._do_vte_resize)
 
-    def _do_vte_resize(self, terminal: Vte.Terminal) -> bool:
+    def _do_vte_resize(self) -> bool:
         self._vte_resize_timer_id = 0
         
+        terminal = self._terminal
         cols, rows = terminal.get_column_count(), terminal.get_row_count()
         width, height = terminal.get_width(), terminal.get_height()
         
@@ -411,34 +430,44 @@ class TerminalTab(Gtk.Box):
 
     def _on_remote_exited(self, exit_status: int) -> None:
         self._status_label.set_label(_("Exited with code {exit_status}").format(exit_status=exit_status))
-        self._session_bridge = None
-        self._show_reconnect_prompt()
+        self._handle_session_exit()
 
     # ── Local Process ──────────────────────────────────────────
 
-    def _spawn_local(self) -> None:
-        argv = self._ssh_command.argv if self._ssh_command else ["/bin/bash"]
-        env = list(GLib.get_environ())
-        
-        self._terminal.spawn_async(
-            Vte.PtyFlags.DEFAULT,
-            None, argv, env,
-            GLib.SpawnFlags.DEFAULT,
-            None, None, -1, None,
-            self._on_local_spawn_complete,
-        )
-
-    def _on_local_spawn_complete(self, terminal: Vte.Terminal, pid: int, error: GLib.Error | None) -> None:
-        if error:
-            self._status_label.set_label(_("Error: {error}").format(error=error.message))
+    def _start_local_session(self) -> None:
+        """Start a local shell session using the PTY bridge."""
+        if not self._ssh_command:
+            logger.error("TerminalTab: No command defined for local shell")
             return
-        self._child_pid = pid
-        self._status_label.set_label(_("Local Shell"))
+
+        ui_callbacks = {
+            "on_connected": self._on_remote_connected,
+            "on_error": self._on_remote_error
+        }
+        
+        coro = self._ssh_service.start_local_session(
+            self._ssh_command,
+            ui_callbacks,
+            self._on_remote_output,
+            self._on_remote_exited
+        )
+        self._bg_task = self._ssh_service.engine.run_coroutine(coro)
 
     def _on_local_child_exited(self, terminal: Vte.Terminal, exit_status: int) -> None:
         self._child_pid = None
         self._status_label.set_label(_("Exited code {exit_status}").format(exit_status=exit_status >> 8))
-        self._show_reconnect_prompt()
+        self._handle_session_exit()
+        
+    def _handle_session_exit(self) -> None:
+        """Shared logic to decide between closing or showing reconnect prompt."""
+        self._session_bridge = None
+        
+        # If user pressed Ctrl+D within the last 1 second, close the tab directly
+        if time.time() - self._last_eof_time < 1.0:
+            logger.info("TerminalTab: User initiated EOF (Ctrl+D), closing tab.")
+            self.request_close()
+        else:
+            self._show_reconnect_prompt()
 
     # ── Shared ────────────────────────────────────────────────
 
@@ -460,7 +489,7 @@ class TerminalTab(Gtk.Box):
             if self.is_remote:
                 self._connect_remote()
             else:
-                self._spawn_local()
+                self._start_local_session()
 
     def _on_title_changed(self, terminal: Vte.Terminal) -> None:
         pass
@@ -652,7 +681,18 @@ class TerminalTabView:
     @property
     def has_tabs(self) -> bool:
         return self._tab_view.get_n_pages() > 0
-    def open_ssh_tab(self, connection: Connection, on_os_detected: Callable | None = None) -> TerminalTab:
+    def open_ssh_tab(self, connection: Connection, on_os_detected: Callable | None = None) -> Any:
+        # If tab already exists, focus it
+        if connection.id in self._tabs:
+            logger.info(f"TerminalTabView: Tab already exists for {connection.hostname}, focusing it.")
+            page = self._tabs[connection.id]
+            self._tab_view.set_selected_page(page)
+            # Give it focus
+            child = page.get_child()
+            if hasattr(child, "grab_focus"):
+                GLib.idle_add(lambda: child.grab_focus() and False)
+            return child
+
         """Open an SSH terminal tab for a connection."""
         terminal_tab = TerminalTab(
             connection=connection,

@@ -206,17 +206,15 @@ class SentinelWindow(Adw.ApplicationWindow):
             vexpand=True,
         )
 
-        icon = Gtk.Image.new_from_icon_name("utilities-terminal-symbolic")
-        icon.set_pixel_size(96)
-        icon.add_css_class("welcome-icon")
-        box.append(icon)
 
         title = Gtk.Label(label=_("Sentinel"))
         title.add_css_class("welcome-title")
+        title.set_xalign(0.5)
         box.append(title)
  
         subtitle = Gtk.Label(label=_("Secure SSH Connection Manager"))
         subtitle.add_css_class("welcome-subtitle")
+        subtitle.set_xalign(0.5)
         box.append(subtitle)
 
         btn_box = Gtk.Box(

@@ -136,7 +136,7 @@ class ConnectionListSidebar:
         """Update only the OS icon widget for a given connection row in place."""
         row = self._row_map.get(conn_id)
         if not row:
-            logger.debug(f"Sidebar: Failed to refresh icon — connection {conn_id} not in row map")
+            logger.warning(f"Sidebar: Failed to refresh icon — connection {conn_id} not in row map. Map keys: {list(self._row_map.keys())}")
             return
             
         logger.info(f"Sidebar: Refreshing OS icon for {conn_id} -> {os_id}")
@@ -175,14 +175,28 @@ class ConnectionListSidebar:
         safe_os_id = "".join(c for c in os_id if c.isalnum() or c in "-_").lower()
         
         # Try finding the icon in our data folder
-        icon_dir = Path(__file__).parent.parent.parent / "data" / "icons" / "os"
+        # Case 1: Running from source (Meson build / dev)
+        dev_icon_dir = Path(__file__).parent.parent.parent / "data" / "icons" / "os"
+        # Case 2: Running installed (Flatpak / usr)
+        # pkgdatadir is usually /app/share/sentinel/ (see main.py.in)
+        # Here we look for /app/share/sentinel/icons/os
+        installed_icon_dir = Path("/app/share/sentinel/icons/os")
+        
+        search_dirs = [dev_icon_dir, installed_icon_dir]
+        logger.debug(f"Sidebar: Searching for OS icon '{safe_os_id}' in {search_dirs}")
         
         # Check symbolic first, then regular
         for ext in ["-symbolic.svg", ".svg"]:
-            path = icon_dir / f"{safe_os_id}{ext}"
-            if path.exists():
-                icon_file = Gio.File.new_for_path(str(path))
-                gicon = Gio.FileIcon.new(icon_file)
+            filename = f"{safe_os_id}{ext}"
+            for icon_dir in search_dirs:
+                if not icon_dir.exists():
+                    continue
+                    
+                path = icon_dir / filename
+                if path.exists():
+                    logger.debug(f"Sidebar: Found OS icon at {path}")
+                    icon_file = Gio.File.new_for_path(str(path))
+                    gicon = Gio.FileIcon.new(icon_file)
                 img = Gtk.Image.new_from_gicon(gicon)
                 img.set_pixel_size(16)
                 return img

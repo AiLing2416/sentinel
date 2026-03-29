@@ -98,7 +98,23 @@ PRESET_THEMES: List[ThemeDict] = [
         "palette": [
             "#171717", "#c01c28", "#26a269", "#a2734c",
             "#12488b", "#a347ba", "#2aa1b3", "#d0cfcc",
-            "#5e5c64", "#f2b28c", "#33da7a", "#e9ad0c",
+            "#5e5c64", "#f66151", "#33da7a", "#e9ad0c",
+            "#2a7bde", "#c061cb", "#33c7de", "#ffffff"
+        ]
+    },
+    {
+        "id": "gnome-light",
+        "name": _("GNOME Light"),
+        "is_preset": True,
+        "foreground": "#171717",
+        "background": "#ffffff",
+        "cursor": "#171717",
+        "highlight_fg": "#ffffff",
+        "highlight_bg": "#3584e4",
+        "palette": [
+            "#171717", "#c01c28", "#26a269", "#a2734c",
+            "#12488b", "#a347ba", "#2aa1b3", "#d0cfcc",
+            "#5e5c64", "#f66151", "#33da7a", "#e9ad0c",
             "#2a7bde", "#c061cb", "#33c7de", "#ffffff"
         ]
     }

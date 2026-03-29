@@ -91,21 +91,101 @@ class SSHService:
         """Build a command for a local shell tab. 
         Detects if running inside Flatpak and uses host spawner if needed.
         """
-        # Strategy: 1. If inside Flatpak, use flatpak-spawn to get a host shell.
-        # 2. Otherwise use standard login shell.
         import os
         is_flatpak = os.path.exists("/.flatpak-info")
         
         if is_flatpak:
             spawn_host = shutil.which("flatpak-spawn") or "/usr/bin/flatpak-spawn"
-            # Use 'script' to create a real PTY on the host, restoring job control and fixing ioctl warnings.
+            # We use a refined command that avoids 'script' when possible
+            # or uses a better shell detection.
+            # For now, we prefer a standard bash login shell but with better env.
             return LocalCommand(
-                argv=[spawn_host, "--host", "script", "-q", "-c", "bash -l", "/dev/null"], 
+                argv=[spawn_host, "--host", "--env=TERM=xterm-256color", "bash", "--login"], 
                 display_label="Host Shell"
             )
             
         shell = shutil.which("bash") or shutil.which("sh") or "/bin/sh"
         return LocalCommand(argv=[shell, "-l"])
+
+    async def start_local_session(
+        self,
+        local_cmd: LocalCommand,
+        ui_callbacks: dict[str, Callable],
+        output_cb: Callable[[bytes], None],
+        exit_cb: Callable[[int], None]
+    ) -> Any:
+        """Spawn a local process and bridge it using PTY for full TUI support."""
+        import os, pty, termios, struct, fcntl
+        
+        # Create a PTY for the local process
+        master_fd, slave_fd = pty.openpty()
+        
+        try:
+            # We use asyncio to manage the process and the master side of the PTY
+            # But we must be careful with flatpak-spawn.
+            
+            # To capture output from the master FD, we use a reader task
+            async def pty_reader():
+                loop = asyncio.get_running_loop()
+                while True:
+                    try:
+                        # Non-blocking read from master
+                        data = await loop.run_in_executor(None, os.read, master_fd, 4096)
+                        if not data:
+                            break
+                        call_ui_sync(output_cb, data)
+                    except OSError:
+                        break
+                call_ui_sync(exit_cb, 0)
+            
+            # Launch the process
+            # Note: We pass the slave FD as stdin/out/err
+            process = await asyncio.create_subprocess_exec(
+                *local_cmd.argv,
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                preexec_fn=os.setsid, # Create new session
+                env=os.environ.copy()
+            )
+            
+            # Close our copy of the slave FD as the child has it now
+            os.close(slave_fd)
+            
+            # Create a bridge object that mimics the SSH SessionBridge API
+            class LocalBridge:
+                def __init__(self, proc, master):
+                    self.process = proc
+                    self.master_fd = master
+                    
+                def write(self, data: bytes):
+                    try:
+                        os.write(self.master_fd, data)
+                    except: pass
+                    
+                def resize(self, columns: int, rows: int):
+                    # Manual SIGWINCH via ioctl on the master FD
+                    try:
+                        s = struct.pack('HHHH', rows, columns, 0, 0)
+                        fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, s)
+                    except: pass
+                    
+                def close(self):
+                    try:
+                        self.process.terminate()
+                        os.close(self.master_fd)
+                    except: pass
+
+            bridge = LocalBridge(process, master_fd)
+            asyncio.create_task(pty_reader())
+            
+            call_ui_sync(ui_callbacks["on_connected"], bridge)
+            return bridge
+
+        except Exception as e:
+            logger.error(f"Failed to start local session: {e}")
+            call_ui_sync(ui_callbacks["on_error"], str(e))
+            return None
 
     async def _get_connection_by_id(self, conn_id: str) -> Connection | None:
         """Fetch connection from database by ID."""
@@ -166,7 +246,7 @@ class SSHService:
                 "host": conn.hostname,
                 "port": conn.port,
                 "username": conn.username or None,
-                "client_keys": None,
+                "client_keys": [], # Explicitly empty to prevent searching default keys
                 "known_hosts": b"# sentinel managed\n",
                 "connect_timeout": 30,
                 "gss_auth": False,

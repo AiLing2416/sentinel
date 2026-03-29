@@ -147,7 +147,7 @@ msgstr "Name"
 
 #: src/views/main_window.py:287
 msgid "Hostname"
-msgstr "Username"
+msgstr "Hostname"
 
 #: src/views/main_window.py:293
 msgid "Port"
@@ -232,7 +232,7 @@ msgstr "Notes"
 
 #: src/views/main_window.py:453
 msgid "Delete Connection"
-msgstr "New Connection"
+msgstr "Delete Connection"
 
 #: src/views/main_window.py:498
 #, python-brace-format
@@ -257,7 +257,7 @@ msgstr "Untitled"
 
 #: src/views/main_window.py:634
 msgid "Delete \"{name}\"?"
-msgstr "Deleted {name}"
+msgstr "Delete \"{name}\"?"
 
 #: src/views/main_window.py:635
 msgid "This connection will be permanently removed."
@@ -279,7 +279,7 @@ msgstr ""
 
 #: src/views/main_window.py:672
 msgid "Cleared OS info for {hostname}"
-msgstr "Password for {hostname}"
+msgstr "Cleared OS info for {hostname}"
 
 #: src/views/terminal_view.py:178
 msgid "Find in terminal..."
@@ -940,7 +940,7 @@ msgstr "Enter name for the new folder:"
 
 #: src/views/sftp_view.py:795
 msgid "Folder name"
-msgstr "Username"
+msgstr "Folder name"
 
 #: src/views/sftp_view.py:805
 msgid "Creating file {name}..."
