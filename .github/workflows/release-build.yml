@@ -17,13 +17,15 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Flatpak Builder
+      - name: Install Flatpak Builder and Runtimes
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak-builder
           # Ensure flathub is added system-wide and updated correctly
           sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           sudo flatpak update --appstream
+          # Pre-install runtimes to avoid permission issues in the next step
+          sudo flatpak install -y flathub org.gnome.Platform//50 org.gnome.Sdk//50
 
       - name: Build Sentinel Flatpak
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
