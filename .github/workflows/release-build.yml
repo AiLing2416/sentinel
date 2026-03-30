@@ -23,6 +23,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak update --user flathub
 
       - name: Build Sentinel Flatpak
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
@@ -30,7 +32,6 @@ jobs:
           bundle: sentinel.flatpak
           manifest-path: flatpak/io.github.ailing2416.sentinel.yml
           cache: true
-          # Restore runtimes if needed
           restore-cache: true
 
       - name: Upload to Release
