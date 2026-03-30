@@ -1,6 +1,6 @@
 app-id: io.github.ailing2416.sentinel
 runtime: org.gnome.Platform
-runtime-version: '47'
+runtime-version: '50'
 sdk: org.gnome.Sdk
 command: sentinel
 finish-args:
