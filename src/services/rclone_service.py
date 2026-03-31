@@ -36,8 +36,15 @@ def _find_rclone() -> str:
 
 RCLONE_BIN = _find_rclone()
 
-# Files downloaded for editing live here (under /tmp → cleared on reboot)
-_EDIT_ROOT = "/tmp/sentinel/edit"
+# Edit temp files must live somewhere BOTH the Flatpak sandbox and the host
+# can see.  /tmp is a private mount namespace inside bwrap — the host's
+# xdg-open cannot access files written there.
+# GLib.get_user_cache_dir() returns the app's XDG_CACHE_HOME, which is:
+#   ~/.var/app/io.github.ailing2416.sentinel/cache/  (inside sandbox)
+# … and that same path is visible to host processes such as xdg-open.
+def _get_edit_root() -> str:
+    return os.path.join(GLib.get_user_cache_dir(), "sentinel", "edit")
+
 
 
 # ---------------------------------------------------------------------------
@@ -203,7 +210,7 @@ class RcloneService:
         The local file lives under ``/tmp/sentinel/edit/{conn_id}/{hash}/``.
         """
         filename  = os.path.basename(remote_path)
-        dest_dir  = os.path.join(_EDIT_ROOT, conn.id, f"{abs(hash(remote_path)):x}")
+        dest_dir  = os.path.join(_get_edit_root(), conn.id, f"{abs(hash(remote_path)):x}")
         local_path = os.path.join(dest_dir, filename)
         os.makedirs(dest_dir, exist_ok=True)
 
