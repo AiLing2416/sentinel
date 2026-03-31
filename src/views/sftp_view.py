@@ -37,8 +37,11 @@ class SftpFile(GObject.Object):
     """GObject wrapper around a remote file entry for use with Gtk.ColumnView."""
 
     name        = GObject.Property(type=str,  default="")
-    size        = GObject.Property(type=int,  default=0)
-    mtime       = GObject.Property(type=int,  default=0)
+    # File sizes and timestamps can exceed 2^31 on 64-bit systems.
+    # GObject's plain `type=int` maps to gint (32-bit), so we must use
+    # TYPE_INT64 to avoid a 'could not convert from int to gint' TypeError.
+    size        = GObject.Property(type=GObject.TYPE_INT64, default=0)
+    mtime       = GObject.Property(type=GObject.TYPE_INT64, default=0)
     is_dir      = GObject.Property(type=bool, default=False)
     permissions = GObject.Property(type=int,  default=0)
     uid         = GObject.Property(type=int,  default=0)
@@ -105,6 +108,7 @@ class SftpTab(Gtk.Box):
         self._backend    = SftpService(connection, ssh_service)
         self._rclone     = RcloneService.get()
         self._on_close   = on_close
+        self._is_flatpak = os.path.exists("/.flatpak-info")
 
         self._current_path = "."
         self._history:       list[str] = []
@@ -117,6 +121,18 @@ class SftpTab(Gtk.Box):
         self._store = Gio.ListStore.new(SftpFile)
         self._build_ui()
         self._run_async(self._do_connect())
+
+    @property
+    def title(self) -> str:
+        """Tab title shown by TerminalTabView."""
+        user = self._conn.username
+        host = self._conn.hostname
+        return f"SFTP — {user}@{host}" if user else f"SFTP — {host}"
+
+    @property
+    def connection(self) -> Connection:
+        """Expose connection so TerminalTabView can track this tab."""
+        return self._conn
 
     # ── Public lifecycle ────────────────────────────────────────────
 
@@ -545,13 +561,16 @@ class SftpTab(Gtk.Box):
         use_chooser: bool,
     ) -> None:
         self._set_loading(False)
-        gfile = Gio.File.new_for_path(local_path)
 
         def _after_launch() -> None:
             self._start_edit_monitor(local_path, remote_path, item.name)
 
         try:
-            if use_chooser:
+            if use_chooser and not self._is_flatpak:
+                # AppChooserDialog only makes sense outside Flatpak where the
+                # full host app database is visible.  Inside the sandbox, we
+                # always fall through to xdg-open / flatpak-spawn.
+                gfile = Gio.File.new_for_path(local_path)
                 try:
                     ct = gfile.query_info("standard::content-type", 0, None).get_content_type()
                 except Exception:
@@ -559,13 +578,25 @@ class SftpTab(Gtk.Box):
                 dlg = Gtk.AppChooserDialog.new_for_content_type(self.get_root(), 0, ct)
                 dlg.connect("response", self._on_chooser_response, local_path, remote_path, item.name)
                 dlg.present()
+                return  # monitor is started in _on_chooser_response
+
+            # Flatpak: use flatpak-spawn --host xdg-open so the host's desktop
+            # environment handles MIME lookup — the sandbox cannot do this.
+            # Outside Flatpak: use Gio.AppInfo directly.
+            if self._is_flatpak:
+                import subprocess
+                subprocess.Popen(
+                    ["flatpak-spawn", "--host", "xdg-open", local_path],
+                    close_fds=True,
+                )
             else:
+                gfile = Gio.File.new_for_path(local_path)
                 handler = gfile.query_default_handler(None)
                 if handler:
                     handler.launch([gfile], None)
                 else:
                     Gio.AppInfo.launch_default_for_uri(gfile.get_uri(), None)
-                _after_launch()
+            _after_launch()
         except Exception as exc:
             logger.error("_launch_edit: %s", exc)
             self._set_status(str(exc))
@@ -578,7 +609,10 @@ class SftpTab(Gtk.Box):
             app = dlg.get_app_info()
             if app:
                 gfile = Gio.File.new_for_path(local_path)
-                app.launch([gfile], None)
+                try:
+                    app.launch([gfile], None)
+                except Exception as exc:
+                    logger.error("AppChooser launch failed: %s", exc)
                 self._start_edit_monitor(local_path, remote_path, filename)
         dlg.destroy()
 
