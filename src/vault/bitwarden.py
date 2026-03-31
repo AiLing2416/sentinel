@@ -40,13 +40,19 @@ class BitwardenBackend(VaultBackend):
         self._session_token: SecureBytes | None = None
         
         # Prefer the local binary if we bundle it or the user downloaded it
-        import os
-        from pathlib import Path
-        local_bw = Path(__file__).parent.parent.parent / "bin" / "bw"
-        if local_bw.exists() and os.access(local_bw, os.X_OK):
-            self._cli_path = str(local_bw)
+        # 1. Try standard Flatpak bin location
+        if os.path.exists("/app/bin/bw"):
+            self._cli_path = "/app/bin/bw"
         else:
-            self._cli_path = shutil.which("bw")
+            # 2. Try development bin location relative to project root
+            from pathlib import Path
+            project_root = Path(__file__).parent.parent.parent
+            local_bw = project_root / "bin" / "bw"
+            if local_bw.exists() and os.access(local_bw, os.X_OK):
+                self._cli_path = str(local_bw)
+            else:
+                # 3. Fallback to system $PATH
+                self._cli_path = shutil.which("bw")
         
         logger.info(f"Bitwarden: Backend initialized using CLI at: {self._cli_path}")
         self._auto_synced = False

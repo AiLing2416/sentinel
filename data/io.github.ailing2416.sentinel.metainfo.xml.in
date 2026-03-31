@@ -36,6 +36,27 @@
   </requires>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.2.5" date="2026-03-31">
+      <description>
+        <ul>
+          <li>SFTP rewrite: clean concurrency model with separate metadata lock and transfer semaphore</li>
+          <li>SFTP edit workflow: rclone copyto downloads file to /tmp for external editor, monitors changes and syncs back</li>
+          <li>Rclone: read-write FUSE mount, stderr-based readiness detection, atomic tmpdir cleanup</li>
+          <li>Rclone: implemented cross-host transfer and GLib cache dir for Flatpak compatibility</li>
+          <li>File browser: fixed row selection bug after sorting, drag-and-drop upload, split new-file/new-folder actions</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.2.4" date="2026-03-29">
+      <description>
+        <ul>
+          <li>Zen Mode Welcome Page: redesigned home screen for a focused, minimalist experience</li>
+          <li>GNOME Light Terminal Theme: new preset matching the Adwaita light palette</li>
+          <li>Fixed translation error mislabelling Hostname fields as Username in English locale</li>
+          <li>Optimised local PTY resizing and fixed terminal tab closing behaviour</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.3" date="2026-03-29">
       <description>
         <ul>
@@ -49,7 +70,7 @@
       <description>
         <ul>
           <li>Fixed Bitwarden Vault auto-unlocking logic for Flatpak due to excessive Keyring permission</li>
-          <li>Fixed language switching and missing i18n `.mo` files in Flatpak runtime</li>
+          <li>Fixed language switching and missing i18n .mo files in Flatpak runtime</li>
           <li>Removed error-prone legacy JSON payload fallback in decryptor</li>
         </ul>
       </description>

@@ -1,435 +1,489 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+"""Rclone FUSE mount and single-file transfer service for Sentinel."""
+
+from __future__ import annotations
+
 import asyncio
 import logging
 import os
+import shutil
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Callable
 
-import re
-import typing
+from gi.repository import GLib
 
 from models.connection import Connection
-from services.async_engine import AsyncEngine
 from utils.secure import SecureBytes
 
 logger = logging.getLogger(__name__)
 
-# Constants
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-RCLONE_BIN = str(PROJECT_ROOT / "bin" / "rclone")
-SENTINEL_MOUNTS_DIR = os.path.expanduser("~/.cache/sentinel/mounts")
+# ---------------------------------------------------------------------------
+# Rclone binary location
+# ---------------------------------------------------------------------------
 
-# Security: Expected SHA256 of the bundled binary
-RCLONE_SHA256 = "66222d029e8135c0aedd239cc79c66ce5a7aa2063a97731ba7df4ec8e22e60cf"
+def _find_rclone() -> str:
+    candidates = [
+        "/app/bin/rclone",
+        str(Path(__file__).parent.parent.parent / "bin" / "rclone"),
+    ]
+    for c in candidates:
+        if os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    return shutil.which("rclone") or "rclone"
+
+RCLONE_BIN = _find_rclone()
+
+# Files downloaded for editing live here (under /tmp → cleared on reboot)
+_EDIT_ROOT = "/tmp/sentinel/edit"
+
+
+# ---------------------------------------------------------------------------
+# Internal state
+# ---------------------------------------------------------------------------
+
+@dataclass
+class _MountState:
+    """Tracks a single live rclone mount process."""
+    proc:       asyncio.subprocess.Process
+    tmpdir:     str   # Owns rclone.conf + any temp key files; deleted on unmount
+    mount_path: str
+
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
 
 class RcloneService:
-    """Provides transparent FUSE mount using rclone for SFTP connections."""
-    
-    _instance = None
-    
+    """Singleton façade for rclone FUSE mounting and file copy operations.
+
+    Mount lifecycle
+    ---------------
+    • ``mount()``  — starts ``rclone mount`` as a subprocess with read-write
+      VFS cache, waits for the mountpoint to appear, then returns the path.
+    • ``unmount()`` — terminates the process, deletes the temp config dir, and
+      forces a kernel unmount if the process left the mountpoint stale.
+    • ``unmount_all()`` — called at application shutdown.
+
+    Edit workflow
+    -------------
+    ``download_for_edit()`` uses ``rclone copyto`` to fetch a single remote
+    file into ``/tmp/sentinel/edit/{conn_id}/{hash}/{filename}``.
+    The caller opens the file with the default or chosen application, monitors
+    it for changes, and calls ``upload_file()`` to push changes back.
+    ``upload_file()`` uses ``rclone copyto`` in the reverse direction.
+
+    Cross-host transfer
+    -------------------
+    ``transfer()`` builds a two-section rclone config and runs ``rclone copy``
+    between any two SFTP connections.
+    """
+
+    _instance: RcloneService | None = None
+
     @classmethod
-    def get(cls) -> "RcloneService":
+    def get(cls) -> RcloneService:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
-    def __init__(self):
-        self._engine = AsyncEngine.get()
-        self._active_mounts: dict[str, asyncio.subprocess.Process] = {}
+    def __init__(self) -> None:
+        self._mounts: dict[str, _MountState] = {}
+
+    # ── Mount path ────────────────────────────────────────────────
+
+    def get_mount_path(self, connection_id: str) -> str:
+        """Return the local directory used as the FUSE mountpoint."""
+        cache = GLib.get_user_cache_dir()
+        return os.path.join(cache, "sentinel", "mounts", connection_id)
 
     def is_mounted(self, connection_id: str) -> bool:
-        """Sync check if a connection is currently mounted."""
-        return connection_id in self._active_mounts
+        return connection_id in self._mounts
 
-    async def ensure_rclone(self) -> bool:
-        """Verify rclone bundled binary exists and is authentic."""
-        if os.path.exists(RCLONE_BIN) and os.access(RCLONE_BIN, os.X_OK):
-            if await self._verify_binary(RCLONE_BIN, RCLONE_SHA256):
-                return True
-            else:
-                logger.error("Rclone binary integrity check FAILED! Security risk detected.")
-                return False
-            
-        logger.error(f"Bundled rclone binary not found or not executable at {RCLONE_BIN}")
-        return False
+    # ── Mount ─────────────────────────────────────────────────────
 
-    async def _verify_binary(self, path: str, expected_sha: str) -> bool:
-        """Verify the SHA256 hash of a file."""
-        import hashlib
+    async def mount(
+        self,
+        conn: Connection,
+        auth_info: dict[str, Any],
+    ) -> tuple[str | None, str | None]:
+        """Ensure an rclone FUSE mount is active for *conn*.
+
+        Returns ``(mount_path, None)`` on success or ``(None, error_message)``
+        on failure.  Idempotent: returns the cached path if already mounted.
+        """
+        if conn.id in self._mounts:
+            return self._mounts[conn.id].mount_path, None
+
+        mount_path = self.get_mount_path(conn.id)
+        os.makedirs(mount_path, exist_ok=True)
+        await _force_unmount(mount_path)   # clear any stale mount
+
+        tmpdir = tempfile.mkdtemp(prefix="sentinel_rclone_")
         try:
-            def _calc():
-                h = hashlib.sha256()
-                with open(path, "rb") as f:
-                    while chunk := f.read(8192):
-                        h.update(chunk)
-                return h.hexdigest()
-            
-            actual = await asyncio.to_thread(_calc)
-            return actual == expected_sha
-        except Exception as e:
-            logger.error(f"Binary verification failed for {path}: {e}")
-            return False
+            conf = await self._write_config(conn, auth_info, tmpdir)
+            cmd = [
+                RCLONE_BIN, "mount", "remote:/", mount_path,
+                "--config", conf,
+                "--vfs-cache-mode", "full",
+                "--vfs-cache-max-age", "30s",
+                "--dir-cache-time",   "5s",
+                "--transfers",        "4",
+                "--log-level",        "INFO",
+                # Explicitly NOT --read-only so edits are writable
+            ]
+            logger.info("RcloneService: mounting %s -> %s", conn.hostname, mount_path)
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
+            )
 
-    async def _obscure_password(self, password: SecureBytes | str) -> str:
-        """Obscure password using rclone obscure via stdin."""
-        pwd_view = password.get_view() if isinstance(password, SecureBytes) else password.encode()
-        
+            ok, err = await _wait_for_mount(proc, mount_path)
+            if not ok:
+                if proc.returncode is None:
+                    proc.terminate()
+                shutil.rmtree(tmpdir, ignore_errors=True)
+                return None, err or "Mount failed"
+
+            state = _MountState(proc=proc, tmpdir=tmpdir, mount_path=mount_path)
+            self._mounts[conn.id] = state
+            asyncio.create_task(self._monitor(conn.id, state))
+            logger.info("RcloneService: mount active at %s", mount_path)
+            return mount_path, None
+
+        except Exception as exc:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+            logger.exception("RcloneService: mount exception")
+            return None, str(exc)
+
+    async def unmount(self, connection_id: str) -> None:
+        """Unmount and clean up resources for *connection_id*."""
+        state = self._mounts.pop(connection_id, None)
+        if state is None:
+            return
+        state.proc.terminate()
+        try:
+            await asyncio.wait_for(state.proc.wait(), timeout=3.0)
+        except asyncio.TimeoutError:
+            state.proc.kill()
+        shutil.rmtree(state.tmpdir, ignore_errors=True)
+        await _force_unmount(state.mount_path)
+        logger.info("RcloneService: unmounted %s", connection_id)
+
+    def unmount_all(self) -> None:
+        """Terminate all active mounts synchronously (app shutdown)."""
+        for state in list(self._mounts.values()):
+            state.proc.terminate()
+        self._mounts.clear()
+
+    async def _monitor(self, conn_id: str, state: _MountState) -> None:
+        """Background task: clean up when the rclone process exits on its own."""
+        await state.proc.wait()
+        removed = self._mounts.pop(conn_id, None)
+        if removed:
+            shutil.rmtree(removed.tmpdir, ignore_errors=True)
+            await _force_unmount(removed.mount_path)
+        logger.info("RcloneService: mount for %s exited", conn_id)
+
+    # ── Download for edit ──────────────────────────────────────────
+
+    async def download_for_edit(
+        self,
+        conn: Connection,
+        auth_info: dict[str, Any],
+        remote_path: str,
+    ) -> tuple[str | None, str | None]:
+        """Copy a single remote file to a local temp path for external editing.
+
+        Uses ``rclone copyto`` so no FUSE mount is needed.
+        Returns ``(local_file_path, None)`` on success or ``(None, error)``.
+        The local file lives under ``/tmp/sentinel/edit/{conn_id}/{hash}/``.
+        """
+        filename  = os.path.basename(remote_path)
+        dest_dir  = os.path.join(_EDIT_ROOT, conn.id, f"{abs(hash(remote_path)):x}")
+        local_path = os.path.join(dest_dir, filename)
+        os.makedirs(dest_dir, exist_ok=True)
+
+        tmpdir = tempfile.mkdtemp(prefix="sentinel_rclone_edit_")
+        try:
+            conf = await self._write_config(conn, auth_info, tmpdir)
+            cmd = [
+                RCLONE_BIN, "copyto",
+                f"remote:{remote_path}",
+                local_path,
+                "--config", conf,
+                "--log-level", "ERROR",
+            ]
+            logger.info("RcloneService: download_for_edit %s -> %s", remote_path, local_path)
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                err = stderr.decode().strip()
+                logger.error("RcloneService: copyto failed: %s", err)
+                return None, err or "Download failed"
+            return local_path, None
+
+        except Exception as exc:
+            logger.exception("RcloneService: download_for_edit exception")
+            return None, str(exc)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    # ── Upload (sync back after editing) ──────────────────────────
+
+    async def upload_file(
+        self,
+        conn: Connection,
+        auth_info: dict[str, Any],
+        local_path: str,
+        remote_path: str,
+    ) -> tuple[bool, str | None]:
+        """Push a local file back to the remote path using ``rclone copyto``."""
+        tmpdir = tempfile.mkdtemp(prefix="sentinel_rclone_up_")
+        try:
+            conf = await self._write_config(conn, auth_info, tmpdir)
+            cmd = [
+                RCLONE_BIN, "copyto",
+                local_path,
+                f"remote:{remote_path}",
+                "--config", conf,
+                "--log-level", "ERROR",
+            ]
+            logger.info("RcloneService: upload_file %s -> %s", local_path, remote_path)
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                err = stderr.decode().strip()
+                logger.error("RcloneService: upload failed: %s", err)
+                return False, err or "Upload failed"
+            return True, None
+
+        except Exception as exc:
+            logger.exception("RcloneService: upload_file exception")
+            return False, str(exc)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    # ── Cross-host transfer ────────────────────────────────────────
+
+    async def transfer(
+        self,
+        src_conn: Connection,
+        src_auth: dict[str, Any],
+        src_path: str,
+        dst_conn: Connection,
+        dst_auth: dict[str, Any],
+        dst_path: str,
+        progress_cb: Callable[[float, str], None] | None = None,
+    ) -> tuple[bool, str | None]:
+        """Transfer files between two SFTP hosts via rclone.
+
+        Builds a two-section config file so rclone can address both remotes
+        simultaneously without touching the system-wide rclone config.
+        """
+        tmpdir = tempfile.mkdtemp(prefix="sentinel_rclone_xfer_")
+        try:
+            src_lines = await self._remote_section("src", src_conn, src_auth, tmpdir)
+            dst_lines = await self._remote_section("dst", dst_conn, dst_auth, tmpdir)
+
+            conf_path = os.path.join(tmpdir, "rclone.conf")
+            with open(conf_path, "w") as f:
+                f.write("\n".join(src_lines) + "\n\n")
+                f.write("\n".join(dst_lines) + "\n")
+            os.chmod(conf_path, 0o600)
+
+            cmd = [
+                RCLONE_BIN, "copyto",
+                f"src:{src_path}",
+                f"dst:{dst_path}",
+                "--config", conf_path,
+                "--log-level", "ERROR",
+            ]
+            logger.info(
+                "RcloneService: transfer %s:%s -> %s:%s",
+                src_conn.hostname, src_path, dst_conn.hostname, dst_path,
+            )
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                err = stderr.decode().strip()
+                logger.error("RcloneService: transfer failed: %s", err)
+                return False, err or "Transfer failed"
+            return True, None
+
+        except Exception as exc:
+            logger.exception("RcloneService: transfer exception")
+            return False, str(exc)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    # ── Config helpers ─────────────────────────────────────────────
+
+    async def _write_config(
+        self,
+        conn: Connection,
+        auth_info: dict[str, Any],
+        tmpdir: str,
+        remote_name: str = "remote",
+    ) -> str:
+        """Write a single-remote rclone config to *tmpdir* and return its path."""
+        lines = await self._remote_section(remote_name, conn, auth_info, tmpdir)
+        conf = os.path.join(tmpdir, "rclone.conf")
+        with open(conf, "w") as f:
+            f.write("\n".join(lines) + "\n")
+        os.chmod(conf, 0o600)
+        return conf
+
+    async def _remote_section(
+        self,
+        remote_name: str,
+        conn: Connection,
+        auth_info: dict[str, Any],
+        tmpdir: str,
+    ) -> list[str]:
+        """Return rclone config lines for one [remote_name] SFTP section."""
+        lines = [
+            f"[{remote_name}]",
+            "type = sftp",
+            f"host = {conn.hostname}",
+            f"port = {conn.port or 22}",
+            f"user = {conn.username or 'root'}",
+            "ask_password = false",
+            "key_use_agent = false",
+        ]
+
+        if auth_info.get("password"):
+            lines.append(f"pass = {await self._obscure(auth_info['password'])}")
+
+        if auth_info.get("key_path"):
+            lines.append(f"key_file = {auth_info['key_path']}")
+        elif auth_info.get("private_key_pem"):
+            key_path = os.path.join(tmpdir, f"id_{remote_name}")
+            pem = auth_info["private_key_pem"]
+            content = pem.unsafe_get_str() if isinstance(pem, SecureBytes) else str(pem)
+            with open(key_path, "w") as f:
+                f.write(content.strip() + "\n")
+            os.chmod(key_path, 0o600)
+            lines.append(f"key_file = {key_path}")
+
+        if auth_info.get("key_passphrase"):
+            lines.append(
+                f"key_file_pass = {await self._obscure(auth_info['key_passphrase'])}"
+            )
+
+        return lines
+
+    async def _obscure(self, secret: Any) -> str:
+        """Run ``rclone obscure`` on *secret* and return the obscured string."""
+        if isinstance(secret, SecureBytes):
+            data = bytes(secret.get_view())
+        elif isinstance(secret, str):
+            data = secret.encode()
+        else:
+            data = bytes(secret)
+
         proc = await asyncio.create_subprocess_exec(
             RCLONE_BIN, "obscure", "-",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await proc.communicate(input=pwd_view)
+        stdout, stderr = await proc.communicate(input=data)
         if proc.returncode != 0:
-            raise Exception(f"Rclone obscure failed: {stderr.decode()}")
+            raise RuntimeError(f"rclone obscure failed: {stderr.decode().strip()}")
         return stdout.decode().strip()
 
-    def get_mount_path(self, connection_id: str) -> str:
-        """Get expected local mount path."""
-        return os.path.join(SENTINEL_MOUNTS_DIR, connection_id)
 
-    async def _is_path_mounted_safe(self, mount_path: str) -> bool:
-        """Check /proc/mounts to see if path is mounted without triggering FUSE calls."""
+# ---------------------------------------------------------------------------
+# Module-level helpers
+# ---------------------------------------------------------------------------
+
+async def _wait_for_mount(
+    proc: asyncio.subprocess.Process,
+    mount_path: str,
+    timeout: float = 10.0,
+) -> tuple[bool, str | None]:
+    """Poll until the mountpoint appears or the process exits / times out.
+
+    Also drains stderr in the background so the pipe buffer never fills and
+    logs any error lines rclone emits.
+    """
+    error_lines: list[str] = []
+
+    async def _drain() -> None:
+        assert proc.stderr
+        async for raw in proc.stderr:
+            line = raw.decode().strip()
+            if not line:
+                continue
+            logger.debug("rclone: %s", line)
+            lower = line.lower()
+            if any(k in lower for k in ("error", "failed", "fatal", "denied")):
+                error_lines.append(line)
+
+    drain_task = asyncio.create_task(_drain())
+    deadline = asyncio.get_event_loop().time() + timeout
+    try:
+        while asyncio.get_event_loop().time() < deadline:
+            if proc.returncode is not None:
+                await asyncio.sleep(0.05)   # let drain finish one more iteration
+                return False, (error_lines[-1] if error_lines else "rclone exited unexpectedly")
+            if await _is_mounted(mount_path):
+                return True, None
+            await asyncio.sleep(0.1)
+    finally:
+        drain_task.cancel()
         try:
-            def _check():
-                if not os.path.exists("/proc/mounts"):
-                    logger.debug(f"'/proc/mounts' not found, falling back to os.path.ismount for {mount_path}")
-                    return os.path.ismount(mount_path)
-                with open("/proc/mounts", "r") as f:
-                    for line in f:
-                        parts = line.split()
-                        if len(parts) > 1 and parts[1] == mount_path:
-                            logger.debug(f"Path {mount_path} found in /proc/mounts.")
-                            return True
-                logger.debug(f"Path {mount_path} not found in /proc/mounts.")
-                return False
-            return await asyncio.to_thread(_check)
-        except Exception as e:
-            logger.warning(f"Error checking mount status for {mount_path}: {e}")
+            await drain_task
+        except asyncio.CancelledError:
+            pass
+
+    return False, f"Mount timed out after {timeout:.0f}s"
+
+
+async def _is_mounted(path: str) -> bool:
+    """Return True if *path* appears in ``/proc/mounts``."""
+    def _check() -> bool:
+        if os.path.exists("/proc/mounts"):
+            with open("/proc/mounts") as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) > 1 and parts[1] == path:
+                        return True
             return False
+        return os.path.ismount(path)
 
-    async def _unmount_if_stale(self, mount_path: str):
-        """Unmount in case it was left over using lazy unmount. Works on Linux & BSD."""
+    try:
+        return await asyncio.to_thread(_check)
+    except Exception:
+        return False
+
+
+async def _force_unmount(mount_path: str) -> None:
+    """Best-effort unmount of *mount_path*, trying fusermount3 then umount."""
+    for cmd in (["fusermount3", "-zu", mount_path], ["umount", "-f", mount_path]):
         try:
-            logger.debug(f"Attempting to clear stale mount: {mount_path}")
-            # Try fusermount3 first (Linux)
-            proc = await asyncio.create_subprocess_exec(
-                "fusermount3", "-zu", mount_path,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL
-            )
-            try:
-                await asyncio.wait_for(proc.wait(), timeout=1.0)
-                if proc.returncode == 0:
-                    logger.debug(f"Successfully unmounted stale mount via fusermount3: {mount_path}")
-                    return
-            except: pass
-            
-            # Fallback to standard umount (BSD/Linux fallback)
-            # -f for force, -l for lazy (non-POSIX, might work on some systems)
-            # On FreeBSD: umount -f
-            cmd = ["umount", "-f", mount_path]
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL
+                stderr=asyncio.subprocess.DEVNULL,
             )
-            await asyncio.wait_for(proc.wait(), timeout=1.0)
-        except Exception as e:
-            logger.debug(f"Stale unmount attempt for {mount_path} ignored: {e}")
-
-    async def mount(self, conn: Connection, auth_info: dict) -> tuple[str | None, str | None]:
-        """Mount SFTP FUSE using rclone. Returns (file_uri, error_msg)."""
-        if not await self.ensure_rclone():
-            return None, "Rclone binary missing or failed to download"
-            
-        mount_path = self.get_mount_path(conn.id)
-        if conn.id in self._active_mounts:
-            # Already mounted
-            return f"file://{mount_path}", None
-            
-        os.makedirs(mount_path, exist_ok=True)
-        await self._unmount_if_stale(mount_path)
-        
-        args = [
-            RCLONE_BIN,
-            "mount",
-            ":sftp:/", mount_path,
-            "--sftp-host", conn.hostname,
-            "--vfs-cache-mode", "full",
-            "--vfs-cache-max-age", "5s",
-            "--dir-cache-time", "5s",
-            "--read-only",               # Protect remote from accidental mount-side writes
-            "--sftp-ask-password=false",
-            "--sftp-key-use-agent=false",
-            "--daemon-timeout", "10s",
-        ]
-        
-        if conn.port:
-            args.extend(["--sftp-port", str(conn.port)])
-        if conn.username:
-            args.extend(["--sftp-user", conn.username])
-            
-        # Securely pass keys or passwords via temporary config
-        config_path = None
-        try:
-            config_path, _ = await self._write_temp_config(conn, auth_info, "mount_remote")
-            args.extend(["--config", config_path])
-            
-            # Use the remote name defined in the config
-            args[2] = "mount_remote:/"
-            
-            # Clean start: Ensure it's not mounted and path is clear
-            await self._unmount_if_stale(mount_path)
-            if not os.path.exists(mount_path):
-                os.makedirs(mount_path, exist_ok=True)
-            
-            logger.info(f"Starting rclone mount for {conn.hostname} at {mount_path}")
-            proc = await asyncio.create_subprocess_exec(
-                *args,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.PIPE
-            )
-            
-            err_output = []
-            async def _read_stderr():
-                while True:
-                    line = await proc.stderr.readline()
-                    if not line: break
-                    msg = line.decode().strip()
-                    if msg: 
-                        logger.warning(f"Rclone [{conn.hostname}]: {msg}")
-                        err_output.append(msg)
-            asyncio.create_task(_read_stderr())
-            
-            success = False
-            logger.info(f"Polling mount status for {mount_path}...")
-            for i in range(50):
-                if proc.returncode is not None:
-                    logger.error(f"Rclone mount process exited early: {proc.returncode}")
-                    break
-                
-                if await self._is_path_mounted_safe(mount_path):
-                    logger.info(f"Mount point {mount_path} verified in /proc/mounts after {i*0.1:.1f}s")
-                    # One final check: can we actually see the directory?
-                    try:
-                        def _test_dir():
-                            return os.path.isdir(mount_path)
-                        if await asyncio.wait_for(asyncio.to_thread(_test_dir), timeout=0.5):
-                            success = True
-                            break
-                    except: pass
-                
-                await asyncio.sleep(0.1)
-            
-            if not success:
-                err_summary = " ".join(err_output[-2:]) if err_output else "Mount point failed to become responsive"
-                logger.error(f"Mount readiness check failed after 5s for {mount_path}. Last error: {err_summary}")
-                if proc.returncode is None:
-                    proc.terminate()
-                return None, err_summary
-
-            # Process is running and mount is ready
-            self._active_mounts[conn.id] = dict(proc=proc, config_path=config_path)
-            
-            # Monitor loop
-            async def _monitor_mount():
-                await proc.wait()
-                logger.info(f"Rclone mount for {conn.hostname} terminated (code {proc.returncode})")
-                if config_path and os.path.exists(config_path):
-                    try: os.remove(config_path)
-                    except: pass
-                self._active_mounts.pop(conn.id, None)
-                await self._unmount_if_stale(mount_path)
-            
-            asyncio.create_task(_monitor_mount())
-            return f"file://{mount_path}", None
-                
-        except Exception as e:
-            logger.error(f"Failed to mount rclone: {e}")
-            if config_path and os.path.exists(config_path):
-                try: os.remove(config_path)
-                except: pass
-            return None, str(e)
-
-    async def unmount(self, connection_id: str):
-        """Unmount a specific connection."""
-        data = self._active_mounts.get(connection_id)
-        if data:
-            proc = data["proc"]
-            if proc.returncode is None:
-                proc.terminate()
-            # The monitor task will handle the rest
-        else:
-            mount_path = self.get_mount_path(connection_id)
-            await self._unmount_if_stale(mount_path)
-
-    async def transfer(self, 
-                       src_conn: Connection, src_auth: dict, src_path: str,
-                       dst_conn: Connection, dst_auth: dict, dst_path: str,
-                       on_progress: typing.Callable[[float, str], None] | None = None) -> tuple[bool, str | None]:
-        """Perform remote-to-remote transfer using rclone with performance tuning."""
-        if not await self.ensure_rclone():
-            return False, "Rclone missing"
-
-        # 1. Create temporary rclone config
-        config_path, temp_files = await self._generate_transfer_config(src_conn, src_auth, dst_conn, dst_auth)
-        
-        try:
-            # 2. Build command
-            # High-performance flags:
-            # --transfers=4: Parallel file transfers
-            # --buffer-size=32M: Memory buffer per file
-            # --sftp-concurrency=16: SFTP concurrent requests
-            # --stats=1s: Progress update interval
-            args = [
-                RCLONE_BIN, 
-                "copy", 
-                "--config", config_path,
-                "src:" + src_path, 
-                "dst:" + os.path.dirname(dst_path),
-                "--transfers", "4",
-                "--buffer-size", "32M",
-                "--sftp-concurrency", "16",
-                "--stats", "1s",
-                "-P"
-            ]
-            
-            # If src_path is a file, we want to ensure it's copied to dst_path specifically 
-            # but rclone copy src:file dst_dir: copies it into the dir.
-            # If dst_path is the final file name:
-            if not dst_path.endswith("/"):
-                # rclone copyto is better for specific renaming
-                args[1] = "copyto"
-                args[5] = "dst:" + dst_path
-
-            logger.info(f"Starting rclone transfer: {src_conn.hostname} -> {dst_conn.hostname}")
-            
-            proc = await asyncio.create_subprocess_exec(
-                *args,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT
-            )
-
-            # 3. Parse progress
-            # Rclone -P output example:
-            # Transferred:   	   1.234 MiB / 10.552 MiB, 12%, 1.234 MiB/s, ETA 7s
-            progress_re = re.compile(r"Transferred:.* (\d+)%,")
-            
-            while True:
-                line = await proc.stdout.readline()
-                if not line:
-                    break
-                
-                line_str = line.decode(errors="replace").strip()
-                if not line_str: continue
-                
-                # Check for progress
-                match = progress_re.search(line_str)
-                if match and on_progress:
-                    percent = float(match.group(1))
-                    on_progress(percent, line_str)
-                elif "error" in line_str.lower():
-                    logger.warning(f"Rclone transfer log: {line_str}")
-
-            await proc.wait()
-            
-            if proc.returncode == 0:
-                return True, None
-            else:
-                return False, f"Rclone exited with code {proc.returncode}"
-
-        except Exception as e:
-            logger.error(f"Transfer failed: {e}")
-            return False, str(e)
-        finally:
-            # Cleanup temp files (keys and config)
-            for f in temp_files:
-                if f and os.path.exists(f):
-                    try: os.remove(f)
-                    except: pass
-            if os.path.exists(config_path):
-                try: os.remove(config_path)
-                except: pass
-
-    async def _write_temp_config(self, 
-                               src_conn: Connection, src_auth: dict, 
-                               dst_conn: Connection | str = "dst", dst_auth: dict | None = None) -> tuple[str, list[str]]:
-        """Generate a temporary rclone config file. Handles both mount and transfer cases.
-        Uses key_pem where supported to avoid extra temp files.
-        """
-        temp_files = []
-        
-        async def _prep_lines(conn, auth, prefix):
-            lines = [
-                f"[{prefix}]",
-                "type = sftp",
-                f"host = {conn.hostname}",
-                f"port = {conn.port or 22}",
-                f"user = {conn.username or 'root'}",
-            ]
-            
-            if "password" in auth and auth["password"]:
-                obs = await self._obscure_password(auth["password"])
-                lines.append(f"pass = {obs}")
-            
-            if "key_path" in auth and auth["key_path"]:
-                lines.append(f"key_file = {auth['key_path']}")
-            elif "private_key_pem" in auth and auth["private_key_pem"]:
-                pem_data = auth["private_key_pem"]
-                if isinstance(pem_data, SecureBytes):
-                    pem_str = pem_data.unsafe_get_str()
-                else:
-                    pem_str = pem_data.decode() if isinstance(pem_data, bytes) else pem_data
-                
-                # Format PEM for rclone config (indented)
-                formatted_pem = pem_str.strip().replace("\n", "\n    ")
-                lines.append(f"key_pem = {formatted_pem}")
-                
-            if "key_passphrase" in auth and auth["key_passphrase"]:
-                 obs = await self._obscure_password(auth["key_passphrase"])
-                 lines.append(f"key_file_pass = {obs}")
-                 
-            return lines
-
-        final_lines = []
-        if dst_auth is None:
-            # Single remote (mount case)
-            # If dst_conn is a string, it's our prefix name
-            prefix = dst_conn if isinstance(dst_conn, str) else "mount_remote"
-            final_lines.extend(await _prep_lines(src_conn, src_auth, prefix))
-        else:
-            # Dual remote (transfer case)
-            final_lines.extend(await _prep_lines(src_conn, src_auth, "src"))
-            final_lines.extend([""])
-            final_lines.extend(await _prep_lines(dst_conn, dst_auth, "dst"))
-        
-        conf_fd, conf_path = tempfile.mkstemp(prefix="sentinel_rclone_conf_")
-        with os.fdopen(conf_fd, 'w') as f:
-            f.write("\n".join(final_lines) + "\n")
-        
-        os.chmod(conf_path, 0o600)
-        return conf_path, temp_files
-
-    def unmount_all(self):
-        """Cleanly unmount all existing mounts."""
-        # Use list to avoid "dictionary changed size" if monitor tasks pop during loop
-        items = list(self._active_mounts.items())
-        for conn_id, data in items:
-            proc = data["proc"]
-            config_path = data.get("config_path")
-            if proc.returncode is None:
-                proc.terminate()
-            if config_path and os.path.exists(config_path):
-                try: os.remove(config_path)
-                except: pass
-                
-            mount_path = self.get_mount_path(conn_id)
-            # Try to force unmount to prevent system hangs
-            try:
-                import subprocess
-                subprocess.run(["fusermount3", "-u", mount_path], check=False, stderr=subprocess.DEVNULL)
-            except: pass
-        
-        self._active_mounts.clear()
-
+            await asyncio.wait_for(proc.wait(), timeout=2.0)
+            return
+        except Exception:
+            continue
