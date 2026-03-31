@@ -1,1701 +1,829 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""SFTP file browser view."""
+"""SFTP file-browser view — rewrote from scratch for Sentinel v0.3."""
 
 from __future__ import annotations
 
+import gettext
 import logging
 import os
-import stat
-from dataclasses import dataclass
+import shutil
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, Any
+from typing import Callable, Optional
 
 import gi
-
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-
-import gettext
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk, Pango, Vte, GObject  # noqa: E402
-
-_ = gettext.gettext
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango
 
 from models.connection import Connection
+from services.async_engine import call_ui_sync
+from services.rclone_service import RcloneService
+from services.sftp_service import SftpService
 from services.ssh_service import SSHService
 
+_ = gettext.gettext
 logger = logging.getLogger(__name__)
 
+MAX_DIRECT_EDIT_BYTES = 200 * 1024 * 1024   # 200 MB soft limit
+
+
+# ---------------------------------------------------------------------------
+# GObject model for the ColumnView
+# ---------------------------------------------------------------------------
 
 class SftpFile(GObject.Object):
-    """GObject representing a file in SFTP."""
-    
-    name = GObject.Property(type=str, default="")
-    size = GObject.Property(type=int, default=0)
-    mtime = GObject.Property(type=int, default=0)
-    is_dir = GObject.Property(type=bool, default=False)
-    permissions = GObject.Property(type=int, default=0)
-    uid = GObject.Property(type=int, default=0)
-    gid = GObject.Property(type=int, default=0)
+    """GObject wrapper around a remote file entry for use with Gtk.ColumnView."""
 
-    def __init__(self, name: str, size: int, mtime: int, is_dir: bool, permissions: int, uid: int=0, gid: int=0) -> None:
-        super().__init__(
-            name=name,
-            size=size,
-            mtime=mtime,
-            is_dir=is_dir,
-            permissions=permissions,
-            uid=uid,
-            gid=gid
-        )
+    name        = GObject.Property(type=str,  default="")
+    size        = GObject.Property(type=int,  default=0)
+    mtime       = GObject.Property(type=int,  default=0)
+    is_dir      = GObject.Property(type=bool, default=False)
+    permissions = GObject.Property(type=int,  default=0)
+    uid         = GObject.Property(type=int,  default=0)
+    gid         = GObject.Property(type=int,  default=0)
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
 
     @property
     def icon_name(self) -> str:
-        if self.is_dir:
-            return "folder-symbolic"
-        return "text-x-generic-symbolic"
+        return "folder-symbolic" if self.is_dir else "text-x-generic-symbolic"
 
     @property
     def size_str(self) -> str:
         if self.is_dir:
-            return "--"
-        size = float(self.size)
-        for unit in ["B", "KB", "MB", "GB", "TB"]:
-            if size < 1024:
-                return f"{size:.1f} {unit}" if unit != "B" else f"{int(size)} B"
-            size /= 1024
-        return f"{size:.1f} PB"
+            return "—"
+        s = float(self.size)
+        for unit in ("B", "KB", "MB", "GB", "TB"):
+            if s < 1024:
+                return f"{int(s)} {unit}" if unit == "B" else f"{s:.1f} {unit}"
+            s /= 1024
+        return f"{s:.1f} PB"
 
     @property
     def mtime_str(self) -> str:
-        dt = datetime.fromtimestamp(self.mtime)
-        return dt.strftime("%Y-%m-%d %H:%M")
+        try:
+            return datetime.fromtimestamp(self.mtime).strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            return "—"
 
+
+# ---------------------------------------------------------------------------
+# Edit-session bookkeeping
+# ---------------------------------------------------------------------------
+
+@dataclass
+class EditSession:
+    """Tracks one externally-opened file for auto-sync."""
+    local_path:  str
+    remote_path: str
+    filename:    str
+    mtime:       float
+    monitor:     Gio.FileMonitor
+    pending:     bool = False           # True while a sync-confirm dialog is open
+
+
+# ---------------------------------------------------------------------------
+# Main widget
+# ---------------------------------------------------------------------------
 
 class SftpTab(Gtk.Box):
-    """A single SFTP tab with a file browser."""
+    """Full SFTP file-browser widget embedded in a tab page."""
 
     def __init__(
         self,
         connection: Connection,
         ssh_service: SSHService,
-        on_close: Callable[[], None] | None = None,
+        on_close: Optional[Callable] = None,
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
 
-        self._connection = connection
-        self._ssh_service = ssh_service
-        self._on_close = on_close
-        
-        self._sftp: Any = None
-        self._ssh_conn: Any = None
-        self._auth_info: dict[str, Any] = {}
+        self._conn       = connection
+        self._ssh        = ssh_service
+        self._backend    = SftpService(connection, ssh_service)
+        self._rclone     = RcloneService.get()
+        self._on_close   = on_close
+
         self._current_path = "."
-        self._history: list[str] = []
-        self._history_index = -1
-        self._monitors: dict[str, Gio.FileMonitor] = {}
-        self._pending_prompts: set[str] = set() # local_path
-        self._initial_states: dict[str, tuple[float, int]] = {} # local_path -> (mtime, size)
-        self._active_edits: dict[str, str] = {} # remote_path -> local_path
-        
-        import tempfile
-        self._temp_dir = tempfile.mkdtemp(prefix="sentinel_edit_{id}_".format(id=connection.id))
-        
-        self._show_hidden = False
-        self._auto_sync = False
-        self._all_items: list[SftpFile] = []  # Local cache of all items in current dir
-        
-        self._file_store = Gio.ListStore.new(SftpFile)
+        self._history:       list[str] = []
+        self._history_idx:   int       = -1
+        self._all_items:     list[SftpFile] = []
+        self._edit_sessions: dict[str, EditSession] = {}   # keyed by local_path
+        self._show_hidden  = False
+        self._auto_sync    = False
+
+        self._store = Gio.ListStore.new(SftpFile)
         self._build_ui()
-        self._connect_sftp()
+        self._run_async(self._do_connect())
+
+    # ── Public lifecycle ────────────────────────────────────────────
+
+    def terminate(self) -> None:
+        """Clean up monitors, temp files, FUSE mount and SSH connection."""
+        logger.info("SftpTab[%s]: terminating", self._conn.hostname)
+        for es in list(self._edit_sessions.values()):
+            es.monitor.cancel()
+        self._edit_sessions.clear()
+        self._run_async(self._rclone.unmount(self._conn.id))
+        self._run_async(self._backend.disconnect())
+
+    # ── UI construction ─────────────────────────────────────────────
 
     def _build_ui(self) -> None:
-        # Toolbar
-        header_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        header_bar.add_css_class("toolbar")
-        header_bar.set_margin_top(4)
-        header_bar.set_margin_bottom(4)
+        # ── Toolbar ──
+        tb = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        tb.add_css_class("toolbar")
+        tb.set_margin_top(4)
+        tb.set_margin_bottom(4)
 
-        # Back / Forward
-        self._back_btn = Gtk.Button(icon_name="go-previous-symbolic")
-        self._back_btn.set_sensitive(False)
-        self._back_btn.connect("clicked", self._on_back_clicked)
-        header_bar.append(self._back_btn)
+        self._back_btn = Gtk.Button(icon_name="go-previous-symbolic", sensitive=False)
+        self._back_btn.connect("clicked", lambda _: self._navigate(-1))
+        tb.append(self._back_btn)
 
-        self._forward_btn = Gtk.Button(icon_name="go-next-symbolic")
-        self._forward_btn.set_sensitive(False)
-        self._forward_btn.connect("clicked", self._on_forward_clicked)
-        header_bar.append(self._forward_btn)
+        self._fwd_btn = Gtk.Button(icon_name="go-next-symbolic", sensitive=False)
+        self._fwd_btn.connect("clicked", lambda _: self._navigate(1))
+        tb.append(self._fwd_btn)
 
-        # Up
-        self._up_btn = Gtk.Button(icon_name="go-up-symbolic")
-        self._up_btn.connect("clicked", self._on_up_clicked)
-        header_bar.append(self._up_btn)
+        up_btn = Gtk.Button(icon_name="go-up-symbolic")
+        up_btn.set_tooltip_text(_("Parent directory"))
+        up_btn.connect("clicked", lambda _: self._load_path(
+            os.path.dirname(self._current_path)
+        ))
+        tb.append(up_btn)
 
-        # Refresh
         refresh_btn = Gtk.Button(icon_name="view-refresh-symbolic")
+        refresh_btn.set_tooltip_text(_("Refresh"))
         refresh_btn.connect("clicked", lambda _: self._load_path(self._current_path))
-        header_bar.append(refresh_btn)
+        tb.append(refresh_btn)
 
-        # New... Menu
-        self._new_btn = Gtk.MenuButton(icon_name="list-add-symbolic", tooltip_text=_("New..."))
-        new_menu = Gio.Menu()
-        new_menu.append(_("New File"), "sftp.new-file")
-        new_menu.append(_("New Folder"), "sftp.new-folder")
-        self._new_btn.set_menu_model(new_menu)
-        header_bar.append(self._new_btn)
+        # New file / New folder split button
+        new_menu_btn = Gtk.MenuButton(icon_name="list-add-symbolic")
+        new_menu_btn.set_tooltip_text(_("New…"))
+        new_m = Gio.Menu()
+        new_m.append(_("New File"),   "sftp.new-file")
+        new_m.append(_("New Folder"), "sftp.new-folder")
+        new_menu_btn.set_menu_model(new_m)
+        tb.append(new_menu_btn)
 
-        # Path entry
         self._path_entry = Gtk.Entry(hexpand=True)
-        self._path_entry.connect("activate", self._on_path_entry_activated)
-        header_bar.append(self._path_entry)
+        self._path_entry.set_placeholder_text(_("Remote path"))
+        self._path_entry.connect("activate", lambda e: self._load_path(e.get_text()))
+        tb.append(self._path_entry)
 
-        # View Options (Nautilus style)
-        self._view_opts_btn = Gtk.MenuButton(icon_name="view-more-symbolic", tooltip_text=_("View Options"))
-        self._view_opts_menu = Gio.Menu()
-        
-        # Section for filters
-        filter_section = Gio.Menu()
-        filter_section.append(_("Show Hidden Files"), "sftp.show-hidden")
-        self._view_opts_menu.append_section(None, filter_section)
-        
-        # Section for edit behavior
-        edit_section = Gio.Menu()
-        edit_section.append(_("Auto-sync on Save"), "sftp.auto-sync")
-        self._view_opts_menu.append_section(None, edit_section)
-        
-        self._view_opts_btn.set_menu_model(self._view_opts_menu)
-        header_bar.append(self._view_opts_btn)
+        # View options
+        view_btn = Gtk.MenuButton(icon_name="view-more-symbolic")
+        view_m = Gio.Menu()
+        view_m.append(_("Show Hidden Files"), "sftp.show-hidden")
+        view_m.append(_("Auto-sync on Save"),  "sftp.auto-sync")
+        view_btn.set_menu_model(view_m)
+        tb.append(view_btn)
 
-        self.append(header_bar)
+        self.append(tb)
 
-        # File List (ColumnView)
-        self._column_view = Gtk.ColumnView()
-        self._column_view.set_hexpand(True)
-        self._column_view.set_vexpand(True)
-        self._column_view.add_css_class("sftp-file-list")
-        
-        # ── Drop Target (Accepting items IN) ──────
-        # We add this to the view itself. Gdk.FileList for OS files, str for internal URIs.
-        drop_target = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY | Gdk.DragAction.MOVE)
-        drop_target.set_gtypes([Gdk.FileList, str, GLib.Bytes])
-        drop_target.connect("enter", self._on_drop_enter)
-        drop_target.connect("leave", self._on_drop_leave)
-        drop_target.connect("drop", self._on_drop)
-        self._column_view.add_controller(drop_target)
-        
-        # Selection
-        self._sorter = self._column_view.get_sorter()
-        self._sort_model = Gtk.SortListModel.new(self._file_store, self._sorter)
-        self._selection_model = Gtk.SingleSelection(model=self._sort_model)
-        self._column_view.set_model(self._selection_model)
-        
-        # Double click to open
-        self._column_view.connect("activate", self._on_row_activated)
+        # ── File list ──
+        self._cv = Gtk.ColumnView(hexpand=True, vexpand=True)
+        self._cv.add_css_class("sftp-file-list")
 
-        # Columns
-        # Icon + Name
-        name_factory = Gtk.SignalListItemFactory()
-        name_factory.connect("setup", self._setup_name_column)
-        name_factory.connect("bind", self._bind_name_column)
-        name_col = Gtk.ColumnViewColumn(title=_("Name"), factory=name_factory)
-        name_col.set_expand(True)
-        name_col.set_resizable(True)
-        
-        # Name Sorter: Directories first, then alphabetical
-        def _name_compare(a, b, *args):
-            # Dirs first
-            if a.props.is_dir != b.props.is_dir:
-                return Gtk.Ordering.SMALLER if a.props.is_dir else Gtk.Ordering.LARGER
-            # Then name case-insensitive
-            an, bn = a.props.name.lower(), b.props.name.lower()
-            if an < bn: return Gtk.Ordering.SMALLER
-            if an > bn: return Gtk.Ordering.LARGER
-            return Gtk.Ordering.EQUAL
+        # SortListModel wraps the raw store; SingleSelection sits on top of it
+        self._sort_model = Gtk.SortListModel.new(self._store, self._cv.get_sorter())
+        self._sel        = Gtk.SingleSelection(model=self._sort_model)
+        self._cv.set_model(self._sel)
+        self._cv.connect("activate", self._on_row_activate)
 
-        name_sorter = Gtk.CustomSorter.new(_name_compare)
-        name_col.set_sorter(name_sorter)
-        self._column_view.append_column(name_col)
-        
-        # Default sort by name column
-        self._column_view.sort_by_column(name_col, Gtk.SortType.ASCENDING)
+        self._cv.append_column(self._make_column(
+            _("Name"), self._setup_name_cell, self._bind_name_cell,
+            expand=True, resizable=True,
+            sorter=Gtk.CustomSorter.new(self._sort_by_name),
+        ))
+        self._cv.append_column(self._make_column(
+            _("Size"), self._setup_text_cell, self._bind_size_cell,
+            fixed_width=100,
+        ))
+        self._cv.append_column(self._make_column(
+            _("Modified"), self._setup_text_cell, self._bind_mtime_cell,
+            fixed_width=160,
+        ))
 
-        # Size
-        size_factory = Gtk.SignalListItemFactory()
-        size_factory.connect("setup", self._setup_text_column)
-        size_factory.connect("bind", self._bind_size_column)
-        size_col = Gtk.ColumnViewColumn(title=_("Size"), factory=size_factory)
-        size_col.set_fixed_width(100)
-        size_col.set_resizable(True)
-        
-        def _size_compare(a, b, *args):
-            if a.props.is_dir != b.props.is_dir:
-                return Gtk.Ordering.SMALLER if a.props.is_dir else Gtk.Ordering.LARGER
-            if a.props.size < b.props.size: return Gtk.Ordering.SMALLER
-            if a.props.size > b.props.size: return Gtk.Ordering.LARGER
-            return Gtk.Ordering.EQUAL
+        self.append(Gtk.ScrolledWindow(vexpand=True, child=self._cv))
 
-        size_sorter = Gtk.CustomSorter.new(_size_compare)
-        size_col.set_sorter(size_sorter)
-        self._column_view.append_column(size_col)
+        # Right-click context menu
+        self._pop = Gtk.PopoverMenu.new_from_model(self._build_context_menu())
+        self._pop.set_parent(self._cv)
+        self._pop.set_has_arrow(False)
+        gc = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
+        gc.connect("pressed", self._on_right_click)
+        self._cv.add_controller(gc)
 
-        # Time
-        time_factory = Gtk.SignalListItemFactory()
-        time_factory.connect("setup", self._setup_text_column)
-        time_factory.connect("bind", self._bind_time_column)
-        time_col = Gtk.ColumnViewColumn(title=_("Date Modified"), factory=time_factory)
-        time_col.set_fixed_width(160)
-        time_col.set_resizable(True)
-        
-        def _time_compare(a, b, *args):
-            if a.props.is_dir != b.props.is_dir:
-                return Gtk.Ordering.SMALLER if a.props.is_dir else Gtk.Ordering.LARGER
-            if a.props.mtime < b.props.mtime: return Gtk.Ordering.SMALLER
-            if a.props.mtime > b.props.mtime: return Gtk.Ordering.LARGER
-            return Gtk.Ordering.EQUAL
+        # Drag-and-drop upload
+        drop = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY)
+        drop.connect("drop", self._on_dnd_drop)
+        self._cv.add_controller(drop)
 
-        time_sorter = Gtk.CustomSorter.new(_time_compare)
-        time_col.set_sorter(time_sorter)
-        self._column_view.append_column(time_col)
+        # ── Actions ──
+        self._ag = Gio.SimpleActionGroup.new()
+        self._register_actions()
+        self.insert_action_group("sftp", self._ag)
 
-        scroll = Gtk.ScrolledWindow(vexpand=True)
-        scroll.set_child(self._column_view)
-        self.append(scroll)
+        # ── Status bar ──
+        sb = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        sb.add_css_class("toolbar")
 
-        # Context Menu
-        self._menu_model = Gio.Menu()
-        self._menu_model.append(_("Edit"), "sftp.edit")
-        self._menu_model.append(_("Open With..."), "sftp.open-with")
-        self._menu_model.append(_("Copy"), "sftp.copy")
-        self._menu_model.append(_("Paste"), "sftp.paste")
-        self._menu_model.append(_("Synchronize"), "sftp.sync")
-        self._menu_model.append(_("Download"), "sftp.download")
-        self._menu_model.append(_("Calculate Size"), "sftp.calculate-size")
-        # Danger zone
-        danger_section = Gio.Menu()
-        danger_section.append(_("Rename"), "sftp.rename")
-        danger_section.append(_("Delete"), "sftp.delete")
-        danger_section.append(_("Properties"), "sftp.properties")
-        self._menu_model.append_section(None, danger_section)
-
-        self._action_group = Gio.SimpleActionGroup.new()
-        
-        edit_action = Gio.SimpleAction.new("edit", None)
-        edit_action.connect("activate", lambda *_: self._edit_selected())
-        self._action_group.add_action(edit_action)
-
-        copy_action = Gio.SimpleAction.new("copy", None)
-        copy_action.connect("activate", lambda *_: self._copy_selected())
-        self._action_group.add_action(copy_action)
-
-        paste_action = Gio.SimpleAction.new("paste", None)
-        paste_action.connect("activate", lambda *_: self._paste_from_clipboard())
-        self._action_group.add_action(paste_action)
-
-        sync_action = Gio.SimpleAction.new("sync", None)
-        sync_action.connect("activate", lambda *_: self._force_sync_selected())
-        self._action_group.add_action(sync_action)
-
-        download_action = Gio.SimpleAction.new("download", None)
-        download_action.connect("activate", lambda *_: self._download_selected())
-        self._action_group.add_action(download_action)
-
-        rename_action = Gio.SimpleAction.new("rename", None)
-        rename_action.connect("activate", lambda *_: self._rename_selected())
-        self._action_group.add_action(rename_action)
-
-        delete_action = Gio.SimpleAction.new("delete", None)
-        delete_action.connect("activate", lambda *_: self._delete_selected())
-        self._action_group.add_action(delete_action)
-
-        open_with_action = Gio.SimpleAction.new("open-with", None)
-        open_with_action.connect("activate", lambda *_: self._open_with_selected())
-        self._action_group.add_action(open_with_action)
-
-        new_file_action = Gio.SimpleAction.new("new-file", None)
-        new_file_action.connect("activate", lambda *_: self._on_new_file_clicked())
-        self._action_group.add_action(new_file_action)
-
-        new_folder_action = Gio.SimpleAction.new("new-folder", None)
-        new_folder_action.connect("activate", lambda *_: self._on_mkdir_clicked(None))
-        self._action_group.add_action(new_folder_action)
-
-        # Toggle actions
-        show_hidden_action = Gio.SimpleAction.new_stateful(
-            "show-hidden", None, GLib.Variant.new_boolean(self._show_hidden)
-        )
-        show_hidden_action.connect("activate", self._on_toggle_show_hidden)
-        self._action_group.add_action(show_hidden_action)
-
-        auto_sync_action = Gio.SimpleAction.new_stateful(
-            "auto-sync", None, GLib.Variant.new_boolean(self._auto_sync)
-        )
-        auto_sync_action.connect("activate", self._on_toggle_auto_sync)
-        self._action_group.add_action(auto_sync_action)
-
-        properties_action = Gio.SimpleAction.new("properties", None)
-        properties_action.connect("activate", lambda *_: self._on_properties_selected())
-        self._action_group.add_action(properties_action)
-
-        calc_size_action = Gio.SimpleAction.new("calculate-size", None)
-        calc_size_action.connect("activate", lambda *_: self._on_calculate_size())
-        self._action_group.add_action(calc_size_action)
-
-        self.insert_action_group("sftp", self._action_group)
-
-        self._popover = Gtk.PopoverMenu.new_from_model(self._menu_model)
-        self._popover.set_parent(self._column_view)
-        self._popover.set_has_arrow(False)
-
-        click_gesture = Gtk.GestureClick.new()
-        click_gesture.set_button(Gdk.BUTTON_SECONDARY)
-        click_gesture.connect("pressed", self._on_right_click)
-        self._column_view.add_controller(click_gesture)
-
-        # Shortcuts
-        shortcut_ctrl = Gtk.ShortcutController.new()
-        shortcut_ctrl.set_scope(Gtk.ShortcutScope.MANAGED)
-        
-        # Primary actions
-        copy_trigger = Gtk.ShortcutTrigger.parse_string("<Control>c")
-        copy_shortcut = Gtk.Shortcut.new(copy_trigger, Gtk.CallbackAction.new(self._on_copy_shortcut))
-        shortcut_ctrl.add_shortcut(copy_shortcut)
-        
-        paste_trigger = Gtk.ShortcutTrigger.parse_string("<Control>v")
-        paste_shortcut = Gtk.Shortcut.new(paste_trigger, Gtk.CallbackAction.new(self._on_paste_shortcut))
-        shortcut_ctrl.add_shortcut(paste_shortcut)
-        
-        rename_trigger = Gtk.ShortcutTrigger.parse_string("F2")
-        rename_shortcut = Gtk.Shortcut.new(rename_trigger, Gtk.CallbackAction.new(lambda *_: self._rename_selected()))
-        shortcut_ctrl.add_shortcut(rename_shortcut)
-
-        delete_trigger = Gtk.ShortcutTrigger.parse_string("Delete")
-        delete_shortcut = Gtk.Shortcut.new(delete_trigger, Gtk.CallbackAction.new(lambda *_: self._delete_selected()))
-        shortcut_ctrl.add_shortcut(delete_shortcut)
-        
-        mkdir_trigger = Gtk.ShortcutTrigger.parse_string("<Control><Shift>n")
-        mkdir_shortcut = Gtk.Shortcut.new(mkdir_trigger, Gtk.CallbackAction.new(lambda *_: (self._on_mkdir_clicked(None), True)[1]))
-        shortcut_ctrl.add_shortcut(mkdir_shortcut)
-
-        # Alt Navigation Shortcuts
-        up_trigger = Gtk.ShortcutTrigger.parse_string("<Alt>Up")
-        up_shortcut = Gtk.Shortcut.new(up_trigger, Gtk.CallbackAction.new(lambda *_: (self._on_up_clicked(None), True)[1]))
-        shortcut_ctrl.add_shortcut(up_shortcut)
-
-        back_trigger = Gtk.ShortcutTrigger.parse_string("<Alt>Left")
-        back_shortcut = Gtk.Shortcut.new(back_trigger, Gtk.CallbackAction.new(lambda *_: (self._on_back_clicked(None), True)[1]))
-        shortcut_ctrl.add_shortcut(back_shortcut)
-
-        forward_trigger = Gtk.ShortcutTrigger.parse_string("<Alt>Right")
-        forward_shortcut = Gtk.Shortcut.new(forward_trigger, Gtk.CallbackAction.new(lambda *_: (self._on_forward_clicked(None), True)[1]))
-        shortcut_ctrl.add_shortcut(forward_shortcut)
-
-        # Other Alt/F shortcuts
-        props_trigger = Gtk.ShortcutTrigger.parse_string("<Alt>Return")
-        props_shortcut = Gtk.Shortcut.new(props_trigger, Gtk.CallbackAction.new(lambda *_: (self._on_properties_selected(), True)[1]))
-        shortcut_ctrl.add_shortcut(props_shortcut)
-
-        edit_trigger = Gtk.ShortcutTrigger.parse_string("<Alt>e")
-        edit_shortcut = Gtk.Shortcut.new(edit_trigger, Gtk.CallbackAction.new(lambda *_: (self._edit_selected(), True)[1]))
-        shortcut_ctrl.add_shortcut(edit_shortcut)
-
-        calc_trigger = Gtk.ShortcutTrigger.parse_string("<Alt>s")
-        calc_shortcut = Gtk.Shortcut.new(calc_trigger, Gtk.CallbackAction.new(lambda *_: (self._on_calculate_size(), True)[1]))
-        shortcut_ctrl.add_shortcut(calc_shortcut)
-
-        refresh_trigger = Gtk.ShortcutTrigger.parse_string("F5")
-        refresh_shortcut = Gtk.Shortcut.new(refresh_trigger, Gtk.CallbackAction.new(lambda *_: (self._load_path(self._current_path), True)[1]))
-        shortcut_ctrl.add_shortcut(refresh_shortcut)
-
-        path_trigger = Gtk.ShortcutTrigger.parse_string("<Control>l")
-        path_shortcut = Gtk.Shortcut.new(path_trigger, Gtk.CallbackAction.new(lambda *_: (self._path_entry.grab_focus(), True)[1]))
-        shortcut_ctrl.add_shortcut(path_shortcut)
-
-        self.add_controller(shortcut_ctrl)
-
-        # Status Bar
-        self._status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self._status_bar.add_css_class("toolbar")
-
-        # Status Bar Icon Stack (Spinner or Checkmark)
-        self._status_icon_stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
-        
         self._spinner = Gtk.Spinner()
-        self._status_icon_stack.add_named(self._spinner, "spinner")
-        
-        self._check_icon = Gtk.Image.new_from_icon_name("object-select-symbolic")
-        self._check_icon.add_css_class("success")  # optional styling
-        self._status_icon_stack.add_named(self._check_icon, "check")
-        
-        self._status_bar.append(self._status_icon_stack)
- 
-        self._status_label = Gtk.Label(label=_("Connecting…"), xalign=0, hexpand=True)
-        self._status_label.add_css_class("dim-label")
-        self._status_label.add_css_class("caption")
-        self._status_bar.append(self._status_label)
-        self.append(self._status_bar)
+        self._indicator = Gtk.Stack()
+        self._indicator.add_named(self._spinner, "spin")
+        check = Gtk.Image.new_from_icon_name("object-select-symbolic")
+        check.add_css_class("success")
+        self._indicator.add_named(check, "ok")
+        sb.append(self._indicator)
 
-    def _setup_dnd(self) -> None:
-        """Configure Drag and Drop for the file list."""
-        # 1. Drag Source (Moving items OUT) - now handled per-item in column factories
+        self._status_lbl = Gtk.Label(label=_("Connecting…"), xalign=0, hexpand=True)
+        self._status_lbl.add_css_class("dim-label")
+        self._status_lbl.add_css_class("caption")
+        sb.append(self._status_lbl)
 
-        # 2. Drop Target (Accepting items IN)
-        # We accept FileList (from OS) and String (sentinel-sftp:// URIs)
-        drop_target = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY | Gdk.DragAction.MOVE)
-        drop_target.set_gtypes([Gdk.FileList, str])
-        drop_target.connect("accept", self._on_drop_accept)
-        drop_target.connect("enter", self._on_drop_enter)
-        drop_target.connect("leave", self._on_drop_leave)
-        drop_target.connect("drop", self._on_drop)
-        self._column_view.add_controller(drop_target)
+        self.append(sb)
 
-    # ── Drag & Drop Handlers ───────────────────────────────────
+    def _build_context_menu(self) -> Gio.Menu:
+        m = Gio.Menu()
+        m.append(_("Open"),         "sftp.open")
+        m.append(_("Open With…"),   "sftp.open-with")
+        edit_sec = Gio.Menu()
+        edit_sec.append(_("Rename"), "sftp.rename")
+        edit_sec.append(_("Delete"), "sftp.delete")
+        m.append_section(None, edit_sec)
+        xfer_sec = Gio.Menu()
+        xfer_sec.append(_("Download…"), "sftp.download")
+        m.append_section(None, xfer_sec)
+        return m
 
-    def _on_drag_prepare(self, source: Gtk.DragSource, x: float, y: float) -> Gdk.ContentProvider | None:
-        """Create a robust content provider for drag-and-drop."""
-        file_obj = getattr(source, "item", None)
-        if not file_obj:
-            return None
+    def _register_actions(self) -> None:
+        simple = [
+            ("open",       lambda *_: self._open_selected(use_chooser=False)),
+            ("open-with",  lambda *_: self._open_selected(use_chooser=True)),
+            ("rename",     lambda *_: self._rename_selected()),
+            ("delete",     lambda *_: self._delete_selected()),
+            ("download",   lambda *_: self._download_selected()),
+            ("new-file",   lambda *_: self._new_entry(is_folder=False)),
+            ("new-folder", lambda *_: self._new_entry(is_folder=True)),
+        ]
+        for name, cb in simple:
+            act = Gio.SimpleAction.new(name, None)
+            act.connect("activate", cb)
+            self._ag.add_action(act)
 
-        # 1. Internal protocol URI
-        internal_uri = f"sentinel-sftp://{self._connection.id}{os.path.join(self._current_path, file_obj.name)}"
-        
-        # 2. Check for local mount (Rclone)
-        from services.rclone_service import RcloneService
-        rclone = RcloneService.get()
-        
-        providers = []
-        
-        # Internal custom type to avoid text fragmentation in Nautilus
-        providers.append(Gdk.ContentProvider.new_for_bytes(
-            "application/x-sentinel-internal-uri", 
-            GLib.Bytes.new(internal_uri.encode("utf-8"))
-        ))
+        # Stateful toggles
+        for name, attr in (("show-hidden", "_show_hidden"), ("auto-sync", "_auto_sync")):
+            act = Gio.SimpleAction.new_stateful(
+                name, None, GLib.Variant.new_boolean(getattr(self, attr))
+            )
+            act.connect("activate", self._toggle_action, attr)
+            self._ag.add_action(act)
 
-        uri_list = []
-        if rclone.is_mounted(self._connection.id):
-            mount_path = rclone.get_mount_path(self._connection.id)
-            rel_path = self._current_path.lstrip("/")
-            local_path = os.path.join(mount_path, rel_path, file_obj.name)
-            
-            # Gdk.FileList is the GOLD standard for Nautilus integration
-            try:
-                gfile = Gio.File.new_for_path(local_path)
-                file_list = Gdk.FileList.new_from_list([gfile])
-                providers.append(Gdk.ContentProvider.new_for_value(file_list))
-                
-                import urllib.parse
-                uri_list.append(f"file://{urllib.parse.quote(local_path)}")
-            except Exception as e:
-                logger.warning(f"Failed to create Gdk.FileList: {e}")
+    @staticmethod
+    def _make_column(
+        title: str,
+        setup_cb: Callable,
+        bind_cb:  Callable,
+        *,
+        expand:      bool = False,
+        resizable:   bool = False,
+        fixed_width: int  = -1,
+        sorter:      Gtk.Sorter | None = None,
+    ) -> Gtk.ColumnViewColumn:
+        factory = Gtk.SignalListItemFactory()
+        factory.connect("setup", setup_cb)
+        factory.connect("bind",  bind_cb)
+        col = Gtk.ColumnViewColumn(title=title, factory=factory)
+        col.set_expand(expand)
+        col.set_resizable(resizable)
+        if fixed_width > 0:
+            col.set_fixed_width(fixed_width)
+        if sorter:
+            col.set_sorter(sorter)
+        return col
 
-        # Standard text/uri-list (Nautilus fallback)
-        uri_list.append(internal_uri)
-        uri_list_str = "\r\n".join(uri_list) + "\r\n"
-        providers.append(Gdk.ContentProvider.new_for_bytes(
-            "text/uri-list", 
-            GLib.Bytes.new(uri_list_str.encode("utf-8"))
-        ))
+    # ── Cell setup / bind ───────────────────────────────────────────
 
-        return Gdk.ContentProvider.new_union(providers)
-
-    def _on_drag_begin(self, source: Gtk.DragSource, drag: Gdk.Drag) -> None:
-        """Set the drag icon safely."""
-        file_obj = getattr(source, "item", None)
-        if not file_obj:
-            return
-            
-        try:
-            icon_name = file_obj.icon_name
-            display = Gdk.Display.get_default()
-            theme = Gtk.IconTheme.get_for_display(display)
-            # Use symbolic icon search as fallback
-            paintable = theme.lookup_icon(icon_name, None, 32, 1, Gtk.TextDirection.NONE, 0)
-            if paintable:
-                source.set_icon(paintable, 0, 0)
-        except Exception as e:
-            logger.warning(f"Failed to set drag icon: {e}")
-
-    def _on_drop_accept(self, target: Gtk.DropTarget, drop: Gdk.Drop) -> bool:
-        """Filter acceptable drop types."""
-        return True
-
-    def _on_drop_enter(self, target: Gtk.DropTarget, x: float, y: float) -> Gdk.DragAction:
-        """Highlight UI when dragging over."""
-        self._column_view.add_css_class("drag-over")
-        return Gdk.DragAction.COPY
-
-    def _on_drop_leave(self, target: Gtk.DropTarget) -> None:
-        """Remove highlight."""
-        self._column_view.remove_css_class("drag-over")
-
-    def _on_drop(self, target: Gtk.DropTarget, value: Any, x: float, y: float) -> bool:
-        """Handle the dropped data by triggering transfers or uploads."""
-        self._column_view.remove_css_class("drag-over")
-        
-        # Internal URI via custom type (sent as bytes)
-        if isinstance(value, GLib.Bytes):
-            try:
-                text = value.get_data().decode("utf-8")
-                self._handle_paste_text(text)
-                return True
-            except: pass
-
-        if isinstance(value, Gdk.FileList):
-            files = value.get_files()
-            if files:
-                uris = "\n".join([f.get_uri() for f in files])
-                self._handle_paste_text(uris)
-                return True
-        elif isinstance(value, str):
-            self._handle_paste_text(value)
-            return True
-            
-        return False
-
-    # ── Column Factories ──────────────────────────────────────
-
-    def _setup_name_column(self, factory: Gtk.SignalListItemFactory, list_item: Gtk.ListItem) -> None:
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        box.set_margin_start(8)
-        box.set_margin_end(8)
-        
-        # Add Drag Source to the row-box
-        drag_source = Gtk.DragSource.new()
-        drag_source.set_actions(Gdk.DragAction.COPY | Gdk.DragAction.MOVE)
-        drag_source.connect("prepare", self._on_drag_prepare)
-        drag_source.connect("drag-begin", self._on_drag_begin)
-        box.add_controller(drag_source)
-        # Store controller on widget for retrieval in bind
-        box.drag_source = drag_source # type: ignore
-        
-        icon = Gtk.Image()
-        label = Gtk.Label(ellipsize=Pango.EllipsizeMode.END, xalign=0)
-        
-        box.append(icon)
+    @staticmethod
+    def _setup_name_cell(_f, li: Gtk.ListItem) -> None:
+        box = Gtk.Box(spacing=8)
+        box.append(Gtk.Image())
+        label = Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END)
+        label.set_hexpand(True)
         box.append(label)
-        list_item.set_child(box)
+        li.set_child(box)
 
-    def _bind_name_column(self, factory: Gtk.SignalListItemFactory, list_item: Gtk.ListItem) -> None:
-        file_obj = list_item.get_item()
-        box = list_item.get_child()
-        # Update current item for the drag source (for recycling)
-        if hasattr(box, "drag_source"):
-            box.drag_source.item = file_obj # type: ignore
-            
-        icon = box.get_first_child()
-        label = icon.get_next_sibling()
-        
-        icon.set_from_icon_name(file_obj.icon_name)
-        label.set_text(file_obj.name)
+    @staticmethod
+    def _bind_name_cell(_f, li: Gtk.ListItem) -> None:
+        item: SftpFile = li.get_item()
+        box = li.get_child()
+        box.get_first_child().set_from_icon_name(item.icon_name)
+        box.get_first_child().get_next_sibling().set_text(item.name)
 
-    def _setup_text_column(self, factory: Gtk.SignalListItemFactory, list_item: Gtk.ListItem) -> None:
-        label = Gtk.Label(xalign=0)
-        label.set_margin_start(8)
-        label.set_margin_end(8)
-        list_item.set_child(label)
+    @staticmethod
+    def _setup_text_cell(_f, li: Gtk.ListItem) -> None:
+        li.set_child(Gtk.Label(xalign=0))
 
-    def _bind_size_column(self, factory: Gtk.SignalListItemFactory, list_item: Gtk.ListItem) -> None:
-        file_obj = list_item.get_item()
-        label = list_item.get_child()
-        label.set_text(file_obj.size_str)
-        label.set_xalign(1) # Right align size
+    @staticmethod
+    def _bind_size_cell(_f, li: Gtk.ListItem) -> None:
+        li.get_child().set_text(li.get_item().size_str)
 
-    def _bind_time_column(self, factory: Gtk.SignalListItemFactory, list_item: Gtk.ListItem) -> None:
-        file_obj = list_item.get_item()
-        label = list_item.get_child()
-        label.set_text(file_obj.mtime_str)
+    @staticmethod
+    def _bind_mtime_cell(_f, li: Gtk.ListItem) -> None:
+        li.get_child().set_text(li.get_item().mtime_str)
 
-    # ── SFTP Integration ──────────────────────────────────────
+    # ── Sort ────────────────────────────────────────────────────────
 
-    def _connect_sftp(self) -> None:
-        from views.dialogs import prompt_password, prompt_host_key, prompt_vault_unlock, prompt_vault_item_selection, prompt_entry, prompt_confirmation
-        
-        def _ask_password(conn, resolve):
-            prompt_password(self.get_root(), _("Password for {hostname}").format(hostname=conn.hostname), "{username}@{hostname}".format(username=conn.username, hostname=conn.hostname), resolve)
-        def _ask_passphrase(key_path, resolve):
-            prompt_password(self.get_root(), _("Unlock SSH Key"), _("Enter passphrase for {path}").format(path=key_path), resolve)
-        def _ask_host_key(hostname, fingerprint, alg, resolve):
-            prompt_host_key(self.get_root(), hostname, fingerprint, alg, resolve)
-        def _ask_vault_unlock(vault_name, resolve):
-            from services.vault_service import VaultService
-            def _on_password(password):
-                if password:
-                    async def do_unlock():
-                        success = await VaultService.get().active_backend.unlock(password)
-                        resolve(success)
-                    self._ssh_service.engine.run_coroutine(do_unlock())
-                else: resolve(False)
-            prompt_vault_unlock(self.get_root(), vault_name, _on_password)
-        def _ask_vault_item(items, resolve):
-            prompt_vault_item_selection(self.get_root(), items, resolve)
+    @staticmethod
+    def _sort_by_name(a: SftpFile, b: SftpFile, _) -> Gtk.Ordering:
+        # Folders first, then alphabetical
+        if a.is_dir != b.is_dir:
+            return Gtk.Ordering.SMALLER if a.is_dir else Gtk.Ordering.LARGER
+        return (
+            Gtk.Ordering.SMALLER
+            if a.name.lower() < b.name.lower()
+            else Gtk.Ordering.LARGER
+        )
 
-        def _on_error(msg):
-            def _set_err():
-                self._status_label.set_label(msg)
-                self._set_loading(False)
-            GLib.idle_add(_set_err)
+    # ── Async helper ────────────────────────────────────────────────
 
-        callbacks = {
-            "ask_password": _ask_password,
-            "ask_passphrase": _ask_passphrase,
-            "ask_host_key": _ask_host_key,
-            "ask_vault_unlock": _ask_vault_unlock,
-            "ask_vault_item": _ask_vault_item,
-            "on_error": _on_error,
-        }
+    def _run_async(self, coro) -> None:
+        self._ssh.engine.run_coroutine(coro)
 
-        self._set_loading(True)
+    # ── Loading state ────────────────────────────────────────────────
 
-        async def _run():
-            res = await self._ssh_service.start_sftp_session(self._connection, callbacks, status_cb=self._status_label.set_label)
-            if res:
-                self._sftp, self._ssh_conn, self._auth_info = res
-                # Get real current path
-                self._current_path = await self._sftp.getcwd()
-                GLib.idle_add(self._on_sftp_connected)
-            else:
-                GLib.idle_add(lambda: self._set_loading(False))
-        
-        self._bg_task = self._ssh_service.engine.run_coroutine(_run())
-
-    def _set_loading(self, is_loading: bool) -> None:
-        if is_loading:
+    def _set_loading(self, loading: bool, message: str | None = None) -> None:
+        if loading:
             self._spinner.start()
-            self._status_icon_stack.set_visible_child_name("spinner")
+            self._indicator.set_visible_child_name("spin")
         else:
             self._spinner.stop()
-            self._status_icon_stack.set_visible_child_name("check")
+            self._indicator.set_visible_child_name("ok")
+        if message is not None:
+            self._status_lbl.set_text(message)
 
-    def _on_sftp_connected(self) -> None:
-        self._status_label.set_label(_("Connected to {hostname}").format(hostname=self._connection.hostname))
-        self._load_path(self._current_path)
-        
-        # Trigger background mount early to prepare for copy/paste
-        async def _mount():
-            from services.rclone_service import RcloneService
-            uri, err = await RcloneService.get().mount(self._connection, self._auth_info)
-            if err:
-                logger.error(f"Background rclone mount failed: {err}")
-                # We don't alert the user yet, only if they try to use it
-        self._ssh_service.engine.run_coroutine(_mount())
+    def _set_status(self, msg: str) -> None:
+        self._status_lbl.set_text(msg)
+
+    # ── Connection ──────────────────────────────────────────────────
+
+    async def _do_connect(self) -> None:
+        from views.dialogs import (
+            prompt_host_key, prompt_password,
+            prompt_vault_item_selection, prompt_vault_unlock,
+        )
+
+        def _ask_vault_unlock(name: str, resolve: Callable) -> None:
+            def _after_pw(pw: str | None) -> None:
+                if pw:
+                    self._run_async(self._unlock_vault(pw, resolve))
+                else:
+                    resolve(False)
+            prompt_vault_unlock(self.get_root(), name, _after_pw)
+
+        cbs = {
+            "ask_password":    lambda c, r: prompt_password(self.get_root(), _("Password"), c.hostname, r),
+            "ask_passphrase":  lambda p, r: prompt_password(self.get_root(), _("Key Passphrase"), p, r),
+            "ask_host_key":    lambda h, fp, alg, r: prompt_host_key(self.get_root(), h, fp, alg, r),
+            "ask_vault_unlock": _ask_vault_unlock,
+            "ask_vault_item":  lambda items, r: prompt_vault_item_selection(self.get_root(), items, r),
+            "on_error":        lambda m: GLib.idle_add(lambda: self._set_loading(False, m)),
+        }
+
+        call_ui_sync(self._set_loading, True, _("Connecting…"))
+        ok = await self._backend.connect(
+            cbs,
+            status_cb=lambda m: GLib.idle_add(lambda: self._set_status(m)),
+        )
+        if ok:
+            cwd = await self._backend.get_cwd()
+            GLib.idle_add(self._on_connected, cwd)
+        else:
+            GLib.idle_add(lambda: self._set_loading(False, _("Connection failed")))
+
+    async def _unlock_vault(self, pw: str, resolve: Callable) -> None:
+        from services.vault_service import VaultService
+        ok = await VaultService.get().active_backend.unlock(pw)
+        resolve(ok)
+
+    def _on_connected(self, cwd: str) -> None:
+        self._load_path(cwd)
+        # Start FUSE mount in background (best-effort; failure is non-fatal)
+        self._run_async(self._ensure_mount())
+
+    async def _ensure_mount(self) -> None:
+        path, err = await self._rclone.mount(self._conn, self._backend.auth_info)
+        if err:
+            logger.warning("RcloneService: background mount failed: %s", err)
+        else:
+            logger.info("RcloneService: mount ready at %s", path)
+
+    # ── Navigation ──────────────────────────────────────────────────
 
     def _load_path(self, path: str) -> None:
-        logger.info(f"SFTP: Loading path: {path}")
-        self._status_label.set_label(_("Loading {path}…").format(path=path))
-        self._set_loading(True)
-        
+        self._set_loading(True, _("Loading…"))
+
         async def _fetch():
             try:
-                # Absolute path if possible
-                real_path = await self._sftp.realpath(path)
-                # readdir returns SFTPName objects (filename, longname, attrs)
-                attrs = await self._sftp.readdir(real_path)
-                logger.info(f"SFTP: Fetched {len(attrs)} items for {real_path}")
-                
-                # Sort: dirs first, then name
-                attrs.sort(key=lambda x: (not stat.S_ISDIR(x.attrs.permissions or 0), x.filename.lower()))
-                
-                def _update_ui():
-                    logger.debug(f"SFTP: Updating UI with {len(attrs)} items")
-                    self._all_items = []
-                    for a in attrs:
-                        if a.filename in ('.', '..'): continue
-                        f = SftpFile(
-                            name=a.filename,
-                            size=a.attrs.size or 0,
-                            mtime=a.attrs.mtime or 0,
-                            is_dir=stat.S_ISDIR(a.attrs.permissions or 0),
-                            permissions=a.attrs.permissions or 0,
-                            uid=a.attrs.uid or 0,
-                            gid=a.attrs.gid or 0
-                        )
-                        self._all_items.append(f)
-                    
-                    self._current_path = real_path
-                    self._path_entry.set_text(real_path)
-                    self._update_history(real_path)
-                    self._refresh_store() # Call refresh_store to apply filters
-                    self._set_loading(False)
-                    logger.debug("SFTP: UI update complete")
-                    
-                GLib.idle_add(_update_ui)
-            except Exception as e:
-                err_msg = str(e)
-                def _on_fetch_error():
-                    self._status_label.set_label(_("Error: {msg}").format(msg=err_msg))
-                    self._set_loading(False)
-                GLib.idle_add(_on_fetch_error)
-        
-        if self._sftp:
-            self._bg_task = self._ssh_service.engine.run_coroutine(_fetch())
-        else:
-            self._set_loading(False)
-
-    # ── History ───────────────────────────────────────────────
-
-    def _update_history(self, path: str) -> None:
-        if self._history_index >= 0 and self._history[self._history_index] == path:
-            return
-        
-        # Clear forward history
-        self._history = self._history[:self._history_index+1]
-        self._history.append(path)
-        self._history_index = len(self._history) - 1
-        
-        self._update_nav_buttons()
-
-    def _update_nav_buttons(self) -> None:
-        self._back_btn.set_sensitive(self._history_index > 0)
-        self._forward_btn.set_sensitive(self._history_index < len(self._history) - 1)
-
-    # ── Handlers ──────────────────────────────────────────────
-
-    def _on_back_clicked(self, _btn) -> None:
-        if self._history_index > 0:
-            self._history_index -= 1
-            self._load_path(self._history[self._history_index])
-
-    def _on_forward_clicked(self, _btn) -> None:
-        if self._history_index < len(self._history) - 1:
-            self._history_index += 1
-            self._load_path(self._history[self._history_index])
-
-    def _on_up_clicked(self, _btn) -> None:
-        parent = os.path.dirname(self._current_path)
-        if parent != self._current_path:
-            self._load_path(parent)
-
-    def _on_path_entry_activated(self, entry: Gtk.Entry) -> None:
-        self._load_path(entry.get_text())
-
-    def _on_mkdir_clicked(self, _btn) -> None:
-        from views.dialogs import prompt_entry
-        def _on_done(name: str | None):
-            if not name: return
-            path = os.path.join(self._current_path, name)
-            self._set_loading(True)
-            self._status_label.set_label(_("Creating folder {name}...").format(name=name))
-            
-            async def _bg_mkdir():
-                try:
-                    await self._sftp.mkdir(path)
-                    GLib.idle_add(self._on_transfer_finish, True, _("Created folder {name}").format(name=name))
-                except Exception as e:
-                    logger.error(f"Mkdir failed: {e}")
-                    GLib.idle_add(self._on_transfer_finish, False, _("Error: {e}").format(e=e))
-            
-            self._bg_task = self._ssh_service.engine.run_coroutine(_bg_mkdir())
-
-        prompt_entry(
-            self.get_root(),
-            _("New Folder"),
-            _("Enter name for the new folder:"),
-            _("New Folder"),
-            _("Folder name"),
-            _on_done
-        )
-
-    def _on_new_file_clicked(self) -> None:
-        from views.dialogs import prompt_entry
-        def _on_done(name: str | None):
-            if not name: return
-            path = os.path.join(self._current_path, name)
-            self._set_loading(True)
-            self._status_label.set_label(_("Creating file {name}...").format(name=name))
-            
-            async def _bg_mkfile():
-                try:
-                    # Create empty file
-                    async with self._sftp.open(path, 'w') as f:
-                        pass
-                    GLib.idle_add(self._on_transfer_finish, True, _("Created file {name}").format(name=name))
-                except Exception as e:
-                    logger.error(f"File creation failed: {e}")
-                    GLib.idle_add(self._on_transfer_finish, False, _("Error: {e}").format(e=e))
-            
-            self._bg_task = self._ssh_service.engine.run_coroutine(_bg_mkfile())
-
-        prompt_entry(
-            self.get_root(),
-            _("New File"),
-            _("Enter name for the new file:"),
-            "new_file.txt",
-            _("File name"),
-            _on_done
-        )
-
-    def _on_row_activated(self, view: Gtk.ColumnView, position: int) -> None:
-        file_obj = self._file_store.get_item(position)
-        if not file_obj:
-            return
-        if file_obj.is_dir:
-            new_path = os.path.join(self._current_path, file_obj.name)
-            self._load_path(new_path)
-        else:
-            self._edit_selected()
-
-    # ── Context & Transfer ──────────────────────────────────────
-
-    def _on_right_click(self, gesture: Gtk.GestureClick, n_press: int, x: float, y: float) -> None:
-        # Dynamic menu sensitivity
-        pos = self._selection_model.get_selected()
-        has_selection = pos != Gtk.INVALID_LIST_POSITION
-        
-        # Dynamic state for actions
-        calc_action = self._action_group.lookup_action("calculate-size")
-        if calc_action:
-            # Only enable calculate-size if a directory is selected
-            is_dir = False
-            if has_selection:
-                file_obj = self._file_store.get_item(pos)
-                if file_obj and file_obj.props.is_dir:
-                    is_dir = True
-            calc_action.set_enabled(is_dir)
-
-        file_obj = self._file_store.get_item(pos) if has_selection else None
-        
-        is_file = file_obj is not None and not file_obj.is_dir
-        
-        # Check if monitored
-        is_monitored = False
-        if is_file:
-            from services.rclone_service import RcloneService
-            mount_path = RcloneService.get().get_mount_path(self._connection.id)
-            local_path = os.path.join(mount_path, self._current_path.lstrip("/"), file_obj.name)
-            is_monitored = local_path in self._monitors
-
-        # Update action sensitivity
-        self._action_group.lookup_action("edit").set_enabled(is_file)
-        self._action_group.lookup_action("open-with").set_enabled(is_file)
-        self._action_group.lookup_action("sync").set_enabled(is_monitored)
-        self._action_group.lookup_action("copy").set_enabled(has_selection)
-        self._action_group.lookup_action("rename").set_enabled(has_selection)
-        self._action_group.lookup_action("delete").set_enabled(has_selection)
-        self._action_group.lookup_action("download").set_enabled(has_selection)
-
-        rect = Gdk.Rectangle()
-        rect.x = int(x)
-        rect.y = int(y)
-        rect.width = 1
-        rect.height = 1
-        self._popover.set_pointing_to(rect)
-        self._popover.popup()
-
-    def _on_copy_shortcut(self, widget: Gtk.Widget, args: Any) -> bool:
-        return self._copy_selected()
-
-    def _on_paste_shortcut(self, widget: Gtk.Widget, args: Any) -> bool:
-        return self._paste_from_clipboard()
-
-    def _copy_selected(self) -> bool:
-        pos = self._selection_model.get_selected()
-        if pos == Gtk.INVALID_LIST_POSITION:
-            return False
-        file_obj = self._file_store.get_item(pos)
-        if not file_obj:
-            return False
-
-        import urllib.parse
-        full_path = os.path.join(self._current_path, file_obj.name)
-        internal_uri = f"sentinel-sftp://{self._connection.id}{full_path}"
-        
-        host = self._connection.hostname
-        port = self._connection.port
-        user = self._connection.username
-
-        authority = f"{host}:{port}" if port != 22 else host
-        if user:
-            authority = f"{urllib.parse.quote(user)}@{authority}"
-            
-        encoded_path = urllib.parse.quote(full_path)
-        gvfs_uri = f"sftp://{authority}{encoded_path}"
-
-        # Rootless FUSE3 mount strategy using Rclone
-        self._cache_and_copy_file(file_obj, internal_uri, gvfs_uri)
-        return True
-
-    def _cache_and_copy_file(self, file_obj: SftpFile, internal_uri: str, gvfs_fallback_uri: str) -> None:
-        from services.rclone_service import RcloneService
-        
-        self._set_loading(True)
-        self._status_label.set_label(_("Ensuring Rclone FUSE3 mount..."))
-        
-        async def _bg_mount():
-            rclone = RcloneService.get()
-            mount_uri, error = await rclone.mount(self._connection, self._auth_info)
-            
-            def _done():
-                self._set_loading(False)
-                if mount_uri:
-                    import urllib.parse
-                    import os
-                    # Actually get the file path within the mount
-                    mount_path = rclone.get_mount_path(self._connection.id)
-                    real_path = os.path.join(mount_path, self._current_path.lstrip("/"), file_obj.name)
-                    file_uri = f"file://{urllib.parse.quote(real_path)}"
-                    self._set_clipboard_union(internal_uri, file_uri, file_obj.name)
-                else:
-                    logger.error(f"Failed to mount via Rclone: {error}")
-                    # Fallback to GVFS URI if mount failed
-                    self._status_label.set_label(_("Mount failed, using GVFS fallback. (Error: {err}...)").format(err=error[:30]))
-                    self._set_clipboard_union(internal_uri, gvfs_fallback_uri, file_obj.name)
-                    
-            GLib.idle_add(_done)
-            
-        self._bg_task = self._ssh_service.engine.run_coroutine(_bg_mount())
-
-    def _set_clipboard_union(self, internal_uri: str, external_uri: str, name: str) -> None:
-        prov_text = Gdk.ContentProvider.new_for_value(internal_uri)
-        prov_uri_list = Gdk.ContentProvider.new_for_bytes("text/uri-list", GLib.Bytes.new(external_uri.encode() + b"\r\n"))
-        
-        union = Gdk.ContentProvider.new_union([prov_text, prov_uri_list])
-        self.get_clipboard().set_content(union)
-        self._status_label.set_label(_("Copied {name} to clipboard").format(name=name))
-
-    def _rename_selected(self) -> bool:
-        pos = self._selection_model.get_selected()
-        if pos == Gtk.INVALID_LIST_POSITION:
-            return False
-        file_obj = self._file_store.get_item(pos)
-        if not file_obj:
-            return False
-
-        from views.dialogs import prompt_entry
-        def _on_rename(new_name: str | None):
-            if not new_name or new_name == file_obj.name:
-                return
-            
-            old_path = os.path.join(self._current_path, file_obj.name)
-            new_path = os.path.join(self._current_path, new_name)
-            
-            self._set_loading(True)
-            self._status_label.set_label(_("Renaming to {name}...").format(name=new_name))
-            
-            async def _bg_rename():
-                try:
-                    await self._sftp.rename(old_path, new_path)
-                    GLib.idle_add(self._on_transfer_finish, True, _("Renamed to {name}").format(name=new_name))
-                except Exception as e:
-                    logger.error(f"Rename failed: {e}")
-                    GLib.idle_add(self._on_transfer_finish, False, _("Rename failed: {e}").format(e=e))
-            
-            self._bg_task = self._ssh_service.engine.run_coroutine(_bg_rename())
-
-        prompt_entry(
-            self.get_root(),
-            _("Rename Item"),
-            _("Enter new name for {name}:").format(name=file_obj.name),
-            file_obj.name,
-            _("New name"),
-            _on_rename
-        )
-        return True
-
-    def _edit_selected(self) -> None:
-        pos = self._selection_model.get_selected()
-        if pos == Gtk.INVALID_LIST_POSITION: return
-        file_obj = self._file_store.get_item(pos)
-        if not file_obj or file_obj.is_dir: return
-
-        from services.rclone_service import RcloneService
-        rclone = RcloneService.get()
-        
-        self._set_loading(True)
-        self._status_label.set_label(_("Ensuring mount for editing..."))
-        
-        async def _mount_and_open():
-            logger.info("SFTP Edit: Triggering rclone mount...")
-            mount_uri, error = await rclone.mount(self._connection, self._auth_info)
-            logger.info(f"SFTP Edit: Mount result: {mount_uri}, error: {error}")
-            if not mount_uri:
-                logger.warning(f"SFTP Edit: Mount failed ({error}), falling back to direct SFTP download.")
-                # Fallback to direct download
-                remote_path = os.path.join(self._current_path, file_obj.name)
-                import uuid
-                session_id = str(uuid.uuid4())[:8]
-                edit_session_dir = os.path.join(self._temp_dir, session_id)
-                os.makedirs(edit_session_dir, exist_ok=True)
-                local_path = os.path.join(edit_session_dir, file_obj.name)
-                
-                try:
-                    await self._sftp.get(remote_path, local_path)
-                    GLib.idle_add(lambda: _launch(local_path, remote_path, file_obj.name))
-                except Exception as e:
-                    logger.error(f"Fallback download failed: {e}")
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Fallback failed: {e}").format(e=e))))
-                return
-            
-            mount_path = rclone.get_mount_path(self._connection.id)
-            mounted_file = os.path.join(mount_path, self._current_path.lstrip("/"), file_obj.name)
-            remote_path = os.path.join(self._current_path, file_obj.name)
-            
-            # Local copy with original name in unique sub-dir
-            import uuid
-            session_id = str(uuid.uuid4())[:8]
-            edit_session_dir = os.path.join(self._temp_dir, session_id)
-            os.makedirs(edit_session_dir, exist_ok=True)
-            local_path = os.path.join(edit_session_dir, file_obj.name)
-            
-            # Use a small wait to ensure rclone has populated the file entry
-            import asyncio
-            import shutil
-            for _ in range(25):
-                if os.path.exists(mounted_file): break
-                await asyncio.sleep(0.2)
-            
-            if not os.path.exists(mounted_file):
-                # Another fallback if mount exists but file is invisible
-                logger.warning(f"File {file_obj.name} not visible in mount, attempting direct download.")
-                try:
-                    await self._sftp.get(remote_path, local_path)
-                    GLib.idle_add(lambda: _launch(local_path, remote_path, file_obj.name))
-                except Exception as e:
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Download failed: {e}").format(e=e))))
-                return
-
-            # Copy to temp edit location
-            try:
-                await asyncio.to_thread(shutil.copy2, mounted_file, local_path)
-            except Exception as e:
-                logger.error(f"Copy from mount failed: {e}, trying direct download.")
-                try:
-                    await self._sftp.get(remote_path, local_path)
-                except Exception as ef:
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Download failed: {e}").format(e=ef))))
-                    return
-
-            GLib.idle_add(lambda: _launch(local_path, remote_path, file_obj.name))
-
-        def _launch(local_path: str, remote_path: str, name: str):
-            self._set_loading(False)
-            gfile = Gio.File.new_for_path(local_path)
-            try:
-                # Sniff type for better fallback
-                info = gfile.query_info("standard::content-type,standard::type", 0, None)
-                
-                # If it's a regular file but has no specific extension, launch_default might open Nautilus
-                handler = gfile.query_default_handler(None)
-                
-                if handler and handler.get_id() == "org.gnome.Nautilus.desktop" and info.get_file_type() == Gio.FileType.REGULAR:
-                    text_handler = Gio.AppInfo.get_default_for_type("text/plain", False)
-                    if text_handler:
-                        text_handler.launch([gfile], None)
-                        self._start_monitoring(local_path, remote_path, name)
-                        self._status_label.set_label(_("Opened {name} with {app}").format(name=name, app=text_handler.get_display_name()))
-                        return
-
-                Gio.AppInfo.launch_default_for_uri(gfile.get_uri(), None)
-                self._start_monitoring(local_path, remote_path, name)
-                self._status_label.set_label(_("Opening {name}...").format(name=name))
-            except Exception as e:
-                logger.error(f"Launch failed: {e}")
-                self._status_label.set_label(_("Failed to open: {e}").format(e=e))
-
-        self._ssh_service.engine.run_coroutine(_mount_and_open())
-
-    def _open_with_selected(self) -> None:
-        pos = self._selection_model.get_selected()
-        if pos == Gtk.INVALID_LIST_POSITION: return
-        file_obj = self._file_store.get_item(pos)
-        if not file_obj or file_obj.is_dir: return
-
-        from services.rclone_service import RcloneService
-        rclone = RcloneService.get()
-        
-        self._set_loading(True)
-        self._status_label.set_label(_("Ensuring mount for Open With..."))
-        
-        async def _mount_and_pick():
-            mount_uri, error = await rclone.mount(self._connection, self._auth_info)
-            
-            remote_path = os.path.join(self._current_path, file_obj.name)
-            import uuid
-            session_id = str(uuid.uuid4())[:8]
-            edit_session_dir = os.path.join(self._temp_dir, session_id)
-            os.makedirs(edit_session_dir, exist_ok=True)
-            local_path = os.path.join(edit_session_dir, file_obj.name)
-
-            if not mount_uri:
-                logger.warning(f"Open With: Mount failed ({error}), falling back to direct download.")
-                try:
-                    await self._sftp.get(remote_path, local_path)
-                    GLib.idle_add(lambda: _choose(local_path, remote_path, file_obj.name))
-                except Exception as e:
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Fallback failed: {e}").format(e=e))))
-                return
-            
-            mount_path = rclone.get_mount_path(self._connection.id)
-            mounted_file = os.path.join(mount_path, self._current_path.lstrip("/"), file_obj.name)
-            
-            import asyncio
-            import shutil
-            for _ in range(25):
-                if os.path.exists(mounted_file): break
-                await asyncio.sleep(0.2)
-            
-            if not os.path.exists(mounted_file):
-                logger.warning(f"File {file_obj.name} missing in mount, downloading directly.")
-                try:
-                    await self._sftp.get(remote_path, local_path)
-                    GLib.idle_add(lambda: _choose(local_path, remote_path, file_obj.name))
-                except Exception as e:
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Download failed: {e}").format(e=e))))
-                return
-
-            try:
-                await asyncio.to_thread(shutil.copy2, mounted_file, local_path)
-                GLib.idle_add(lambda: _choose(local_path, remote_path, file_obj.name))
-            except Exception as e:
-                logger.error(f"Copy from mount failed: {e}, trying direct download.")
-                try:
-                    await self._sftp.get(remote_path, local_path)
-                    GLib.idle_add(lambda: _choose(local_path, remote_path, file_obj.name))
-                except Exception as ef:
-                    GLib.idle_add(lambda: (self._set_loading(False), self._status_label.set_label(_("Download failed: {e}").format(e=ef))))
-
-        def _choose(local_path: str, remote_path: str, name: str):
-            self._set_loading(False)
-            gfile = Gio.File.new_for_path(local_path)
-            
-            try:
-                info = gfile.query_info("standard::content-type", 0, None)
-                mime = info.get_content_type()
-            except:
-                mime = "application/octet-stream"
-
-            # Use Gtk.AppChooserDialog to let user pick app
-            dialog = Gtk.AppChooserDialog.new_for_content_type(
-                self.get_root(),
-                Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                mime
-            )
-            
-            def _on_response(d, response):
-                if response == Gtk.ResponseType.OK:
-                    appinfo = d.get_app_info()
-                    if appinfo:
-                        try:
-                            appinfo.launch([gfile], None)
-                            self._start_monitoring(local_path, remote_path, name)
-                            self._status_label.set_label(_("Opened {name} with {app}").format(name=name, app=appinfo.get_display_name()))
-                        except Exception as e:
-                            self._status_label.set_label(_("Launch failed: {e}").format(e=e))
-                d.destroy()
-            
-            dialog.connect("response", _on_response)
-            dialog.present()
-
-        self._ssh_service.engine.run_coroutine(_mount_and_pick())
-
-    def _start_monitoring(self, local_path: str, remote_path: str, name: str) -> None:
-        if local_path in self._monitors: return
-        
-        gfile = Gio.File.new_for_path(local_path)
-        try:
-            # Record initial state
-            if os.path.exists(local_path):
-                self._initial_states[local_path] = (os.path.getmtime(local_path), os.path.getsize(local_path))
-            
-            monitor = gfile.monitor_file(Gio.FileMonitorFlags.NONE, None)
-            monitor.connect("changed", self._on_file_monitor_event, local_path, remote_path, name)
-            self._monitors[local_path] = monitor
-            self._active_edits[remote_path] = local_path
-            logger.info(f"Started monitoring {local_path} for edits")
-            
-            # Start the background occupancy check loop
-            self._ssh_service.engine.run_coroutine(self._bg_occupancy_loop(local_path, remote_path, name))
-        except Exception as e:
-            logger.error(f"Failed to start file monitor: {e}")
-
-    def _stop_monitoring(self, local_path: str) -> None:
-        monitor = self._monitors.pop(local_path, None)
-        if monitor:
-            monitor.cancel()
-        
-        # Cleanup mapping
-        for r_path, l_path in list(self._active_edits.items()):
-            if l_path == local_path:
-                self._active_edits.pop(r_path, None)
-                break
-
-        self._initial_states.pop(local_path, None)
-        self._pending_prompts.discard(local_path)
-        
-        # Cleanup temp file and its parent session dir
-        if os.path.exists(local_path) and local_path.startswith(self._temp_dir):
-            try:
-                os.remove(local_path)
-                # Try to remove the session sub-dir
-                parent = os.path.dirname(local_path)
-                if parent != self._temp_dir:
-                    import shutil
-                    shutil.rmtree(parent)
-            except: pass
-            
-        logger.info(f"Stopped monitoring and cleaned up session for {local_path}")
-
-    def _on_file_monitor_event(self, monitor: Gio.FileMonitor, file: Gio.File, other_file: Gio.File, 
-                             event: Gio.FileMonitorEvent, local_path: str, remote_path: str, name: str) -> None:
-        if event in (Gio.FileMonitorEvent.CHANGES_DONE_HINT, Gio.FileMonitorEvent.CHANGED):
-            # If not already monitoring via loop, restart loop (though loop is usually enough)
-            if local_path in self._monitors and local_path not in self._pending_prompts:
-                # We don't necessarily need to do anything here if the loop is already running
-                pass
-
-    async def _bg_occupancy_loop(self, local_path: str, remote_path: str, name: str):
-        """Asynchronous background loop to check for occupancy and changes."""
-        import psutil
-        import asyncio
-        
-        while self._sftp and local_path in self._monitors:
-            if local_path in self._pending_prompts:
-                await asyncio.sleep(2)
-                continue
-                
-            is_occupied = False
-            try:
-                # Heavy check off-main-thread
-                for proc in psutil.process_iter(['open_files', 'cmdline']):
-                    try:
-                        info_files = proc.info.get('open_files')
-                        if info_files:
-                            for f in info_files:
-                                if f.path == local_path:
-                                    is_occupied = True
-                                    break
-                        if is_occupied: break
-                        
-                        cmdline = proc.info.get('cmdline')
-                        if cmdline:
-                            for arg in cmdline:
-                                if local_path in arg:
-                                    is_occupied = True
-                                    break
-                        if is_occupied: break
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        continue
-            except Exception as e:
-                logger.debug(f"Occupancy check error: {e}")
-
-            if is_occupied:
-                await asyncio.sleep(2)
-                continue
-
-            # Occupancy released! Check for changes
-            changed = False
-            try:
-                if os.path.exists(local_path):
-                    curr_mtime = os.path.getmtime(local_path)
-                    curr_size = os.path.getsize(local_path)
-                    init_mtime, init_size = self._initial_states.get(local_path, (0, 0))
-                    if curr_mtime > init_mtime or curr_size != init_size:
-                        changed = True
-            except Exception as e:
-                logger.error(f"Failed to check for changes background: {e}")
-
-            if not changed:
-                logger.info(f"No changes detected for {name}, stopping monitoring background.")
-                from services.async_engine import call_ui_sync
-                call_ui_sync(self._stop_monitoring, local_path)
-                break
-                
-            # Changed! Notify UI
-            logger.info(f"Changes detected for {name}, prompting for sync via UI thread.")
-            from services.async_engine import call_ui_sync
-            call_ui_sync(self._trigger_sync_prompt, local_path, remote_path, name)
-            # Once prompted, we stop this loop. The prompt callback will handle stopping monitor.
-            break
-
-            await asyncio.sleep(2)
-
-    def _trigger_sync_prompt(self, local_path: str, remote_path: str, name: str) -> None:
-        if not self._sftp or local_path in self._pending_prompts:
-            return
-
-        self._pending_prompts.add(local_path)
-        
-        from views.dialogs import prompt_confirmation
-        def _on_response(yes: bool):
-            logger.info(f"User response for sync {name}: {yes}")
-            self._pending_prompts.discard(local_path)
-            if yes:
-                # Sync first, then stop monitoring (which deletes the file)
-                self._force_sync_specific(local_path, remote_path, name, 
-                                        callback=lambda: self._stop_monitoring(local_path))
-            else:
-                self._stop_monitoring(local_path)
-                
-        if self._auto_sync:
-            _on_response(True)
-        else:
-            prompt_confirmation(
-                self.get_root(),
-                _("File Updated Locally"),
-                _("The file '{name}' has been modified and saved.\nUpdate the remote copy on the server?").format(name=name),
-                _("Update Remote"),
-                False,
-                _on_response
-            )
-
-    def _force_sync_selected(self) -> None:
-        pos = self._selection_model.get_selected()
-        if pos == Gtk.INVALID_LIST_POSITION: return
-        file_obj = self._file_store.get_item(pos)
-        if not file_obj or file_obj.is_dir: return
-
-        remote_path = os.path.join(self._current_path, file_obj.name)
-        
-        # Check if we have an active edit temp file
-        local_path = self._active_edits.get(remote_path)
-        if not local_path:
-            # Fallback to mount (though it's read-only, maybe user changed permissions or something?)
-            mount_path = RcloneService.get().get_mount_path(self._connection.id)
-            local_path = os.path.join(mount_path, self._current_path.lstrip("/"), file_obj.name)
-        
-        self._force_sync_specific(local_path, remote_path, file_obj.name)
-
-    def _force_sync_specific(self, local_path: str, remote_path: str, name: str, 
-                             callback: Callable[[], None] | None = None) -> None:
-        logger.info(f"Starting force sync: {local_path} -> {remote_path}")
-        self._set_loading(True)
-        self._status_label.set_label(_("Synchronizing {name}...").format(name=name))
-        
-        async def _bg_sync():
-            try:
-                await self._sftp.put(local_path, remote_path)
-                def _done():
-                    self._on_transfer_finish(True, _("Synchronized {name}").format(name=name))
-                    if callback: callback()
-                GLib.idle_add(_done)
-            except Exception as e:
-                logger.error(f"Sync failed: {e}")
-                GLib.idle_add(self._on_transfer_finish, False, _("Sync error: {e}").format(e=e))
-                
-        self._ssh_service.engine.run_coroutine(_bg_sync())
-
-    def _delete_selected(self) -> bool:
-        pos = self._selection_model.get_selected()
-        if pos == Gtk.INVALID_LIST_POSITION:
-            return False
-        file_obj = self._file_store.get_item(pos)
-        if not file_obj:
-            return False
-
-        from views.dialogs import prompt_confirmation
-        def _on_confirm(confirmed: bool):
-            if not confirmed:
-                return
-            
-            path = os.path.join(self._current_path, file_obj.name)
-            self._set_loading(True)
-            self._status_label.set_label(_("Deleting {name}...").format(name=file_obj.name))
-            
-            async def _bg_delete():
-                try:
-                    if file_obj.is_dir:
-                        # asyncssh sftp doesn't have recursive rmdir, need to handle or assume empty?
-                        # Actually asyncssh has sftp.rmdir but for non-empty we might need more.
-                        # For simple UX, let's try rmdir first.
-                        await self._sftp.rmdir(path)
-                    else:
-                        await self._sftp.remove(path)
-                    GLib.idle_add(self._on_transfer_finish, True, _("Deleted {name}").format(name=file_obj.name))
-                except Exception as e:
-                    logger.error(f"Delete failed: {e}")
-                    GLib.idle_add(self._on_transfer_finish, False, _("Delete failed: {e}").format(e=e))
-            
-            self._bg_task = self._ssh_service.engine.run_coroutine(_bg_delete())
-
-        prompt_confirmation(
-            self.get_root(),
-            _("Delete Item"),
-            _("Are you sure you want to delete '{name}'?\nThis action cannot be undone.").format(name=file_obj.name),
-            _("Delete"),
-            True,
-            _on_confirm
-        )
-        return True
-
-    def _download_selected(self) -> None:
-        pos = self._selection_model.get_selected()
-        if pos == Gtk.INVALID_LIST_POSITION:
-            return
-        file_obj = self._file_store.get_item(pos)
-        if not file_obj:
-            return
-
-        dialog = Gtk.FileDialog.new()
-        if file_obj.is_dir:
-            dialog.set_title(_("Download Directory: {name}").format(name=file_obj.name))
-            dialog.select_folder(self.get_root(), None, self._on_download_folder_cb, file_obj)
-        else:
-            dialog.set_title(_("Download File: {name}").format(name=file_obj.name))
-            dialog.set_initial_name(file_obj.name)
-            dialog.save(self.get_root(), None, self._on_download_file_cb, file_obj)
-
-    def _on_download_file_cb(self, dialog: Gtk.FileDialog, result: Gio.AsyncResult, file_obj: SftpFile) -> None:
-        try:
-            gfile = dialog.save_finish(result)
-            if gfile:
-                self._run_download_task(file_obj, gfile.get_path())
-        except Exception as e:
-            logger.info(f"Download cancelled or failed: {e}")
-
-    def _on_download_folder_cb(self, dialog: Gtk.FileDialog, result: Gio.AsyncResult, file_obj: SftpFile) -> None:
-        try:
-            gfile = dialog.select_folder_finish(result)
-            if gfile:
-                self._run_download_task(file_obj, gfile.get_path())
-        except Exception as e:
-            logger.info(f"Download folder cancelled or failed: {e}")
-
-    def _run_download_task(self, file_obj: SftpFile, target_path: str) -> None:
-        import os, asyncssh
-        src_path = os.path.join(self._current_path, file_obj.name)
-        self._set_loading(True)
-        self._status_label.set_label(_("Downloading {name}...").format(name=file_obj.name))
-        
-        async def _bg_download():
-            try:
-                await asyncssh.scp((self._ssh_conn, src_path), target_path, preserve=True, recurse=True)
-                GLib.idle_add(self._on_transfer_finish, True, _("Downloaded {name} to local system").format(name=file_obj.name))
-            except Exception as e:
-                GLib.idle_add(self._on_transfer_finish, False, str(e))
-        self._bg_task = self._ssh_service.engine.run_coroutine(_bg_download())
-
-    def _paste_from_clipboard(self) -> bool:
-        clipboard = self.get_clipboard()
-        clipboard.read_text_async(None, self._on_clipboard_read)
-        return True
-
-    def _on_clipboard_read(self, clipboard: Gdk.Clipboard, result: Gio.AsyncResult) -> None:
-        try:
-            text = clipboard.read_text_finish(result)
-            if text:
-                self._handle_paste_text(text)
-        except Exception as e:
-            logger.error(f"Failed to read clipboard: {e}")
-
-    def _handle_paste_text(self, text: str) -> None:
-        text = text.strip()
-        import urllib.parse
-        import asyncssh
-        dst_path = self._current_path
-
-        if text.startswith("sentinel-sftp://"):
-            parsed = urllib.parse.urlparse(text)
-            src_conn_id = parsed.netloc
-            src_path = parsed.path
-            
-            if src_conn_id != self._connection.id:
-                # Cross-server transfer via rclone
-                from services.rclone_service import RcloneService
-                from views.main_window import SentinelWindow
-                
-                # 1. Try to find active auth from open tabs across ALL windows
-                src_data = None
-                app = Gtk.Application.get_default()
-                if app:
-                    for window in app.get_windows():
-                        # We use the title or a check to ensure it's a SentinelWindow
-                        if hasattr(window, "_terminal_tab_view"):
-                             src_data = window._terminal_tab_view.find_sftp_tab_data(src_conn_id)
-                             if src_data:
-                                 break
-                
-                if not src_data:
-                    # Fallback: Load connection from DB to at least show the hostname
-                    from db.database import Database
-                    db = Database()
-                    db.open()
-                    src_conn = db.get_connection(src_conn_id)
-                    db.close()
-                    
-                    if not src_conn:
-                        GLib.idle_add(lambda: self._status_label.set_label(_("Source connection not found in database.")))
-                        return
-
-                    # We don't have auth_info. For now, require the tab to be open.
-                    # In a future version, we could prompt for auth here.
-                    def _err_no_auth():
-                        self._status_label.set_label(_("Source SFTP session must be active to perform transfer."))
-                        self._set_loading(False)
-                    GLib.idle_add(_err_no_auth)
-                    return
-                
-                src_conn, src_auth = src_data
-                
-                # 2. Execute transfer
-                self._set_loading(True)
-                self._status_label.set_label(_("Starting cross-server transfer from {hostname}...").format(hostname=src_conn.hostname))
-                
-                final_dst = os.path.join(dst_path, os.path.basename(src_path))
-                if src_path.endswith("/"): final_dst += "/"
-
-                async def _bg_rclone_transfer():
-                    rclone = RcloneService.get()
-                    
-                    def _prog(percent, line):
-                        GLib.idle_add(lambda: self._status_label.set_label(_("Transferring: {percent}%").format(percent=int(percent))))
-
-                    success, err = await rclone.transfer(
-                        src_conn, src_auth, src_path,
-                        self._connection, self._auth_info, final_dst,
-                        on_progress=_prog
-                    )
-                    
-                    if success:
-                        GLib.idle_add(self._on_transfer_finish, True, _("Cross-server transfer complete"))
-                    else:
-                        GLib.idle_add(self._on_transfer_finish, False, _("Transfer failed: {err}").format(err=err))
-                
-                self._bg_task = self._ssh_service.engine.run_coroutine(_bg_rclone_transfer())
-                return
-            
-        elif text.startswith("file://") or text.startswith("/"):
-            lines = [line.strip() for line in text.splitlines() if line.strip()]
-            local_paths = []
-            for line in lines:
-                if line.startswith("file://"):
-                    local_paths.append(urllib.parse.unquote(line[7:]))
-                elif line.startswith("/"):
-                    local_paths.append(line)
-            
-            if local_paths:
-                self._set_loading(True)
-                self._status_label.set_label(_("Uploading {count} items...").format(count=len(local_paths)))
-                
-                async def _bg_upload():
-                    try:
-                        await asyncssh.scp(local_paths, (self._ssh_conn, dst_path), preserve=True, recurse=True)
-                        GLib.idle_add(self._on_transfer_finish, True, _("Uploaded successfully"))
-                    except Exception as e:
-                        GLib.idle_add(self._on_transfer_finish, False, str(e))
-                self._bg_task = self._ssh_service.engine.run_coroutine(_bg_upload())
-
-    def _on_transfer_finish(self, success: bool, msg: str) -> None:
+                entries, resolved = await self._backend.list_dir(path)
+                GLib.idle_add(self._populate, entries, resolved)
+            except Exception as exc:
+                logger.error("list_dir failed: %s", exc)
+                GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+
+        self._run_async(_fetch())
+
+    def _populate(self, entries: list, resolved: str) -> None:
+        self._all_items = [SftpFile(**e) for e in entries]
+        self._current_path = resolved
+        self._path_entry.set_text(resolved)
+        self._push_history(resolved)
+        self._refresh_store()
         self._set_loading(False)
-        self._status_label.set_label(msg)
-        if success:
-            self._load_path(self._current_path)
 
     def _refresh_store(self) -> None:
-        """Repopulate the ListStore from cached all_items applying hidden filter."""
-        self._file_store.remove_all()
-        count = 0
+        self._store.remove_all()
+        shown = 0
         for f in self._all_items:
             if not self._show_hidden and f.name.startswith("."):
                 continue
-            self._file_store.append(f)
-            count += 1
-        self._status_label.set_label(_("{count} items in {path}").format(count=count, path=self._current_path))
+            self._store.append(f)
+            shown += 1
+        self._set_status(f"{shown} {_('items')}")
 
-    def _on_toggle_show_hidden(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
-        self._show_hidden = not self._show_hidden
-        self._refresh_store()
-        # Update action state
-        _action.set_state(GLib.Variant.new_boolean(self._show_hidden))
-        # No need to call _load_path, _refresh_store handles the display update from cached items
+    def _push_history(self, path: str) -> None:
+        if self._history_idx >= 0 and self._history[self._history_idx] == path:
+            return
+        self._history = self._history[: self._history_idx + 1] + [path]
+        self._history_idx = len(self._history) - 1
+        self._back_btn.set_sensitive(self._history_idx > 0)
+        self._fwd_btn.set_sensitive(self._history_idx < len(self._history) - 1)
 
-    def _on_toggle_auto_sync(self, action: Gio.SimpleAction, value: GLib.Variant | None) -> None:
-        self._auto_sync = not self._auto_sync
-        action.set_state(GLib.Variant.new_boolean(self._auto_sync))
-        if self._auto_sync:
-            self._status_label.set_label(_("Auto-sync enabled for this session."))
+    def _navigate(self, direction: int) -> None:
+        idx = self._history_idx + direction
+        if 0 <= idx < len(self._history):
+            self._history_idx = idx
+            self._load_path(self._history[idx])
+
+    # ── Selection helper ────────────────────────────────────────────
+
+    def _get_selected(self) -> Optional[SftpFile]:
+        """Return the currently selected SftpFile, or None.
+
+        IMPORTANT: queries _sort_model (the sorted view), not the raw _store,
+        so the position matches the visual row order.
+        """
+        pos = self._sel.get_selected()
+        return self._sort_model.get_item(pos) if pos != Gtk.INVALID_LIST_POSITION else None
+
+    # ── Row activation (double-click / Enter) ──────────────────────
+
+    def _on_row_activate(self, _cv, pos: int) -> None:
+        item: SftpFile | None = self._sort_model.get_item(pos)
+        if item is None:
+            return
+        if item.is_dir:
+            self._load_path(os.path.join(self._current_path, item.name))
         else:
-            self._status_label.set_label(_("Auto-sync disabled."))
+            self._open_selected(use_chooser=False)
 
-    def terminate(self) -> None:
-        # Use list() to avoid "dictionary changed size during iteration"
-        for monitor in monitors:
-            monitor.cancel()
-        self.terminate_auth()
-        self._monitors.clear()
-        self._initial_states.clear()
-        self._pending_prompts.clear()
-        
-        # Cleanup temp dir
-        if os.path.exists(self._temp_dir):
-            import shutil
-            try: shutil.rmtree(self._temp_dir)
-            except: pass
-        
-        if self._bg_task and not self._bg_task.done():
-            self._bg_task.cancel()
-            
-        if self._ssh_conn:
-            async def _close():
+    # ── Right-click ─────────────────────────────────────────────────
+
+    def _on_right_click(self, _g, _n, x: float, y: float) -> None:
+        item = self._get_selected()
+        has = item is not None
+        for name in ("open", "open-with", "rename", "delete", "download"):
+            act = self._ag.lookup_action(name)
+            if act:
+                act.set_enabled(has)
+        r = Gdk.Rectangle()
+        r.x, r.y, r.width, r.height = int(x), int(y), 1, 1
+        self._pop.set_pointing_to(r)
+        self._pop.popup()
+
+    # ── Open / Edit ─────────────────────────────────────────────────
+
+    def _open_selected(self, use_chooser: bool) -> None:
+        item = self._get_selected()
+        if item is None or item.is_dir:
+            return
+        remote = os.path.join(self._current_path, item.name)
+
+        if item.size > MAX_DIRECT_EDIT_BYTES:
+            from views.dialogs import prompt_confirmation
+            prompt_confirmation(
+                self.get_root(), _("Large File Warning"),
+                _("This file is very large. Open anyway?"), _("Open"), False,
+                lambda yes: self._run_async(self._fetch_for_edit(remote, item, use_chooser)) if yes else None,
+            )
+        else:
+            self._run_async(self._fetch_for_edit(remote, item, use_chooser))
+
+    async def _fetch_for_edit(
+        self,
+        remote_path: str,
+        item: SftpFile,
+        use_chooser: bool,
+    ) -> None:
+        """Download *remote_path* via rclone, then open with default app."""
+        GLib.idle_add(lambda: self._set_loading(True, _("Downloading for edit…")))
+        local_path, err = await self._rclone.download_for_edit(
+            self._conn, self._backend.auth_info, remote_path
+        )
+        if err or not local_path:
+            GLib.idle_add(lambda: self._set_loading(False, err or _("Download failed")))
+            return
+        GLib.idle_add(lambda: self._launch_edit(local_path, remote_path, item, use_chooser))
+
+    def _launch_edit(
+        self,
+        local_path: str,
+        remote_path: str,
+        item: SftpFile,
+        use_chooser: bool,
+    ) -> None:
+        self._set_loading(False)
+        gfile = Gio.File.new_for_path(local_path)
+
+        def _after_launch() -> None:
+            self._start_edit_monitor(local_path, remote_path, item.name)
+
+        try:
+            if use_chooser:
                 try:
-                    from services.rclone_service import RcloneService
-                    await RcloneService.get().unmount(self._connection.id)
-                    self._ssh_conn.close()
-                except: pass
-            self._ssh_service.engine.run_coroutine(_close())
-            self._ssh_conn = None
-            self._sftp = None
-    
-    def terminate_auth(self) -> None:
-        """Clear sensitive credentials from memory."""
-        if hasattr(self, "_auth_info"):
-            for key in list(self._auth_info.keys()):
-                val = self._auth_info.pop(key)
-                if isinstance(val, SecureBytes):
-                    val.clear()
-                # If it's a raw string, we can't wipe it but we've removed the reference
+                    ct = gfile.query_info("standard::content-type", 0, None).get_content_type()
+                except Exception:
+                    ct = "application/octet-stream"
+                dlg = Gtk.AppChooserDialog.new_for_content_type(self.get_root(), 0, ct)
+                dlg.connect("response", self._on_chooser_response, local_path, remote_path, item.name)
+                dlg.present()
+            else:
+                handler = gfile.query_default_handler(None)
+                if handler:
+                    handler.launch([gfile], None)
+                else:
+                    Gio.AppInfo.launch_default_for_uri(gfile.get_uri(), None)
+                _after_launch()
+        except Exception as exc:
+            logger.error("_launch_edit: %s", exc)
+            self._set_status(str(exc))
 
-    def _on_calculate_size(self) -> bool:
-        pos = self._selection_model.get_selected()
-        if pos == Gtk.INVALID_LIST_POSITION:
-            return False
-        file_obj = self._file_store.get_item(pos)
-        if not file_obj or not file_obj.props.is_dir:
-            return False
+    def _on_chooser_response(
+        self, dlg: Gtk.AppChooserDialog, resp: int,
+        local_path: str, remote_path: str, filename: str,
+    ) -> None:
+        if resp == Gtk.ResponseType.OK:
+            app = dlg.get_app_info()
+            if app:
+                gfile = Gio.File.new_for_path(local_path)
+                app.launch([gfile], None)
+                self._start_edit_monitor(local_path, remote_path, filename)
+        dlg.destroy()
 
-        path = os.path.join(self._current_path, file_obj.props.name)
-        self._status_label.set_label(_("Calculating size for {name}...").format(name=file_obj.props.name))
-        
-        async def _run_calc():
+    # ── Edit monitor ────────────────────────────────────────────────
+
+    def _start_edit_monitor(
+        self,
+        local_path: str,
+        remote_path: str,
+        filename: str,
+    ) -> None:
+        if local_path in self._edit_sessions:
+            return   # Already monitoring
+        try:
+            mon = Gio.File.new_for_path(local_path).monitor_file(
+                Gio.FileMonitorFlags.NONE, None
+            )
+            session = EditSession(
+                local_path=local_path,
+                remote_path=remote_path,
+                filename=filename,
+                mtime=os.path.getmtime(local_path),
+                monitor=mon,
+            )
+            mon.connect("changed", self._on_monitor_event, local_path)
+            self._edit_sessions[local_path] = session
+            logger.info("EditMonitor started: %s -> %s", local_path, remote_path)
+        except Exception as exc:
+            logger.error("Failed to start file monitor: %s", exc)
+
+    def _on_monitor_event(
+        self,
+        _mon: Gio.FileMonitor,
+        _file: Gio.File,
+        _other: Gio.File | None,
+        event: Gio.FileMonitorEvent,
+        local_path: str,
+    ) -> None:
+        if event not in (
+            Gio.FileMonitorEvent.CHANGES_DONE_HINT,
+            Gio.FileMonitorEvent.CHANGED,
+        ):
+            return
+        session = self._edit_sessions.get(local_path)
+        if session is None or session.pending:
+            return
+        try:
+            new_mtime = os.path.getmtime(local_path)
+        except OSError:
+            return
+        if new_mtime <= session.mtime:
+            return
+        session.mtime = new_mtime
+        GLib.idle_add(self._prompt_or_auto_sync, local_path)
+
+    def _prompt_or_auto_sync(self, local_path: str) -> None:
+        session = self._edit_sessions.get(local_path)
+        if session is None:
+            return
+        if self._auto_sync:
+            self._do_sync_back(local_path)
+            return
+        session.pending = True
+        from views.dialogs import prompt_confirmation
+        prompt_confirmation(
+            self.get_root(),
+            _("File Changed"),
+            _(f'Sync "{session.filename}" back to remote?'),
+            _("Sync"),
+            False,
+            lambda yes: self._on_sync_decision(local_path, yes),
+        )
+
+    def _on_sync_decision(self, local_path: str, yes: bool) -> None:
+        session = self._edit_sessions.get(local_path)
+        if session:
+            session.pending = False
+        if yes:
+            self._do_sync_back(local_path)
+
+    def _do_sync_back(self, local_path: str) -> None:
+        session = self._edit_sessions.get(local_path)
+        if session is None:
+            return
+        self._set_loading(True, _("Syncing…"))
+
+        async def _sync():
             try:
-                # Use du -sh for efficient calculation on server
-                res = await self._ssh_conn.run(f'du -sh "{path}"', check=True)
-                if res.stdout:
-                    # Output: "1.2G\t/root/foo"
-                    size_val = res.stdout.split()[0]
-                    def _update_ui():
-                        from views.dialogs import show_info
-                        show_info(self.get_root(), _("Size of {name}").format(name=file_obj.props.name), _("The directory occupies: {size}").format(size=size_val))
-                        self._status_label.set_label(_("Size of {name}: {size}").format(name=file_obj.props.name, size=size_val))
-                    GLib.idle_add(_update_ui)
-            except Exception as e:
-                msg = str(e)
-                GLib.idle_add(lambda: self._status_label.set_label(_("Size calculation failed: {msg}").format(msg=msg)))
-        
-        self._ssh_service.engine.run_coroutine(_run_calc())
+                await self._backend.put_file(session.local_path, session.remote_path)
+                GLib.idle_add(lambda n=session.filename: self._set_loading(False, _(f"Synced {n}")))
+            except Exception as exc:
+                logger.error("Sync-back failed: %s", exc)
+                GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+
+        self._run_async(_sync())
+
+    # ── New file / folder ────────────────────────────────────────────
+
+    def _new_entry(self, is_folder: bool) -> None:
+        from views.dialogs import prompt_entry
+        title = _("New Folder") if is_folder else _("New File")
+        prompt_entry(
+            self.get_root(), title, _("Name:"), "", _("Name"),
+            lambda name: self._run_async(self._create_entry(name, is_folder)) if name else None,
+        )
+
+    async def _create_entry(self, name: str, is_folder: bool) -> None:
+        path = os.path.join(self._current_path, name)
+        GLib.idle_add(lambda: self._set_loading(True, _("Creating…")))
+        try:
+            if is_folder:
+                await self._backend.mkdir(path)
+            else:
+                await self._backend.create_file(path)
+            GLib.idle_add(lambda: self._load_path(self._current_path))
+        except Exception as exc:
+            logger.error("create_entry failed: %s", exc)
+            GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+
+    # ── Rename ──────────────────────────────────────────────────────
+
+    def _rename_selected(self) -> None:
+        item = self._get_selected()
+        if item is None:
+            return
+        from views.dialogs import prompt_entry
+        prompt_entry(
+            self.get_root(), _("Rename"), item.name, item.name, _("New name"),
+            lambda name: self._run_async(self._do_rename(item.name, name)) if name and name != item.name else None,
+        )
+
+    async def _do_rename(self, old_name: str, new_name: str) -> None:
+        old = os.path.join(self._current_path, old_name)
+        new = os.path.join(self._current_path, new_name)
+        GLib.idle_add(lambda: self._set_loading(True, _("Renaming…")))
+        try:
+            await self._backend.rename(old, new)
+            GLib.idle_add(lambda: self._load_path(self._current_path))
+        except Exception as exc:
+            logger.error("rename failed: %s", exc)
+            GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+
+    # ── Delete ──────────────────────────────────────────────────────
+
+    def _delete_selected(self) -> None:
+        item = self._get_selected()
+        if item is None:
+            return
+        from views.dialogs import prompt_confirmation
+        prompt_confirmation(
+            self.get_root(), _("Delete"), item.name, _("Delete"), True,
+            lambda yes: self._run_async(self._do_delete(item)) if yes else None,
+        )
+
+    async def _do_delete(self, item: SftpFile) -> None:
+        path = os.path.join(self._current_path, item.name)
+        GLib.idle_add(lambda: self._set_loading(True, _("Deleting…")))
+        try:
+            await self._backend.remove(path, item.is_dir)
+            GLib.idle_add(lambda: self._load_path(self._current_path))
+        except Exception as exc:
+            logger.error("delete failed: %s", exc)
+            GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+
+    # ── Download ────────────────────────────────────────────────────
+
+    def _download_selected(self) -> None:
+        item = self._get_selected()
+        if item is None:
+            return
+        dlg = Gtk.FileDialog()
+        if item.is_dir:
+            dlg.select_folder(self.get_root(), None, self._on_folder_chosen, item)
+        else:
+            dlg.set_initial_name(item.name)
+            dlg.save(self.get_root(), None, self._on_save_chosen, item)
+
+    def _on_save_chosen(
+        self, dlg: Gtk.FileDialog, result: Gio.AsyncResult, item: SftpFile
+    ) -> None:
+        try:
+            gfile = dlg.save_finish(result)
+        except Exception:
+            return
+        if gfile:
+            remote = os.path.join(self._current_path, item.name)
+            self._run_async(self._do_download(remote, gfile.get_path(), item.name))
+
+    def _on_folder_chosen(
+        self, dlg: Gtk.FileDialog, result: Gio.AsyncResult, item: SftpFile
+    ) -> None:
+        try:
+            gfile = dlg.select_folder_finish(result)
+        except Exception:
+            return
+        if gfile:
+            dest = os.path.join(gfile.get_path(), item.name)
+            remote = os.path.join(self._current_path, item.name)
+            self._run_async(self._do_download(remote, dest, item.name))
+
+    async def _do_download(
+        self, remote_path: str, local_path: str, display_name: str
+    ) -> None:
+        GLib.idle_add(lambda: self._set_loading(True, _("Downloading…")))
+        try:
+            await self._backend.download(remote_path, local_path)
+            GLib.idle_add(lambda: self._set_loading(False, _(f"Downloaded {display_name}")))
+        except Exception as exc:
+            logger.error("download failed: %s", exc)
+            GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+
+    # ── Drag-and-drop upload ─────────────────────────────────────────
+
+    def _on_dnd_drop(
+        self,
+        _target: Gtk.DropTarget,
+        value: Gdk.FileList,
+        _x: float,
+        _y: float,
+    ) -> bool:
+        files = value.get_files()
+        if not files:
+            return False
+        paths = [f.get_path() for f in files if f.get_path()]
+        if not paths:
+            return False
+        self._run_async(self._do_upload(paths))
         return True
 
-    def _on_properties_selected(self) -> bool:
-        pos = self._selection_model.get_selected()
-        if pos == Gtk.INVALID_LIST_POSITION:
-            return False
-        file_obj = self._file_store.get_item(pos)
-        if not file_obj:
-            return False
+    async def _do_upload(self, local_paths: list[str]) -> None:
+        GLib.idle_add(lambda: self._set_loading(True, _("Uploading…")))
+        try:
+            await self._backend.upload(local_paths, self._current_path)
+            GLib.idle_add(lambda: self._load_path(self._current_path))
+        except Exception as exc:
+            logger.error("upload failed: %s", exc)
+            GLib.idle_add(lambda: self._set_loading(False, str(exc)))
 
-        from views.dialogs import show_file_properties
-        file_info = {
-            "name": file_obj.props.name,
-            "is_dir": file_obj.props.is_dir,
-            "size_str": file_obj.size_str,
-            "mtime_str": file_obj.mtime_str,
-            "permissions_oct": oct(file_obj.props.permissions)[-3:] if file_obj.props.permissions else "Unknown",
-            "uid": file_obj.props.uid,
-            "gid": file_obj.props.gid,
-            "path": os.path.join(self._current_path, file_obj.props.name)
-        }
-        show_file_properties(self.get_root(), file_info)
-        return True
+    # ── Toggle actions ───────────────────────────────────────────────
 
-    @property
-    def title(self) -> str:
-        return _("SFTP: {hostname}").format(hostname=self._connection.hostname)
+    def _toggle_action(
+        self, action: Gio.SimpleAction, _param, attr: str
+    ) -> None:
+        new_val = not getattr(self, attr)
+        setattr(self, attr, new_val)
+        action.set_state(GLib.Variant.new_boolean(new_val))
+        if attr == "_show_hidden":
+            self._refresh_store()
