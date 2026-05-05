@@ -29,6 +29,36 @@ from utils.themes import DEFAULT_THEME, ThemeDict
 
 logger = logging.getLogger(__name__)
 
+_THEME_CACHE: ThemeDict | None = None
+
+
+def get_terminal_theme(force_refresh: bool = False) -> ThemeDict:
+    """Get the terminal theme from database, with caching."""
+    global _THEME_CACHE
+    if _THEME_CACHE is None or force_refresh:
+        db = Database()
+        try:
+            db.open()
+            theme_json = db.get_meta("terminal_theme", "")
+            if theme_json:
+                try:
+                    _THEME_CACHE = json.loads(theme_json)
+                except Exception:
+                    logger.error("Failed to parse terminal theme JSON")
+                    _THEME_CACHE = DEFAULT_THEME
+            else:
+                _THEME_CACHE = DEFAULT_THEME
+        except Exception as e:
+            logger.error(f"Failed to load terminal theme from database: {e}")
+            _THEME_CACHE = DEFAULT_THEME
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    return _THEME_CACHE
+
 
 class TerminalTab(Gtk.Box):
     """A single terminal tab containing a VTE terminal + status bar."""
@@ -242,18 +272,7 @@ class TerminalTab(Gtk.Box):
         self.append(self._status_bar)
 
     def _apply_theme(self) -> None:
-        db = Database()
-        db.open()
-        theme_json = db.get_meta("terminal_theme", "")
-        db.close()
-
-        if theme_json:
-            try:
-                theme = json.loads(theme_json)
-            except:
-                theme = DEFAULT_THEME
-        else:
-            theme = DEFAULT_THEME
+        theme = get_terminal_theme()
 
         bg = Gdk.RGBA()
         bg.parse(theme["background"])
@@ -839,6 +858,9 @@ class TerminalTabView:
 
     def refresh_theme(self) -> None:
         """Refresh theme for all open terminal tabs."""
+        # Invalidate cache
+        get_terminal_theme(force_refresh=True)
+
         for i in range(self._tab_view.get_n_pages()):
             page = self._tab_view.get_nth_page(i)
             child = page.get_child()
