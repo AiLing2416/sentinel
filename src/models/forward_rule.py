@@ -29,7 +29,7 @@ class ForwardRule:
     remote_host: str | None = "localhost"
     remote_port: int | None = None
     enabled: bool = True
-    auto_start: bool = True
+    auto_start: bool = False
 
     def validate(self) -> None:
         validate_port(self.bind_port)
@@ -63,5 +63,5 @@ class ForwardRule:
             remote_host=data.get("remote_host", "localhost"),
             remote_port=data.get("remote_port"),
             enabled=bool(data.get("enabled", 1)),
-            auto_start=bool(data.get("auto_start", 1)),
+            auto_start=bool(data.get("auto_start", 0)),
         )

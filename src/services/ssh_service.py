@@ -639,6 +639,7 @@ class SSHService:
                 self._active_listeners[rule.id] = (listener, ssh_conn)
                 self._rule_errors.pop(rule.id, None)
                 logger.info(f"Port forwarding rule {rule.id} started successfully")
+                call_ui_sync(self._notify_forward_rules_changed)
         except Exception as e:
             self._rule_errors[rule.id] = str(e)
             logger.error(f"Failed to start port forwarding rule {rule.id}: {e}")
@@ -652,6 +653,7 @@ class SSHService:
                 if self._background_ssh_connections.get(rule.connection_id) == ssh_conn:
                     self._background_ssh_connections.pop(rule.connection_id, None)
                 ssh_conn.close()
+            call_ui_sync(self._notify_forward_rules_changed)
             raise e
 
     async def stop_forward_rule(self, rule_id: str) -> None:
@@ -682,6 +684,7 @@ class SSHService:
                     self._background_ssh_connections.pop(conn_id, None)
                 ssh_conn.close()
                 await ssh_conn.wait_closed()
+        call_ui_sync(self._notify_forward_rules_changed)
 
     def get_forward_rule_status(self, rule: ForwardRule) -> str:
         """Return the status string of a forward rule."""

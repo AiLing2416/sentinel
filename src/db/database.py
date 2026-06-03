@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS forward_rules (
     remote_host   TEXT DEFAULT 'localhost',
     remote_port   INTEGER,
     enabled       INTEGER DEFAULT 1,
-    auto_start    INTEGER DEFAULT 1
+    auto_start    INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS known_hosts (
@@ -152,7 +152,7 @@ class Database:
         # Database Migration: add auto_start to forward_rules if missing
         cols_fr = [col["name"] for col in self._conn.execute("PRAGMA table_info(forward_rules)").fetchall()]
         if "auto_start" not in cols_fr:
-            self._conn.execute("ALTER TABLE forward_rules ADD COLUMN auto_start INTEGER DEFAULT 1")
+            self._conn.execute("ALTER TABLE forward_rules ADD COLUMN auto_start INTEGER DEFAULT 0")
             self._conn.commit()
 
     @property

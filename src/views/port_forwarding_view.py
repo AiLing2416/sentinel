@@ -52,6 +52,7 @@ class PortForwardingDialog:
         # UI Layout
         toolbar = Adw.ToolbarView()
         header = Adw.HeaderBar()
+        header.set_show_title_buttons(False)
         toolbar.add_top_bar(header)
 
         cancel_btn = Gtk.Button(label="取消")
@@ -294,30 +295,6 @@ class PortForwardingTab(Gtk.Box):
             db.close()
 
     def _build_ui(self) -> None:
-        # Title bar & Action button
-        header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        header_box.set_margin_start(16)
-        header_box.set_margin_end(16)
-        header_box.set_margin_top(16)
-        header_box.set_margin_bottom(12)
-
-        title_lbl = Gtk.Label(label="端口转发规则")
-        title_lbl.add_css_class("title-1")
-        title_lbl.set_halign(Gtk.Align.START)
-        header_box.append(title_lbl)
-
-        # Stretch space
-        spacer = Gtk.Box()
-        spacer.set_hexpand(True)
-        header_box.append(spacer)
-
-        add_btn = Gtk.Button(label="添加规则")
-        add_btn.add_css_class("suggested-action")
-        add_btn.connect("clicked", self._on_add_rule_clicked)
-        header_box.append(add_btn)
-
-        self.append(header_box)
-
         # Content area stack (list view OR empty state page)
         self._stack = Gtk.Stack(
             transition_type=Gtk.StackTransitionType.CROSSFADE,
@@ -354,6 +331,7 @@ class PortForwardingTab(Gtk.Box):
         scroll = Gtk.ScrolledWindow(vexpand=True)
         scroll.set_margin_start(16)
         scroll.set_margin_end(16)
+        scroll.set_margin_top(16)
         scroll.set_margin_bottom(16)
 
         # Clamp the width to keep it beautiful
@@ -364,12 +342,17 @@ class PortForwardingTab(Gtk.Box):
         self._list_box = Gtk.ListBox()
         self._list_box.add_css_class("boxed-list")
         self._list_box.set_selection_mode(Gtk.SelectionMode.NONE)
+        self._list_box.connect("row-activated", self._on_row_activated)
         clamp.set_child(self._list_box)
 
         scroll.set_child(clamp)
         self._stack.add_named(scroll, "list")
 
         self.append(self._stack)
+
+    def _on_row_activated(self, listbox, row) -> None:
+        if hasattr(self, "_add_row") and row == self._add_row:
+            self._on_add_rule_clicked(None)
 
     def refresh(self) -> None:
         """Reload all rules from database and refresh UI."""
@@ -399,6 +382,24 @@ class PortForwardingTab(Gtk.Box):
         for rule in rules:
             row_widget = self._create_rule_row(rule)
             self._list_box.append(row_widget)
+
+        # Add the virtual add-rule row at the end
+        self._add_row = Gtk.ListBoxRow()
+        self._add_row.set_activatable(True)
+        self._add_row.set_selectable(False)
+
+        add_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        add_box.set_halign(Gtk.Align.CENTER)
+        add_box.set_valign(Gtk.Align.CENTER)
+        add_box.set_margin_top(12)
+        add_box.set_margin_bottom(12)
+
+        add_icon = Gtk.Image.new_from_icon_name("list-add-symbolic")
+        add_icon.add_css_class("dim-label")
+        add_box.append(add_icon)
+        self._add_row.set_child(add_box)
+
+        self._list_box.append(self._add_row)
 
     def _create_rule_row(self, rule: ForwardRule) -> Gtk.Widget:
         # Main row horizontal container
@@ -530,6 +531,7 @@ class PortForwardingTab(Gtk.Box):
 
         # Wrap in list box row container
         row = Gtk.ListBoxRow()
+        row.set_activatable(False)
         row.set_child(row_box)
         return row
 
