@@ -90,6 +90,8 @@ class TerminalTab(Gtk.Box):
         self._last_eof_time: float = 0
         self._reconnect_sid: int = 0
         self.is_remote = self._connection is not None
+        self._last_scroll_value = 0.0
+        self._last_scroll_time = 0.0
         
         self._build_ui()
         
@@ -251,7 +253,9 @@ class TerminalTab(Gtk.Box):
         
         # Add the vertical scrollbar and link it to the terminal's adjustment
         scrollbar = Gtk.Scrollbar(orientation=Gtk.Orientation.VERTICAL)
-        scrollbar.set_adjustment(self._terminal.get_vadjustment())
+        vadjust = self._terminal.get_vadjustment()
+        scrollbar.set_adjustment(vadjust)
+        vadjust.connect("value-changed", self._on_scroll_value_changed)
         terminal_container.append(scrollbar)
         
         self.append(terminal_container)
@@ -315,7 +319,25 @@ class TerminalTab(Gtk.Box):
         from services.vault_service import VaultService
         
         def _ask_password(conn, resolve):
-            prompt_password(self.get_root(), f"Password for {conn.hostname}", f"{conn.username}@{conn.hostname}", resolve)
+            from utils.secure import SecureBytes
+            def _on_resolved(password: SecureBytes | None, remember: bool = False):
+                if password and remember:
+                    from services.vault_manager import VaultManager
+                    VaultManager.get().cache_password(
+                        item_id=conn.id,
+                        label=f"Password for {conn.username}@{conn.hostname}",
+                        password=password,
+                        hostname=conn.hostname,
+                        username=conn.username
+                    )
+                resolve(password)
+            prompt_password(
+                self.get_root(),
+                f"Password for {conn.hostname}",
+                f"{conn.username}@{conn.hostname}",
+                _on_resolved,
+                show_remember=True
+            )
             
         def _ask_passphrase(key_path, resolve):
             prompt_password(self.get_root(), "Unlock SSH Key", f"Enter passphrase for {key_path}", resolve)
@@ -513,6 +535,37 @@ class TerminalTab(Gtk.Box):
     def _on_title_changed(self, terminal: Vte.Terminal) -> None:
         pass
 
+    def _on_scroll_value_changed(self, adjustment: Gtk.Adjustment) -> None:
+        val = adjustment.get_value()
+        upper = adjustment.get_upper()
+        page_size = adjustment.get_page_size()
+        distance_to_bottom = upper - page_size - val
+        
+        now = time.time()
+        dt = now - self._last_scroll_time
+        dv = val - self._last_scroll_value
+        
+        scroll_on_output = True
+        
+        # Check if user is scrolled up by more than 1/5 page size
+        if page_size > 0 and distance_to_bottom > (page_size / 5.0):
+            scroll_on_output = False
+            
+        # Check if user scrolled up quickly (dv < 0)
+        if dt > 0 and dv < 0:
+            velocity = dv / dt  # lines per second
+            if velocity < -100.0:  # scrolled up fast
+                scroll_on_output = False
+                
+        self._last_scroll_value = val
+        self._last_scroll_time = now
+        
+        # If the user is at the bottom, follow new output
+        if distance_to_bottom <= 1.0:
+            scroll_on_output = True
+            
+        self._terminal.set_scroll_on_output(scroll_on_output)
+
     def _setup_context_menu(self) -> None:
         """Create a right-click context menu for the terminal."""
         menu = Gio.Menu()
@@ -665,7 +718,6 @@ class TerminalTabView:
 
     def __init__(self, ssh_service: SSHService) -> None:
         self._ssh_service = ssh_service
-        self._tabs: dict[str, Adw.TabPage] = {}  # connection_id -> TabPage
 
         self._build_ui()
 
@@ -701,17 +753,6 @@ class TerminalTabView:
     def has_tabs(self) -> bool:
         return self._tab_view.get_n_pages() > 0
     def open_ssh_tab(self, connection: Connection, on_os_detected: Callable | None = None) -> Any:
-        # If tab already exists, focus it
-        if connection.id in self._tabs:
-            logger.info(f"TerminalTabView: Tab already exists for {connection.hostname}, focusing it.")
-            page = self._tabs[connection.id]
-            self._tab_view.set_selected_page(page)
-            # Give it focus
-            child = page.get_child()
-            if hasattr(child, "grab_focus"):
-                GLib.idle_add(lambda: child.grab_focus() and False)
-            return child
-
         """Open an SSH terminal tab for a connection."""
         terminal_tab = TerminalTab(
             connection=connection,
@@ -726,8 +767,6 @@ class TerminalTabView:
         page.set_title(terminal_tab.title)
         page.set_icon(Gio.ThemedIcon.new("utilities-terminal-symbolic"))
         page.set_live_thumbnail(True)
-
-        self._tabs[connection.id] = page
         self._tab_view.set_selected_page(page)
 
         GLib.idle_add(lambda: terminal_tab.grab_focus() and False)
@@ -790,8 +829,7 @@ class TerminalTabView:
         """Handle tab close request."""
         child = page.get_child()
         
-        if hasattr(child, "connection") and child.connection:
-            self._tabs.pop(child.connection.id, None)
+        # _tabs is deprecated for direct lookup
 
         if hasattr(child, "terminate"):
             child.terminate()
@@ -816,8 +854,6 @@ class TerminalTabView:
     def _on_page_attached(self, tab_view: Adw.TabView, page: Adw.TabPage, position: int) -> None:
         """When a page is transferred into this view (e.g. from tear off)."""
         child = page.get_child()
-        if hasattr(child, "connection") and child.connection:
-            self._tabs[child.connection.id] = page
         
         # Rewire close handler to point to this new view
         if hasattr(child, "_on_close"):
@@ -825,25 +861,32 @@ class TerminalTabView:
 
     def _on_page_detached(self, tab_view: Adw.TabView, page: Adw.TabPage, position: int) -> None:
         """When a page is transferred out of this view."""
-        child = page.get_child()
-        if hasattr(child, "connection") and child.connection:
-            self._tabs.pop(child.connection.id, None)
+        pass
 
     def notify_connection_updated(self, connection: Connection) -> None:
         """Update any open tabs that are using this connection."""
-        page = self._tabs.get(connection.id)
-        if page:
-            logger.info(f"TerminalTabView: Syncing open tab for connection {connection.id}")
+        for i in range(self._tab_view.get_n_pages()):
+            page = self._tab_view.get_nth_page(i)
             child = page.get_child()
-            if hasattr(child, "_connection") and child._connection:
-                # Update critical fields in place to keep references valid but data fresh
-                old_os = child._connection.os_id
-                child._connection.os_id = connection.os_id
-                logger.info(f"TerminalTabView: Updated child connection os_id for {connection.id} from '{old_os}' to '{connection.os_id}'")
-                child._connection.name = connection.name
-                child._connection.hostname = connection.hostname
-                child._connection.username = connection.username
-                child._connection.port = connection.port
+            
+            # Check for terminal or sftp connection
+            conn_obj = None
+            if hasattr(child, "_connection"): # TerminalTab
+                conn_obj = child._connection
+            elif hasattr(child, "_conn"):     # SftpTab
+                conn_obj = child._conn
+                
+            if conn_obj and conn_obj.id == connection.id:
+                logger.info(f"TerminalTabView: Syncing open tab for connection {connection.id}")
+                conn_obj.os_id = connection.os_id
+                conn_obj.name = connection.name
+                conn_obj.hostname = connection.hostname
+                conn_obj.username = connection.username
+                conn_obj.port = connection.port
+                
+                # Update page title
+                if hasattr(child, "title"):
+                    page.set_title(child.title)
                 
     def find_sftp_tab_data(self, connection_id: str) -> tuple[Connection, dict] | None:
         """Find authentication info for an active SFTP tab."""
@@ -854,6 +897,16 @@ class TerminalTabView:
             if child.__class__.__name__ == "SftpTab":
                 if hasattr(child, "_connection") and child._connection.id == connection_id:
                     return child._connection, child._auth_info
+        return None
+
+    def find_sftp_service(self, connection_id: str) -> Any | None:
+        """Find an active SftpService instance for a connection."""
+        for i in range(self._tab_view.get_n_pages()):
+            page = self._tab_view.get_nth_page(i)
+            child = page.get_child()
+            if child.__class__.__name__ == "SftpTab":
+                if hasattr(child, "_conn") and child._conn.id == connection_id:
+                    return child._backend
         return None
 
     def refresh_theme(self) -> None:

@@ -5,23 +5,28 @@
 from __future__ import annotations
 
 import gettext
+import json
 import logging
 import os
 import shutil
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, Sequence
 
 import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango
+gi.require_version("Gdk", "4.0")
+gi.require_version("GdkWayland", "4.0")
+gi.require_version("GdkX11", "4.0")
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango, GdkWayland, GdkX11
 
 from models.connection import Connection
 from services.async_engine import call_ui_sync
 from services.rclone_service import RcloneService
 from services.sftp_service import SftpService
 from services.ssh_service import SSHService
+from db.database import Database
 
 _ = gettext.gettext
 logger = logging.getLogger(__name__)
@@ -52,7 +57,17 @@ class SftpFile(GObject.Object):
 
     @property
     def icon_name(self) -> str:
-        return "folder-symbolic" if self.is_dir else "text-x-generic-symbolic"
+        if self.is_dir:
+            return "folder-symbolic"
+        # Guess icon based on name
+        content_type, _ = Gio.content_type_guess(self.name, None)
+        if content_type:
+            icon = Gio.content_type_get_icon(content_type)
+            if icon:
+                # Return the first name from the themed icon
+                names = icon.get_names()
+                if names: return names[0]
+        return "text-x-generic-symbolic"
 
     @property
     def size_str(self) -> str:
@@ -85,7 +100,9 @@ class EditSession:
     filename:    str
     mtime:       float
     monitor:     Gio.FileMonitor
+    directory:   str                    # The directory being monitored
     pending:     bool = False           # True while a sync-confirm dialog is open
+    timer_id:    int = 0                # GSourse ID for debouncing
 
 
 # ---------------------------------------------------------------------------
@@ -116,10 +133,13 @@ class SftpTab(Gtk.Box):
         self._all_items:     list[SftpFile] = []
         self._edit_sessions: dict[str, EditSession] = {}   # keyed by local_path
         self._show_hidden  = False
-        self._auto_sync    = False
+        self._auto_sync    = True # Default to True for better UX
 
         self._store = Gio.ListStore.new(SftpFile)
         self._build_ui()
+        
+        # Drag-and-drop state
+        self._dnd_downloads: set[str] = set() # remote_paths currently being downloaded
         self._run_async(self._do_connect())
 
     @property
@@ -141,8 +161,10 @@ class SftpTab(Gtk.Box):
         logger.info("SftpTab[%s]: terminating", self._conn.hostname)
         for es in list(self._edit_sessions.values()):
             es.monitor.cancel()
+            if es.timer_id:
+                GLib.source_remove(es.timer_id)
         self._edit_sessions.clear()
-        self._run_async(self._rclone.unmount(self._conn.id))
+        # self._run_async(self._rclone.unmount(self._conn.id))
         self._run_async(self._backend.disconnect())
 
     # ── UI construction ─────────────────────────────────────────────
@@ -232,8 +254,15 @@ class SftpTab(Gtk.Box):
         gc.connect("pressed", self._on_right_click)
         self._cv.add_controller(gc)
 
-        # Drag-and-drop upload
-        drop = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY)
+        # Drag-and-drop upload / Remote-to-Remote
+        # In GTK4, to support multiple formats (GType and custom MIME), we must
+        # pass them via Gdk.ContentFormats to the DropTarget constructor.
+        formats = Gdk.ContentFormats.new([
+            "application/x-sentinel-sftp-source"
+        ])
+        formats = formats.union(Gdk.ContentFormats.new_for_gtype(Gdk.FileList))
+        
+        drop = Gtk.DropTarget(formats=formats, actions=Gdk.DragAction.COPY)
         drop.connect("drop", self._on_dnd_drop)
         self._cv.add_controller(drop)
 
@@ -270,6 +299,7 @@ class SftpTab(Gtk.Box):
         edit_sec.append(_("Delete"), "sftp.delete")
         m.append_section(None, edit_sec)
         xfer_sec = Gio.Menu()
+        xfer_sec.append(_("Upload Changes"), "sftp.sync-back")
         xfer_sec.append(_("Download…"), "sftp.download")
         m.append_section(None, xfer_sec)
         return m
@@ -281,6 +311,7 @@ class SftpTab(Gtk.Box):
             ("rename",     lambda *_: self._rename_selected()),
             ("delete",     lambda *_: self._delete_selected()),
             ("download",   lambda *_: self._download_selected()),
+            ("sync-back",  lambda *_: self._sync_selected()),
             ("new-file",   lambda *_: self._new_entry(is_folder=False)),
             ("new-folder", lambda *_: self._new_entry(is_folder=True)),
         ]
@@ -322,8 +353,7 @@ class SftpTab(Gtk.Box):
 
     # ── Cell setup / bind ───────────────────────────────────────────
 
-    @staticmethod
-    def _setup_name_cell(_f, li: Gtk.ListItem) -> None:
+    def _setup_name_cell(self, _f, li: Gtk.ListItem) -> None:
         box = Gtk.Box(spacing=8)
         box.append(Gtk.Image())
         label = Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END)
@@ -331,12 +361,136 @@ class SftpTab(Gtk.Box):
         box.append(label)
         li.set_child(box)
 
-    @staticmethod
-    def _bind_name_cell(_f, li: Gtk.ListItem) -> None:
+        # ── Setup Drag Source (Once per widget) ──
+        ds = Gtk.DragSource.new()
+        ds.set_actions(Gdk.DragAction.COPY)
+        # item will be retrieved at drag time via li.get_item()
+        ds.connect("prepare", lambda *args: self._on_drag_prepare_li(li, *args))
+        ds.connect("drag-begin", self._on_drag_begin)
+        box.add_controller(ds)
+
+    def _on_drag_prepare_li(self, li: Gtk.ListItem, _ds, _x, _y) -> Gdk.ContentProvider:
+        item = li.get_item()
+        if not item: return None
+        return self._on_drag_prepare(_ds, _x, _y, item)
+
+    def _bind_name_cell(self, _f, li: Gtk.ListItem) -> None:
         item: SftpFile = li.get_item()
         box = li.get_child()
-        box.get_first_child().set_from_icon_name(item.icon_name)
-        box.get_first_child().get_next_sibling().set_text(item.name)
+        if not (item and box): return
+        
+        # Explicit child lookup for robustness
+        img = box.get_first_child()
+        lbl = img.get_next_sibling() if img else None
+        
+        if img:
+            img.set_from_icon_name(item.icon_name)
+        if lbl:
+            lbl.set_text(item.name)
+
+    # Removed redundant DragSource setup from bind phase
+
+    def _on_drag_prepare(self, _ds: Gtk.DragSource, _x: float, _y: float, item: SftpFile) -> Gdk.ContentProvider:
+        remote_path = os.path.join(self._current_path, item.name)
+        
+        # 1. Custom MIME for Remote-to-Remote (internal relay)
+        meta = {
+            "conn_id": self._conn.id,
+            "remote_path": remote_path,
+            "filename": item.name,
+            "is_dir": item.is_dir,
+            "size": item.size,
+        }
+        bytes_data = GLib.Bytes.new(json.dumps(meta).encode("utf-8"))
+        cp_sentinel = Gdk.ContentProvider.new_for_bytes("application/x-sentinel-sftp-source", bytes_data)
+        
+        # 2. Support for external file managers (Local-to-Remote)
+        # To avoid 0-byte files, we download to .tmp and rename upon completion.
+        dnd_cache = os.path.join(GLib.get_user_cache_dir(), "sentinel", "dnd")
+        os.makedirs(dnd_cache, exist_ok=True)
+        
+        local_final = os.path.join(dnd_cache, item.name)
+        # Use a hidden .tmp name with timestamp
+        import time
+        tmp_name = f".{int(time.time())}-{item.name}.tmp"
+        local_tmp = os.path.join(dnd_cache, tmp_name)
+        
+        if not item.is_dir:
+            # Check if we are already downloading this
+            if remote_path not in self._dnd_downloads:
+                # User requested ALWAYS re-download
+                self._run_async(self._do_dnd_download(remote_path, local_tmp, local_final))
+
+        # We return the FINAL path. Nautilus will wait/retry if it doesn't exist 
+        # or show error, but won't get a 0-byte file while it's in .tmp state.
+        gfile = Gio.File.new_for_path(local_final)
+        fl = Gdk.FileList.new_from_list([gfile])
+        cp_files = Gdk.ContentProvider.new_for_value(fl)
+        
+        return Gdk.ContentProvider.new_union([cp_sentinel, cp_files])
+
+    async def _do_dnd_download(self, remote_path: str, tmp_path: str, final_path: str) -> None:
+        self._dnd_downloads.add(remote_path)
+        filename = os.path.basename(final_path)
+        
+        # Set UI to downloading state
+        GLib.idle_add(lambda: self._update_dnd_ui(True, filename))
+        
+        try:
+            # Download to .tmp
+            await self._backend.download(remote_path, tmp_path)
+            
+            # Atomic rename if final doesn't exist
+            if not os.path.exists(final_path):
+                os.rename(tmp_path, final_path)
+            else:
+                # If it appeared in between, just remove tmp
+                os.remove(tmp_path)
+                
+            logger.info("DND Download complete: %s", final_path)
+        except Exception as exc:
+            logger.error("DND Download failed: %s", exc)
+            try: os.remove(tmp_path)
+            except: pass
+        finally:
+            self._dnd_downloads.discard(remote_path)
+            GLib.idle_add(lambda: self._update_dnd_ui(False))
+
+    def _update_dnd_ui(self, active: bool, filename: str = "") -> None:
+        """Update tab icon and status label for DND activity."""
+        # Find the tab page to change icon
+        page = None
+        parent = self.get_parent()
+        while parent:
+            if parent.__class__.__name__ == "TabView": # Adw.TabView
+                # Find the page containing this widget
+                for i in range(parent.get_n_pages()):
+                    p = parent.get_nth_page(i)
+                    if p.get_child() == self:
+                        page = p
+                        break
+                break
+            parent = parent.get_parent()
+
+        if active:
+            self._status_lbl.set_label(_("Downloading for drag: {f}…").format(f=filename))
+            if page:
+                page.set_icon(Gio.ThemedIcon.new("folder-download-symbolic"))
+        else:
+            self._status_lbl.set_label(_("{n} items").format(n=self._store.get_n_items()))
+            if page:
+                page.set_icon(Gio.ThemedIcon.new("folder-symbolic"))
+
+    def _on_drag_begin(self, ds: Gtk.DragSource, drag: Gdk.Drag) -> None:
+        # ds.get_widget() is the ListItem's child (the Box)
+        # But we added the controller to the ListItem itself, so ds.get_widget()
+        # might be the Box we created.
+        box = ds.get_widget()
+        if box:
+            # icon from the first child (Image)
+            img = box.get_first_child()
+            if img:
+                ds.set_icon(img.get_paintable(), 0, 0)
 
     @staticmethod
     def _setup_text_cell(_f, li: Gtk.ListItem) -> None:
@@ -378,10 +532,10 @@ class SftpTab(Gtk.Box):
             self._spinner.stop()
             self._indicator.set_visible_child_name("ok")
         if message is not None:
-            self._status_lbl.set_text(message)
+            self._status_lbl.set_label(message)
 
     def _set_status(self, msg: str) -> None:
-        self._status_lbl.set_text(msg)
+        self._status_lbl.set_label(msg)
 
     # ── Connection ──────────────────────────────────────────────────
 
@@ -399,8 +553,29 @@ class SftpTab(Gtk.Box):
                     resolve(False)
             prompt_vault_unlock(self.get_root(), name, _after_pw)
 
+        def _ask_password_sftp(conn, resolve):
+            from utils.secure import SecureBytes
+            def _on_resolved(password: SecureBytes | None, remember: bool = False):
+                if password and remember:
+                    from services.vault_manager import VaultManager
+                    VaultManager.get().cache_password(
+                        item_id=conn.id,
+                        label=f"Password for {conn.username}@{conn.hostname}",
+                        password=password,
+                        hostname=conn.hostname,
+                        username=conn.username
+                    )
+                resolve(password)
+            prompt_password(
+                self.get_root(),
+                _("Password"),
+                f"{conn.username}@{conn.hostname}",
+                _on_resolved,
+                show_remember=True
+            )
+
         cbs = {
-            "ask_password":    lambda c, r: prompt_password(self.get_root(), _("Password"), c.hostname, r),
+            "ask_password":    _ask_password_sftp,
             "ask_passphrase":  lambda p, r: prompt_password(self.get_root(), _("Key Passphrase"), p, r),
             "ask_host_key":    lambda h, fp, alg, r: prompt_host_key(self.get_root(), h, fp, alg, r),
             "ask_vault_unlock": _ask_vault_unlock,
@@ -426,8 +601,8 @@ class SftpTab(Gtk.Box):
 
     def _on_connected(self, cwd: str) -> None:
         self._load_path(cwd)
-        # Start FUSE mount in background (best-effort; failure is non-fatal)
-        self._run_async(self._ensure_mount())
+        # Disable FUSE mount - we use pure SFTP for better reliability in Flatpak
+        # self._run_async(self._ensure_mount())
 
     async def _ensure_mount(self) -> None:
         path, err = await self._rclone.mount(self._conn, self._backend.auth_info)
@@ -510,10 +685,22 @@ class SftpTab(Gtk.Box):
     def _on_right_click(self, _g, _n, x: float, y: float) -> None:
         item = self._get_selected()
         has = item is not None
-        for name in ("open", "open-with", "rename", "delete", "download"):
+        can_sync = False
+        if has and not item.is_dir:
+            full_path = os.path.join(self._current_path, item.name)
+            # Find if this remote path has an active edit session
+            for session in self._edit_sessions.values():
+                if session.remote_path == full_path:
+                    can_sync = True
+                    break
+
+        for name in ("open", "open-with", "rename", "delete", "download", "sync-back"):
             act = self._ag.lookup_action(name)
             if act:
-                act.set_enabled(has)
+                if name == "sync-back":
+                    act.set_enabled(can_sync)
+                else:
+                    act.set_enabled(has)
         r = Gdk.Rectangle()
         r.x, r.y, r.width, r.height = int(x), int(y), 1, 1
         self._pop.set_pointing_to(r)
@@ -521,100 +708,264 @@ class SftpTab(Gtk.Box):
 
     # ── Open / Edit ─────────────────────────────────────────────────
 
+    async def _do_edit(self, item: SftpFile, use_chooser: bool = False) -> None:
+        """Download for edit using EXISTING session and launch app."""
+        remote_path = os.path.join(self._current_path, item.name)
+        GLib.idle_add(lambda: self._set_loading(True, _("Opening for edit…")))
+        
+        try:
+            # Generate a local path in the edit cache
+            # (Note: we use a unique subfolder per file to avoid collisions)
+            import hashlib
+            h = hashlib.md5(remote_path.encode()).hexdigest()[:16]
+            edit_dir = os.path.join(
+                GLib.get_user_cache_dir(), "sentinel", "edit", 
+                self._conn.id, h
+            )
+            os.makedirs(edit_dir, exist_ok=True)
+            local_path = os.path.join(edit_dir, item.name)
+            
+            logger.info("SFTP Session reuse: downloading %s for edit", remote_path)
+            # Reusing the existing SFTP session is MUCH faster than rclone copyto
+            await self._backend.get_file(remote_path, local_path)
+            
+            # Start monitoring the directory to catch renames (atomic saves)
+            self._start_edit_monitor(local_path, remote_path, item.name)
+            
+            if not use_chooser:
+                # FAST: Launch application via Portal directly
+                self._open_via_portal(local_path, ask=False)
+            else:
+                # REPLICA CHOOSER: Show custom app selection to avoid GNOME security smart design
+                mime_type = self._get_mime_type(local_path)
+                self._show_app_chooser(local_path, item.name, mime_type)
+            
+            GLib.idle_add(lambda: self._set_loading(False, _("Ready")))
+        except Exception as exc:
+            msg = str(exc)
+            logger.error("Edit failed: %s", msg)
+            GLib.idle_add(lambda: self._set_loading(False, msg))
+
+    def _get_mime_type(self, path: str) -> str:
+        try:
+            # 1. First try simple name/extension match
+            f = Gio.File.new_for_path(path)
+            info = f.query_info("standard::content-type", Gio.FileQueryInfoFlags.NONE, None)
+            content_type = info.get_content_type()
+            
+            # 2. If it's generic octet-stream, try to sniff content for text
+            if content_type in (None, "application/octet-stream", "application/x-zerosize", "unknown"):
+                try:
+                    with open(path, "rb") as bf:
+                        chunk = bf.read(1024)
+                        if chunk:
+                            # Use GLib to guess from data
+                            guessed_type, uncertainty = Gio.content_type_guess(path, chunk)
+                            if not uncertainty:
+                                content_type = guessed_type
+                except:
+                    pass
+            
+            # 3. Text fallback for extensionless files (very common for development files like 'print', 'README')
+            if content_type in (None, "application/octet-stream") and "." not in os.path.basename(path):
+                content_type = "text/plain"
+                
+            return content_type or "application/octet-stream"
+        except Exception:
+            return "application/octet-stream"
+
+    def _show_app_chooser(self, local_path: str, filename: str, mime_type: str) -> None:
+        """Show a custom app chooser dialog to avoid Portal restrictions."""
+        from views.dialogs import AppChooserReplica
+        
+        def _on_app_selected(app_info: Gio.AppInfo | None):
+            if app_info:
+                logger.info("SFTP: Selected app %s", app_info.get_name())
+                try:
+                    # Launch via our host bridge which handles portal sharing
+                    self._launch_app_on_host_path(app_info, local_path)
+                except Exception as e:
+                    logger.error("SFTP: App launch failed: %s", e)
+                    GLib.idle_add(lambda: self._set_loading(False, str(e)))
+            else:
+                # User chose "Use system chooser..." -> Fallback to Host Portal
+                self._run_portal_fallback(local_path, True, mime_type)
+
+        chooser = AppChooserReplica(
+            self.get_root(), 
+            filename, 
+            mime_type, 
+            _on_app_selected
+        )
+        chooser.present()
+
     def _open_selected(self, use_chooser: bool) -> None:
         item = self._get_selected()
         if item is None or item.is_dir:
             return
-        remote = os.path.join(self._current_path, item.name)
+        self._run_async(self._do_edit(item, use_chooser=use_chooser))
 
-        if item.size > MAX_DIRECT_EDIT_BYTES:
-            from views.dialogs import prompt_confirmation
-            prompt_confirmation(
-                self.get_root(), _("Large File Warning"),
-                _("This file is very large. Open anyway?"), _("Open"), False,
-                lambda yes: self._run_async(self._fetch_for_edit(remote, item, use_chooser)) if yes else None,
-            )
-        else:
-            self._run_async(self._fetch_for_edit(remote, item, use_chooser))
-
-    async def _fetch_for_edit(
-        self,
-        remote_path: str,
-        item: SftpFile,
-        use_chooser: bool,
-    ) -> None:
-        """Download *remote_path* via rclone, then open with default app."""
-        GLib.idle_add(lambda: self._set_loading(True, _("Downloading for edit…")))
-        local_path, err = await self._rclone.download_for_edit(
-            self._conn, self._backend.auth_info, remote_path
-        )
-        if err or not local_path:
-            GLib.idle_add(lambda: self._set_loading(False, err or _("Download failed")))
-            return
-        GLib.idle_add(lambda: self._launch_edit(local_path, remote_path, item, use_chooser))
-
-    def _launch_edit(
-        self,
-        local_path: str,
-        remote_path: str,
-        item: SftpFile,
-        use_chooser: bool,
-    ) -> None:
-        self._set_loading(False)
-
-        def _after_launch() -> None:
-            self._start_edit_monitor(local_path, remote_path, item.name)
-
+    def _open_via_portal(self, local_path: str, ask: bool) -> None:
+        """Professional bridge: Share via Document Portal to trigger Host-side Full Chooser."""
+        logger.info("SFTP: Opening via Host Bridge %s (ask=%s)", local_path, ask)
+        
+        # Determine MIME hint
+        content_type = "application/octet-stream"
         try:
-            if use_chooser and not self._is_flatpak:
-                # AppChooserDialog only makes sense outside Flatpak where the
-                # full host app database is visible.  Inside the sandbox, we
-                # always fall through to xdg-open / flatpak-spawn.
-                gfile = Gio.File.new_for_path(local_path)
-                try:
-                    ct = gfile.query_info("standard::content-type", 0, None).get_content_type()
-                except Exception:
-                    ct = "application/octet-stream"
-                dlg = Gtk.AppChooserDialog.new_for_content_type(self.get_root(), 0, ct)
-                dlg.connect("response", self._on_chooser_response, local_path, remote_path, item.name)
-                dlg.present()
-                return  # monitor is started in _on_chooser_response
+            f = Gio.File.new_for_path(local_path)
+            info = f.query_info("standard::content-type", Gio.FileQueryInfoFlags.NONE, None)
+            content_type = info.get_content_type()
+            if content_type in ("application/x-zerosize", "application/octet-stream"):
+                guessed, _ = Gio.content_type_guess(local_path, None)
+                if guessed: content_type = guessed
+        except: pass
 
-            # Flatpak: use flatpak-spawn --host xdg-open so the host's desktop
-            # environment handles MIME lookup — the sandbox cannot do this.
-            # Outside Flatpak: use Gio.AppInfo directly.
-            if self._is_flatpak:
-                import subprocess
-                subprocess.Popen(
-                    ["flatpak-spawn", "--host", "xdg-open", local_path],
-                    close_fds=True,
-                )
-            else:
-                gfile = Gio.File.new_for_path(local_path)
-                handler = gfile.query_default_handler(None)
-                if handler:
-                    handler.launch([gfile], None)
-                else:
-                    Gio.AppInfo.launch_default_for_uri(gfile.get_uri(), None)
-            _after_launch()
+        if not self._is_flatpak:
+            # Native: just use standard portal
+            self._do_call_portal_v3("", local_path, ask, content_type)
+            return
+
+        # ── Custom Application Chooser for Flatpak ──
+        if ask:
+             try:
+                 GLib.idle_add(lambda: self._show_app_chooser(local_path, os.path.basename(local_path), content_type))
+                 return
+             except Exception as e:
+                 logger.error("SFTP: Failed to show custom app chooser: %s", e)
+                 # Fallback to portal below...
+        
+        try:
+            # First, we need to add the file to the document portal
+            fd = os.open(local_path, os.O_RDONLY)
+            fd_list = Gio.UnixFDList.new_from_array([fd])
+            
+            conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+            
+            # org.freedesktop.portal.Documents.Add(o, b, b)
+            # o: FD, b: reuse_existing, b: persistent
+            var = GLib.Variant("(hbb)", (0, True, False))
+            
+            def _on_doc_added(obj, res):
+                try:
+                    out_var, _ = obj.call_with_unix_fd_list_finish(res)
+                    doc_id = out_var.get_child_value(0).get_string()
+                    logger.info("SFTP: Shared via Document Portal: %s", doc_id)
+                    
+                    # Construct the host-side path
+                    # Document portal paths follow /run/user/$UID/doc/$DOC_ID/$BASENAME
+                    import getpass
+                    uid = os.getuid()
+                    basename = os.path.basename(local_path)
+                    host_path = f"/run/user/{uid}/doc/{doc_id}/{basename}"
+                    
+                    # Trigger host-side launch
+                    import subprocess
+                    if not ask:
+                        # FAST TRACK: Just open with host's default
+                        cmd = ["flatpak-spawn", "--host", "xdg-open", host_path]
+                        subprocess.Popen(cmd)
+                        logger.info("SFTP: Host-side default launch: %s", host_path)
+                    else:
+                        # Use host gdbus to trigger the Portal's own chooser on the host
+                        # This is the "security smart design" part.
+                        gdbus_cmd = [
+                            "flatpak-spawn", "--host", "gdbus", "call", "--session",
+                            "--dest", "org.freedesktop.portal.Desktop",
+                            "--object-path", "/org/freedesktop/portal/desktop",
+                            "--method", "org.freedesktop.portal.OpenURI.OpenURI",
+                            "", # parent_window
+                            f"file://{host_path}",
+                            "{'ask': <true>}"
+                        ]
+                        subprocess.Popen(gdbus_cmd)
+                        logger.info("SFTP: Host-side portal chooser triggered via gdbus: %s", host_path)
+
+                except Exception as e:
+                    logger.error("SFTP: Document Portal sharing failed: %s", e)
+                    self._do_call_portal_v3("", local_path, ask, content_type)
+                finally:
+                    try: os.close(fd)
+                    except: pass
+
+            conn.call_with_unix_fd_list(
+                "org.freedesktop.portal.Documents",
+                "/org/freedesktop/portal/documents",
+                "org.freedesktop.portal.Documents",
+                "Add",
+                var,
+                None,
+                Gio.DBusCallFlags.NONE,
+                -1,
+                fd_list,
+                None,
+                _on_doc_added
+            )
+        except Exception as e:
+            logger.error("SFTP: Bridge setup failed: %s", e)
+            self._do_call_portal_v3("", local_path, ask, content_type)
+
+    def _do_call_portal(self, handle: str, local_path: str, ask: bool, mime_type: str) -> None:
+        import os
+        fd = -1
+        try:
+            # Try high-privilege access first for editors
+            try:
+                fd = os.open(local_path, os.O_RDWR)
+            except OSError:
+                fd = os.open(local_path, os.O_RDONLY)
+
+            fd_list = Gio.UnixFDList.new_from_array([fd])
+            
+            # The "secret" to the GNOME 50 full list is providing:
+            # 1. Parent window handle
+            # 2. explicit 'mime-type' hint (resolves "short list" issues)
+            # 3. 'writable' flag (triggers editor prioritization)
+            options = {
+                "ask":       GLib.Variant("b", ask),
+                "writable":  GLib.Variant("b", True),
+                "mime-type": GLib.Variant("s", mime_type),
+            }
+            
+            conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+
+            def _on_call_done(obj, res):
+                try:
+                    obj.call_with_unix_fd_list_finish(res)
+                    logger.info("SFTP: Portal OpenFile call sent")
+                except Exception as e:
+                    logger.error("SFTP: Portal OpenFile failed: %s", e)
+                finally:
+                    try: os.close(fd)
+                    except: pass
+
+            conn.call_with_unix_fd_list(
+                "org.freedesktop.portal.Desktop",
+                "/org/freedesktop/portal/desktop",
+                "org.freedesktop.portal.OpenURI",
+                "OpenFile",
+                GLib.Variant("(sha{sv})", (handle, 0, options)),
+                None,
+                Gio.DBusCallFlags.NONE,
+                -1,
+                fd_list,
+                None,
+                _on_call_done
+            )
         except Exception as exc:
-            logger.error("_launch_edit: %s", exc)
-            self._set_status(str(exc))
+            logger.error("SFTP: Portal setup failed: %s", exc)
+            if fd >= 0:
+                try: os.close(fd)
+                except: pass
+            self._fallback_open(local_path)
 
-    def _on_chooser_response(
-        self, dlg: Gtk.AppChooserDialog, resp: int,
-        local_path: str, remote_path: str, filename: str,
-    ) -> None:
-        if resp == Gtk.ResponseType.OK:
-            app = dlg.get_app_info()
-            if app:
-                gfile = Gio.File.new_for_path(local_path)
-                try:
-                    app.launch([gfile], None)
-                except Exception as exc:
-                    logger.error("AppChooser launch failed: %s", exc)
-                self._start_edit_monitor(local_path, remote_path, filename)
-        dlg.destroy()
+    def _fallback_open(self, local_path: str) -> None:
+        import subprocess
+        cmd = ["flatpak-spawn", "--host", "xdg-open", local_path] if self._is_flatpak else ["xdg-open", local_path]
+        try:
+            logger.info("SFTP: Fallback open triggered")
+            subprocess.Popen(cmd)
+        except Exception as e:
+            logger.error("SFTP: Final fallback failed: %s", e)
 
     # ── Edit monitor ────────────────────────────────────────────────
 
@@ -627,8 +978,10 @@ class SftpTab(Gtk.Box):
         if local_path in self._edit_sessions:
             return   # Already monitoring
         try:
-            mon = Gio.File.new_for_path(local_path).monitor_file(
-                Gio.FileMonitorFlags.NONE, None
+            # We monitor the DIRECTORY to catch atomic saves (rename-over)
+            directory = os.path.dirname(local_path)
+            mon = Gio.File.new_for_path(directory).monitor_directory(
+                Gio.FileMonitorFlags.WATCH_MOUNTS, None
             )
             session = EditSession(
                 local_path=local_path,
@@ -636,24 +989,31 @@ class SftpTab(Gtk.Box):
                 filename=filename,
                 mtime=os.path.getmtime(local_path),
                 monitor=mon,
+                directory=directory,
             )
             mon.connect("changed", self._on_monitor_event, local_path)
             self._edit_sessions[local_path] = session
-            logger.info("EditMonitor started: %s -> %s", local_path, remote_path)
+            logger.info("EditMonitor (DIR) started: %s -> %s", directory, remote_path)
         except Exception as exc:
             logger.error("Failed to start file monitor: %s", exc)
 
     def _on_monitor_event(
         self,
         _mon: Gio.FileMonitor,
-        _file: Gio.File,
+        file: Gio.File,
         _other: Gio.File | None,
         event: Gio.FileMonitorEvent,
         local_path: str,
     ) -> None:
+        # Since we monitor the directory, check if the changed file is ours
+        if file.get_path() != local_path:
+            return
+
         if event not in (
             Gio.FileMonitorEvent.CHANGES_DONE_HINT,
             Gio.FileMonitorEvent.CHANGED,
+            Gio.FileMonitorEvent.CREATED,
+            Gio.FileMonitorEvent.MOVED_IN,
         ):
             return
         session = self._edit_sessions.get(local_path)
@@ -666,7 +1026,19 @@ class SftpTab(Gtk.Box):
         if new_mtime <= session.mtime:
             return
         session.mtime = new_mtime
-        GLib.idle_add(self._prompt_or_auto_sync, local_path)
+
+        # Debounce: wait 1 second after the last change (reduced for better sync)
+        if session.timer_id:
+            GLib.source_remove(session.timer_id)
+
+        session.timer_id = GLib.timeout_add(1000, self._on_debounce_timeout, local_path)
+
+    def _on_debounce_timeout(self, local_path: str) -> bool:
+        session = self._edit_sessions.get(local_path)
+        if session:
+            session.timer_id = 0
+            self._prompt_or_auto_sync(local_path)
+        return False
 
     def _prompt_or_auto_sync(self, local_path: str) -> None:
         session = self._edit_sessions.get(local_path)
@@ -703,11 +1075,28 @@ class SftpTab(Gtk.Box):
             try:
                 await self._backend.put_file(session.local_path, session.remote_path)
                 GLib.idle_add(lambda n=session.filename: self._set_loading(False, _(f"Synced {n}")))
+
+                # Auto-refresh if the file belongs to the current directory
+                remote_dir = os.path.dirname(session.remote_path)
+                if remote_dir == self._current_path:
+                    GLib.idle_add(lambda: self._load_path(self._current_path))
             except Exception as exc:
-                logger.error("Sync-back failed: %s", exc)
-                GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+                msg = str(exc)
+                logger.error("Sync-back failed: %s", msg)
+                GLib.idle_add(lambda: self._set_loading(False, msg))
 
         self._run_async(_sync())
+
+    def _sync_selected(self) -> None:
+        """Manually trigger sync-back for the selected item."""
+        item = self._get_selected()
+        if item is None or item.is_dir:
+            return
+        full_path = os.path.join(self._current_path, item.name)
+        for local_path, session in self._edit_sessions.items():
+            if session.remote_path == full_path:
+                self._do_sync_back(local_path)
+                break
 
     # ── New file / folder ────────────────────────────────────────────
 
@@ -729,8 +1118,9 @@ class SftpTab(Gtk.Box):
                 await self._backend.create_file(path)
             GLib.idle_add(lambda: self._load_path(self._current_path))
         except Exception as exc:
-            logger.error("create_entry failed: %s", exc)
-            GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+            msg = str(exc)
+            logger.error("create_entry failed: %s", msg)
+            GLib.idle_add(lambda: self._set_loading(False, msg))
 
     # ── Rename ──────────────────────────────────────────────────────
 
@@ -752,8 +1142,9 @@ class SftpTab(Gtk.Box):
             await self._backend.rename(old, new)
             GLib.idle_add(lambda: self._load_path(self._current_path))
         except Exception as exc:
-            logger.error("rename failed: %s", exc)
-            GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+            msg = str(exc)
+            logger.error("rename failed: %s", msg)
+            GLib.idle_add(lambda: self._set_loading(False, msg))
 
     # ── Delete ──────────────────────────────────────────────────────
 
@@ -774,8 +1165,9 @@ class SftpTab(Gtk.Box):
             await self._backend.remove(path, item.is_dir)
             GLib.idle_add(lambda: self._load_path(self._current_path))
         except Exception as exc:
-            logger.error("delete failed: %s", exc)
-            GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+            msg = str(exc)
+            logger.error("delete failed: %s", msg)
+            GLib.idle_add(lambda: self._set_loading(False, msg))
 
     # ── Download ────────────────────────────────────────────────────
 
@@ -821,26 +1213,116 @@ class SftpTab(Gtk.Box):
             await self._backend.download(remote_path, local_path)
             GLib.idle_add(lambda: self._set_loading(False, _(f"Downloaded {display_name}")))
         except Exception as exc:
-            logger.error("download failed: %s", exc)
-            GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+            msg = str(exc)
+            logger.error("download failed: %s", msg)
+            GLib.idle_add(lambda: self._set_loading(False, msg))
 
     # ── Drag-and-drop upload ─────────────────────────────────────────
 
     def _on_dnd_drop(
         self,
         _target: Gtk.DropTarget,
-        value: Gdk.FileList,
+        value: Any,
         _x: float,
         _y: float,
     ) -> bool:
-        files = value.get_files()
-        if not files:
-            return False
-        paths = [f.get_path() for f in files if f.get_path()]
-        if not paths:
-            return False
-        self._run_async(self._do_upload(paths))
-        return True
+        if isinstance(value, Gdk.FileList):
+            files = value.get_files()
+            if not files:
+                return False
+            paths = [f.get_path() for f in files if f.get_path()]
+            if not paths:
+                return False
+            self._run_async(self._do_upload(paths))
+            return True
+        elif isinstance(value, GLib.Bytes):
+            # Internal remote-to-remote drop
+            try:
+                data = json.loads(value.get_data().decode("utf-8"))
+                source_conn_id = data.get("conn_id")
+                remote_path    = data.get("remote_path")
+                filename       = data.get("filename")
+                
+                if source_conn_id == self._conn.id:
+                    # Same server, maybe move? For now just ignore or copy locally
+                    # but logic is more complex for server-side copy.
+                    return False
+                
+                self._run_async(self._do_remote_to_remote(source_conn_id, remote_path, filename))
+                return True
+            except Exception as exc:
+                logger.error("Failed to parse DnD metadata: %s", exc)
+                return False
+        
+        return False
+
+    async def _do_remote_to_remote(self, source_conn_id: str, source_path: str, filename: str) -> None:
+        """Transfer file from another server to this server using local relay."""
+        GLib.idle_add(lambda: self._update_dnd_ui(True, filename))
+        GLib.idle_add(lambda: self._set_loading(True, _("Transferring from another server…")))
+        
+        try:
+            # 1. Find existing service or create temporary
+            from views.terminal_view import TerminalTabView
+            # We try to find the TabView from the widget tree
+            # This is safer than the app.get_active_window hack
+            tab_view = None
+            parent = self.get_parent()
+            while parent:
+                # In our app, SftpTab is a child of the TabView's widget
+                # Or we can check if the parent has the find_sftp_service method
+                if hasattr(parent, "find_sftp_service"):
+                    tab_view = parent
+                    break
+                # If not, maybe it's in the main window
+                if parent.__class__.__name__ == "MainWindow" and hasattr(parent, "_terminal_tab_view"):
+                    tab_view = parent._terminal_tab_view
+                    break
+                parent = parent.get_parent()
+            
+            source_svc = None
+            if tab_view:
+                source_svc = tab_view.find_sftp_service(source_conn_id)
+            
+            if not source_svc:
+                # Fallback: Create a temporary service if the tab was closed
+                db = Database()
+                db.open()
+                source_conn = db.get_connection(source_conn_id)
+                db.close()
+                if not source_conn:
+                    raise Exception("Source connection not found")
+                
+                source_svc = SftpService(source_conn, self._ssh)
+                # This might trigger UI for password if not cached
+                await source_svc.connect({}) 
+            
+            # 2. Sequential transfer to avoid 0-byte issues
+            relay_dir = os.path.join(GLib.get_user_cache_dir(), "sentinel", "relay")
+            os.makedirs(relay_dir, exist_ok=True)
+            local_relay = os.path.join(relay_dir, filename)
+            
+            # Download from source
+            await source_svc.download(source_path, local_relay)
+            
+            # Upload to this destination
+            await self._backend.upload([local_relay], self._current_path)
+            
+            # Clean up relay
+            try: os.remove(local_relay)
+            except: pass
+            
+            GLib.idle_add(lambda: self._load_path(self._current_path))
+        except Exception as exc:
+            msg = str(exc)
+            logger.error("SFTP Connect failed: %s", msg)
+            GLib.idle_add(lambda: self._set_loading(False, msg))
+            return
+
+        # Disable rclone mount - fully commented out to prevent fusermount3 errors
+        # self._run_async(self._rclone.mount(self._conn.id, self._conn, self._backend.auth_info))
+        
+        GLib.idle_add(lambda: self._load_path(self._current_path))
 
     async def _do_upload(self, local_paths: list[str]) -> None:
         GLib.idle_add(lambda: self._set_loading(True, _("Uploading…")))
@@ -848,8 +1330,9 @@ class SftpTab(Gtk.Box):
             await self._backend.upload(local_paths, self._current_path)
             GLib.idle_add(lambda: self._load_path(self._current_path))
         except Exception as exc:
-            logger.error("upload failed: %s", exc)
-            GLib.idle_add(lambda: self._set_loading(False, str(exc)))
+            msg = str(exc)
+            logger.error("upload failed: %s", msg)
+            GLib.idle_add(lambda: self._set_loading(False, msg))
 
     # ── Toggle actions ───────────────────────────────────────────────
 
@@ -861,3 +1344,83 @@ class SftpTab(Gtk.Box):
         action.set_state(GLib.Variant.new_boolean(new_val))
         if attr == "_show_hidden":
             self._refresh_store()
+    def _launch_app_on_host_path(self, app_info: Gio.AppInfo, local_path: str) -> None:
+        """Share with portal and then launch SPECIFIC app on host."""
+        basename = os.path.basename(local_path)
+        logger.info("SFTP: Preparing to launch host app %s on %s", app_info.get_name(), basename)
+        
+        try:
+            fd = os.open(local_path, os.O_RDONLY)
+            fd_list = Gio.UnixFDList.new_from_array([fd])
+            conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+            
+            def _on_doc_added(obj, res):
+                try:
+                    out_var, _ = obj.call_with_unix_fd_list_finish(res)
+                    doc_id = out_var.get_child_value(0).get_string()
+                    uid = os.getuid()
+                    host_path = f"/run/user/{uid}/doc/{doc_id}/{basename}"
+                    
+                    # Launch
+                    exe = app_info.get_commandline().split(" %")[0].replace('"', "").strip()
+                    logger.info("SFTP: Launching on host: %s %s", exe, host_path)
+                    
+                    import subprocess
+                    subprocess.Popen(["flatpak-spawn", "--host", exe, host_path])
+                except Exception as e:
+                    logger.error("SFTP: Host launch preparation failed: %s", e)
+                finally:
+                    # In async callback, ensure we close the captured fd
+                    try: os.close(fd or -1)
+                    except: pass
+
+            conn.call_with_unix_fd_list(
+                "org.freedesktop.portal.Documents", "/org/freedesktop/portal/documents",
+                "org.freedesktop.portal.Documents", "Add",
+                GLib.Variant("(hbb)", (0, True, False)),
+                None, Gio.DBusCallFlags.NONE, -1, fd_list, None, _on_doc_added
+            )
+        except Exception as err:
+            logger.error("Failed to share for host launch: %s", err)
+
+    def _run_portal_fallback(self, local_path: str, ask: bool, content_type: str) -> None:
+        """Actual fallback to host's own OpenURI portal."""
+        # This repeats some of logic but is used for "Use system chooser..."
+        try:
+            fd = os.open(local_path, os.O_RDONLY)
+            fd_list = Gio.UnixFDList.new_from_array([fd])
+            conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+            
+            def _on_doc_added(obj, res):
+                try:
+                    out_var, _ = obj.call_with_unix_fd_list_finish(res)
+                    doc_id = out_var.get_child_value(0).get_string()
+                    uid = os.getuid()
+                    basename = os.path.basename(local_path)
+                    host_path = f"/run/user/{uid}/doc/{doc_id}/{basename}"
+                    
+                    import subprocess
+                    gdbus_cmd = [
+                        "flatpak-spawn", "--host", "gdbus", "call", "--session",
+                        "--dest", "org.freedesktop.portal.Desktop",
+                        "--object-path", "/org/freedesktop/portal/desktop",
+                        "--method", "org.freedesktop.portal.OpenURI.OpenURI",
+                        "", # parent_window
+                        f"file://{host_path}",
+                        "{'ask': <true>}"
+                    ]
+                    subprocess.Popen(gdbus_cmd)
+                    logger.info("SFTP: Triggered host portal fallback for %s", host_path)
+                except Exception as ex:
+                    logger.error("Portal fallback failed: %s", ex)
+                finally:
+                    try: os.close(fd)
+                    except: pass
+
+            conn.call_with_unix_fd_list(
+                "org.freedesktop.portal.Documents", "/org/freedesktop/portal/documents",
+                "org.freedesktop.portal.Documents", "Add",
+                GLib.Variant("(hbb)", (0, True, False)),
+                None, Gio.DBusCallFlags.NONE, -1, fd_list, None, _on_doc_added
+            )
+        except: pass

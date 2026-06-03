@@ -16,6 +16,10 @@ finish-args:
   - --talk-name=org.gtk.vfs.*
   - --talk-name=org.freedesktop.secrets
   - --talk-name=org.freedesktop.Flatpak
+  - --filesystem=xdg-config/fontconfig:ro
+  - --filesystem=~/.local/share/fonts:ro
+  - --filesystem=~/.fonts:ro
+  - --filesystem=/usr/share/fonts:ro
 
 modules:
   - name: rclone

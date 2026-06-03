@@ -197,9 +197,9 @@ class ConnectionListSidebar:
                     logger.debug(f"Sidebar: Found OS icon at {path}")
                     icon_file = Gio.File.new_for_path(str(path))
                     gicon = Gio.FileIcon.new(icon_file)
-                img = Gtk.Image.new_from_gicon(gicon)
-                img.set_pixel_size(16)
-                return img
+                    img = Gtk.Image.new_from_gicon(gicon)
+                    img.set_pixel_size(16)
+                    return img
 
         # Fallback to default
         return Gtk.Image.new_from_icon_name("network-server-symbolic")

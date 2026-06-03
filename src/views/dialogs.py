@@ -3,15 +3,24 @@
 """Dialog implementations for SSH authentication (Password, Host Key)."""
 
 import asyncio
+import json
+import os
+import subprocess
 from typing import Callable
 import gettext
-from gi.repository import Adw, Gtk, GLib, Gdk
+from gi.repository import Adw, Gtk, GLib, Gdk, Gio
 from utils.secure import SecureBytes
 
 _ = gettext.gettext
 
 
-def prompt_password(parent: Gtk.Window, title: str, subtitle: str, callback: Callable[[SecureBytes | None], None]) -> None:
+def prompt_password(
+    parent: Gtk.Window,
+    title: str,
+    subtitle: str,
+    callback: Callable[[SecureBytes | None, bool], None] | Callable[[SecureBytes | None], None],
+    show_remember: bool = False
+) -> None:
     """Prompt the user for a password or passphrase."""
     dialog = Adw.MessageDialog(
         heading=title,
@@ -30,18 +39,34 @@ def prompt_password(parent: Gtk.Window, title: str, subtitle: str, callback: Cal
     entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
     entry.set_margin_top(12)
     
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    box.append(entry)
+    
+    remember_check = None
+    if show_remember:
+        remember_check = Gtk.CheckButton(label=_("Remember password"))
+        remember_check.set_margin_top(6)
+        box.append(remember_check)
+    
     # Enter key behavior
     def _on_activate(_e: Gtk.Entry) -> None:
         dialog.response("ok")
     entry.connect("activate", _on_activate)
     
-    dialog.set_extra_child(entry)
+    dialog.set_extra_child(box)
 
     def _on_response(d: Adw.MessageDialog, response: str) -> None:
         if response == "ok":
-            callback(SecureBytes(entry.get_text()))
+            if show_remember:
+                remember = remember_check.get_active() if remember_check else False
+                callback(SecureBytes(entry.get_text()), remember)
+            else:
+                callback(SecureBytes(entry.get_text()))
         else:
-            callback(None)
+            if show_remember:
+                callback(None, False)
+            else:
+                callback(None)
         # Explicitly destroy to ensure it leaves the screen
         d.destroy()
         
@@ -441,4 +466,210 @@ def show_file_properties(parent: Gtk.Window, file_info: dict) -> None:
     """Show the new detailed file properties dialog."""
     dialog = FilePropertiesDialog(parent, file_info)
     dialog.present()
+
+
+class AppChooserReplica(Adw.Window):
+    """Custom application chooser that looks like the system one but is internal."""
+    
+    def __init__(self, parent: Gtk.Window, filename: str, mime_type: str, callback: Callable[[Gio.AppInfo | None], None]) -> None:
+        super().__init__(modal=True, transient_for=parent)
+        self.set_title(_("Open {f}").format(f=filename))
+        self.set_default_size(420, 520)
+        
+        self._callback = callback
+        self._done = False
+        
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        
+        # Header
+        header = Adw.HeaderBar()
+        cancel_btn = Gtk.Button(label=_("Cancel"))
+        cancel_btn.connect("clicked", lambda _: self._finish(None))
+        header.pack_start(cancel_btn)
+        
+        open_btn = Gtk.Button(label=_("Open"))
+        open_btn.add_css_class("suggested-action")
+        open_btn.connect("clicked", self._on_open_clicked)
+        header.pack_end(open_btn)
+        self._open_btn = open_btn
+        self._open_btn.set_sensitive(False)
+        
+        box.append(header)
+        
+        # Search Entry (Filtering only)
+        search_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        search_box.set_margin_top(12)
+        search_box.set_margin_bottom(12)
+        search_box.set_margin_start(12)
+        search_box.set_margin_end(12)
+        
+        search_entry = Gtk.SearchEntry()
+        search_entry.set_placeholder_text(_("Search applications…"))
+        search_box.append(search_entry)
+        
+        box.append(search_box)
+        self._search_entry = search_entry
+        
+        # List of apps
+        scroll = Gtk.ScrolledWindow(vexpand=True)
+        self._list_box = Gtk.ListBox()
+        self._list_box.add_css_class("boxed-list")
+        self._list_box.set_margin_start(12)
+        self._list_box.set_margin_end(12)
+        self._list_box.set_margin_bottom(12)
+        self._list_box.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self._list_box.connect("row-activated", lambda *_: self._on_open_clicked())
+        self._list_box.connect("selected-rows-changed", self._on_selection_changed)
+        
+        scroll.set_child(self._list_box)
+        box.append(scroll)
+        
+        box.append(scroll)
+        self.set_content(box)
+        
+        # Load apps
+        self._load_apps(mime_type)
+        
+        # Filtering
+        search_entry.connect("search-changed", self._on_search_changed)
+        
+    def _load_apps(self, mime_type: str) -> None:
+        from gi.repository import Gio
+        
+        # 1. Get standard sandbox visible apps
+        recommended = Gio.AppInfo.get_all_for_type(mime_type)
+        all_apps = Gio.AppInfo.get_all()
+        
+        # 2. Try to fetch Host-side applications if in Flatpak
+        host_apps = []
+        try:
+            # Using the Gio approach recommended by the developer (it's cleaner and handles translations)
+            # We run it on the host to see all host-registered apps.
+            host_cmd = [
+                "flatpak-spawn", "--host", "python3", "-c",
+                "import gi, json; gi.require_version('Gio', '2.0'); from gi.repository import Gio; "
+                "apps=[{'name': a.get_name(), 'icon': a.get_icon().to_string() if a.get_icon() else None, 'exec': a.get_commandline()} "
+                "for a in Gio.AppInfo.get_all() if a.should_show()]; "
+                "print(json.dumps(apps))"
+            ]
+            
+            GLib.idle_add(lambda: print("Sentinel: Scanning host-side applications via Gio..."))
+            proc = subprocess.Popen(host_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = proc.communicate()
+            
+            if err:
+                err_msg = err.decode()
+                GLib.idle_add(lambda: print(f"Sentinel: Host-scan diagnostic: {err_msg}"))
+                
+            if out:
+                host_apps = json.loads(out.decode())
+                n = len(host_apps)
+                GLib.idle_add(lambda: print(f"Sentinel: Discovered {n} host applications."))
+            else:
+                GLib.idle_add(lambda: print("Sentinel: Host-scan returned no applications."))
+        except Exception as e:
+            err_str = str(e)
+            GLib.idle_add(lambda: print(f"Sentinel: Host-scan system error: {err_str}"))
+
+        # Deduplicate and sort: Recommended first
+        seen_names = set()
+        
+        # 1. Recommended Apps section (Sandbox)
+        if recommended:
+            self._add_section_header(_("Recommended Apps"))
+            for app in recommended:
+                name = app.get_name()
+                if name in seen_names: continue
+                seen_names.add(name)
+                self._add_app_row(app)
+
+        # 2. Host Applications section (Crucial for "Arbitrary Application" freedom)
+        if host_apps:
+            # Filter out standard ones to show meaningful Host-only ones
+            to_add = []
+            for ha in host_apps:
+                if ha['name'] in seen_names: continue
+                # Basic filtering of known "dumb" utilities or duplicates
+                if ha['name'] in ("Settings", "Files", "Terminal", "Help"): continue
+                to_add.append(ha)
+                
+            if to_add:
+                self._add_section_header(_("Host Applications"))
+                # Sort Host apps
+                to_add.sort(key=lambda x: x['name'].lower())
+                for ha in to_add:
+                    if ha['name'] in seen_names: continue
+                    seen_names.add(ha['name'])
+                    # We wrap the host command as a dummy AppInfo
+                    # Strip % vars from exec
+                    clean_exec = ha['exec'].split(' %')[0].replace('"', '').strip()
+                    app = Gio.AppInfo.create_from_commandline(clean_exec, ha['name'], Gio.AppInfoCreateFlags.NONE)
+                    self._add_app_row(app, custom_icon=ha['icon'])
+
+        # 3. Add any remaining Sandbox Apps
+        self._add_section_header(_("Other Sandbox Apps"))
+        others = sorted(
+            [a for a in all_apps if a.get_name() not in seen_names], 
+            key=lambda x: x.get_name().lower()
+        )
+        for app in others:
+            self._add_app_row(app)
+
+    def _add_section_header(self, text: str) -> None:
+        header_row = Gtk.ListBoxRow(selectable=False, activatable=False)
+        header_row.set_child(Gtk.Label(label=text, xalign=0, margin_top=12, margin_bottom=6))
+        header_row.add_css_class("dim-label")
+        header_row.add_css_class("caption")
+        header_row.set_margin_start(12)
+        self._list_box.append(header_row)
+
+    def _add_app_row(self, app: Gio.AppInfo, custom_icon: str | None = None) -> None:
+        row = Adw.ActionRow(title=app.get_name(), subtitle=app.get_description() or "")
+        
+        # Icon handling (Best effort)
+        icon_widget = None
+        if custom_icon:
+            if "/" in custom_icon:
+                # It's a path, but in sandbox it might not resolve.
+                # However, many host paths for icons are in /usr/share/icons
+                icon_widget = Gtk.Image.new_from_icon_name(os.path.basename(custom_icon).split(".")[0])
+            else:
+                icon_widget = Gtk.Image.new_from_icon_name(custom_icon)
+        
+        if not icon_widget or icon_widget.get_icon_name() is None:
+            gicon = app.get_icon()
+            if gicon:
+                icon_widget = Gtk.Image.new_from_gicon(gicon)
+            else:
+                icon_widget = Gtk.Image.new_from_icon_name("application-x-executable-symbolic")
+                
+        icon_widget.set_pixel_size(32)
+        row.add_prefix(icon_widget)
+        
+        setattr(row, "_app_info", app)
+        self._list_box.append(row)
+
+    def _on_search_changed(self, entry: Gtk.SearchEntry) -> None:
+        text = entry.get_text().lower()
+        row = self._list_box.get_first_child()
+        while row:
+            if isinstance(row, Adw.ActionRow):
+                title = row.get_title().lower()
+                row.set_visible(text in title)
+            row = row.get_next_sibling()
+
+    def _on_selection_changed(self, lb: Gtk.ListBox) -> None:
+        row = lb.get_selected_row()
+        self._open_btn.set_sensitive(row is not None and isinstance(row, Adw.ActionRow))
+
+    def _on_open_clicked(self, *args) -> None:
+        row = self._list_box.get_selected_row()
+        if row and isinstance(row, Adw.ActionRow):
+            self._finish(getattr(row, "_app_info", None))
+
+    def _finish(self, app_info: Gio.AppInfo | None) -> None:
+        if not self._done:
+            self._done = True
+            self._callback(app_info)
+            self.destroy()
 
