@@ -24,11 +24,12 @@ class ForwardRule:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     connection_id: str = ""
     type: ForwardType = ForwardType.LOCAL
-    bind_address: str = "127.0.0.1"
+    bind_address: str = "localhost"
     bind_port: int = 0
-    remote_host: str | None = None
+    remote_host: str | None = "localhost"
     remote_port: int | None = None
     enabled: bool = True
+    auto_start: bool = True
 
     def validate(self) -> None:
         validate_port(self.bind_port)
@@ -48,6 +49,7 @@ class ForwardRule:
             "remote_host": self.remote_host,
             "remote_port": self.remote_port,
             "enabled": int(self.enabled),
+            "auto_start": int(self.auto_start),
         }
 
     @classmethod
@@ -56,9 +58,10 @@ class ForwardRule:
             id=data["id"],
             connection_id=data["connection_id"],
             type=ForwardType(data["type"]),
-            bind_address=data.get("bind_address", "127.0.0.1"),
+            bind_address=data.get("bind_address", "localhost"),
             bind_port=data["bind_port"],
-            remote_host=data.get("remote_host"),
+            remote_host=data.get("remote_host", "localhost"),
             remote_port=data.get("remote_port"),
             enabled=bool(data.get("enabled", 1)),
+            auto_start=bool(data.get("auto_start", 1)),
         )

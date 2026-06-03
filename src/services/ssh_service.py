@@ -87,7 +87,7 @@ class SSHService:
         self.engine = AsyncEngine.get()
         self.engine.start()
         self._sessions: dict[str, SessionInfo] = {}
-        self._active_ssh_connections: dict[str, list[asyncssh.SSHClientConnection]] = {}
+        self._background_ssh_connections: dict[str, asyncssh.SSHClientConnection] = {}
         self._active_listeners: dict[str, tuple[asyncssh.SSHListener, asyncssh.SSHClientConnection]] = {}
         self._rule_errors: dict[str, str] = {}
         self._forward_rules_listeners: list[Callable[[], None]] = []
@@ -335,7 +335,6 @@ class SSHService:
                 try:
                     set_status(f"Handshaking with {conn.hostname}...")
                     connection = await asyncssh.connect(**kwargs)
-                    self._register_ssh_connection(conn.id, connection)
                     return connection, auth_info, client_instance
                 except (Exception, asyncio.CancelledError) as e:
                     if kwargs.get("tunnel"):
@@ -480,32 +479,69 @@ class SSHService:
     def active_sessions(self) -> dict[str, SessionInfo]:
         return {k: v for k, v in self._sessions.items() if v.state in (SessionState.CONNECTING, SessionState.CONNECTED)}
 
-    # ── Port Forwarding Methods ───────────────────────────────
+    # ── Port Forwarding Methods (Dedicated Background Connection) ───
 
-    def _register_ssh_connection(self, connection_id: str, ssh_conn: asyncssh.SSHClientConnection) -> None:
-        """Register an active SSH connection and auto-start its enabled port forwarding rules."""
-        if connection_id not in self._active_ssh_connections:
-            self._active_ssh_connections[connection_id] = []
-        self._active_ssh_connections[connection_id].append(ssh_conn)
+    def register_main_window(self, window: Any) -> None:
+        """Register the main application window to use as transient parent for auth dialogs."""
+        self._main_window = window
 
-        # Watch for connection closure to trigger cleanup
-        async def watch_conn() -> None:
-            try:
-                await ssh_conn.wait_closed()
-            finally:
-                await self._handle_connection_closed(connection_id, ssh_conn)
-                call_ui_sync(self._notify_forward_rules_changed)
+    def _get_background_ui_callbacks(self) -> dict[str, Callable]:
+        from views.dialogs import prompt_password, prompt_host_key, prompt_vault_unlock, prompt_vault_item_selection
+        # Use main window as parent for prompt dialogs
+        parent = self._main_window if hasattr(self, "_main_window") else None
 
-        asyncio.create_task(watch_conn())
+        def _ask_vault_unlock(name: str, resolve: Callable) -> None:
+            def _after_pw(pw: str | None) -> None:
+                if pw:
+                    async def run_unlock():
+                        from services.vault_service import VaultService
+                        ok = await VaultService.get().active_backend.unlock(pw)
+                        resolve(ok)
+                    self.engine.run_coroutine(run_unlock())
+                else:
+                    resolve(False)
+            prompt_vault_unlock(parent, name, _after_pw)
 
-        # Auto-start rules associated with this connection
-        async def start_rules() -> None:
+        def _ask_password(conn, resolve):
+            from utils.secure import SecureBytes
+            def _on_resolved(password: SecureBytes | None, remember: bool = False):
+                if password and remember:
+                    from services.vault_manager import VaultManager
+                    VaultManager.get().cache_password(
+                        item_id=conn.id,
+                        label=f"Password for {conn.username}@{conn.hostname}",
+                        password=password,
+                        hostname=conn.hostname,
+                        username=conn.username
+                    )
+                resolve(password)
+            prompt_password(
+                parent,
+                "密码",
+                f"{conn.username}@{conn.hostname}",
+                _on_resolved,
+                show_remember=True
+            )
+
+        return {
+            "ask_password": _ask_password,
+            "ask_passphrase": lambda p, r: prompt_password(parent, "私钥密码", p, r),
+            "ask_host_key": lambda h, fp, alg, r: prompt_host_key(parent, h, fp, alg, r),
+            "ask_vault_unlock": _ask_vault_unlock,
+            "ask_vault_item": lambda items, r: prompt_vault_item_selection(parent, items, r),
+            "on_error": lambda m: logger.error(f"Background forwarding connection error: {m}"),
+            "on_connected": lambda bridge: logger.info("Background forwarding connection connected"),
+        }
+
+    def auto_start_forward_rules(self) -> None:
+        """Start all enabled port forwarding rules that are configured to autostart on app launch."""
+        async def run_autostart():
             db = Database()
             db.open()
             try:
-                rules = db.list_forward_rules(connection_id)
+                rules = db.list_forward_rules()
                 for rule in rules:
-                    if rule.enabled:
+                    if rule.enabled and rule.auto_start:
                         try:
                             await self.start_forward_rule(rule)
                         except Exception:
@@ -514,46 +550,64 @@ class SSHService:
                 db.close()
             call_ui_sync(self._notify_forward_rules_changed)
 
-        asyncio.create_task(start_rules())
+        self.engine.run_coroutine(run_autostart())
 
-    async def _handle_connection_closed(self, connection_id: str, ssh_conn: asyncssh.SSHClientConnection) -> None:
-        """Clean up active listeners and connections mapping when a connection closes."""
-        if connection_id in self._active_ssh_connections:
-            if ssh_conn in self._active_ssh_connections[connection_id]:
-                self._active_ssh_connections[connection_id].remove(ssh_conn)
-            if not self._active_ssh_connections[connection_id]:
-                del self._active_ssh_connections[connection_id]
+    async def _get_or_create_background_connection(self, connection_id: str) -> asyncssh.SSHClientConnection | None:
+        """Get existing background SSH connection for the ID or establish a new dedicated one."""
+        if connection_id in self._background_ssh_connections:
+            conn = self._background_ssh_connections[connection_id]
+            if not conn.is_closing():
+                return conn
+            else:
+                self._background_ssh_connections.pop(connection_id, None)
 
-        # Find and remove listeners associated with this closed connection
-        closed_rule_ids = []
-        for rule_id, (listener, conn) in list(self._active_listeners.items()):
-            if conn == ssh_conn:
-                self._active_listeners.pop(rule_id, None)
-                closed_rule_ids.append(rule_id)
+        db = Database()
+        db.open()
+        try:
+            conn_model = db.get_connection(connection_id)
+        finally:
+            db.close()
 
-        # If there are other active connections for this connection_id, attempt to re-start the rules
-        if closed_rule_ids:
-            db = Database()
-            db.open()
+        if not conn_model:
+            return None
+
+        # Establish connection with background callbacks
+        cbs = self._get_background_ui_callbacks()
+        res = await self._establish_connection(conn_model, cbs)
+        if not res:
+            return None
+
+        connection, auth_info, _ = res
+        self._background_ssh_connections[connection_id] = connection
+
+        # Watch for closure to clean up listeners and trigger UI refresh
+        async def watch_conn() -> None:
             try:
-                for rule_id in closed_rule_ids:
-                    rule_data = db.get_forward_rule(rule_id)
-                    if rule_data and rule_data.enabled:
-                        asyncio.create_task(self.start_forward_rule(rule_data))
+                await connection.wait_closed()
             finally:
-                db.close()
+                if self._background_ssh_connections.get(connection_id) == connection:
+                    self._background_ssh_connections.pop(connection_id, None)
+                
+                # Cleanup rules mapped to this connection
+                for rule_id, (listener, c) in list(self._active_listeners.items()):
+                    if c == connection:
+                        self._active_listeners.pop(rule_id, None)
+                call_ui_sync(self._notify_forward_rules_changed)
+
+        asyncio.create_task(watch_conn())
+        return connection
 
     async def start_forward_rule(self, rule: ForwardRule) -> None:
-        """Start a port forwarding rule on the first active connection for its host."""
+        """Start a port forwarding rule on a dedicated background SSH connection."""
         if rule.id in self._active_listeners:
             return  # Already active
 
-        conns = self._active_ssh_connections.get(rule.connection_id, [])
-        if not conns:
-            return  # No active connection to start it on
+        # Make sure dedicated SSH connection exists
+        ssh_conn = await self._get_or_create_background_connection(rule.connection_id)
+        if not ssh_conn:
+            raise RuntimeError("Failed to establish SSH connection for port forwarding")
 
-        ssh_conn = conns[0]
-        bind_addr = rule.bind_address or "127.0.0.1"
+        bind_addr = rule.bind_address or "localhost"
 
         try:
             listener = None
@@ -588,19 +642,46 @@ class SSHService:
         except Exception as e:
             self._rule_errors[rule.id] = str(e)
             logger.error(f"Failed to start port forwarding rule {rule.id}: {e}")
+            
+            # If no other rule is using this background connection, close it
+            active_rules_for_conn = [
+                r_id for r_id, (_, c) in self._active_listeners.items()
+                if c == ssh_conn
+            ]
+            if not active_rules_for_conn:
+                if self._background_ssh_connections.get(rule.connection_id) == ssh_conn:
+                    self._background_ssh_connections.pop(rule.connection_id, None)
+                ssh_conn.close()
             raise e
 
     async def stop_forward_rule(self, rule_id: str) -> None:
-        """Stop a running port forwarding listener."""
+        """Stop a running port forwarding listener instantly and free the port."""
         self._rule_errors.pop(rule_id, None)
         if rule_id in self._active_listeners:
-            listener, _ = self._active_listeners.pop(rule_id)
+            listener, ssh_conn = self._active_listeners.pop(rule_id)
             try:
                 listener.close()
                 await listener.wait_closed()
                 logger.info(f"Port forwarding rule {rule_id} stopped successfully")
             except Exception as e:
                 logger.error(f"Error closing listener for rule {rule_id}: {e}")
+
+            # Check if any other rules are still active on this connection
+            active_rules_on_conn = [
+                r_id for r_id, (_, c) in self._active_listeners.items()
+                if c == ssh_conn
+            ]
+            if not active_rules_on_conn:
+                # Find connection_id for this connection
+                conn_id = None
+                for cid, c in list(self._background_ssh_connections.items()):
+                    if c == ssh_conn:
+                        conn_id = cid
+                        break
+                if conn_id:
+                    self._background_ssh_connections.pop(conn_id, None)
+                ssh_conn.close()
+                await ssh_conn.wait_closed()
 
     def get_forward_rule_status(self, rule: ForwardRule) -> str:
         """Return the status string of a forward rule."""
@@ -610,8 +691,8 @@ class SSHService:
             return "Running"
         if rule.id in self._rule_errors:
             return "Error"
-        if rule.connection_id in self._active_ssh_connections and self._active_ssh_connections[rule.connection_id]:
-            # Connection is active but listener is not running and no explicit error is cached yet
+        if rule.connection_id in self._background_ssh_connections:
+            # Connection exists, but listener failed or is still connecting
             return "Error"
         return "Disconnected"
 

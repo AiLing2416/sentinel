@@ -38,11 +38,15 @@ class SentinelWindow(Adw.ApplicationWindow):
         self._db = Database()
         self._db.open()
         self._ssh_service = SSHService()
+        self._ssh_service.register_main_window(self)
 
         # Build UI
         self._build_ui()
         self._load_connections()
         self._setup_shortcuts()
+
+        # Auto-start port forwarding rules
+        self._ssh_service.auto_start_forward_rules()
 
     # ── UI Construction ───────────────────────────────────────
 

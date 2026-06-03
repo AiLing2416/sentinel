@@ -98,8 +98,8 @@ class PortForwardingDialog:
         group.add(self._type_row)
 
         # 3. Bind Address
-        self._bind_addr_row = Adw.EntryRow(title="绑定地址 (默认: 127.0.0.1)")
-        self._bind_addr_row.set_text(self._rule.bind_address if (self._is_edit and self._rule) else "127.0.0.1")
+        self._bind_addr_row = Adw.EntryRow(title="绑定地址 (默认: localhost)")
+        self._bind_addr_row.set_text(self._rule.bind_address if (self._is_edit and self._rule) else "localhost")
         group.add(self._bind_addr_row)
 
         # 4. Bind Port
@@ -110,8 +110,9 @@ class PortForwardingDialog:
 
         # 5. Remote Host
         self._remote_host_row = Adw.EntryRow(title="目标主机")
-        if self._is_edit and self._rule and self._rule.remote_host:
-            self._remote_host_row.set_text(self._rule.remote_host)
+        self._remote_host_row.set_text(
+            self._rule.remote_host if (self._is_edit and self._rule and self._rule.remote_host) else "localhost"
+        )
         group.add(self._remote_host_row)
 
         # 6. Remote Port
@@ -119,6 +120,11 @@ class PortForwardingDialog:
         if self._is_edit and self._rule and self._rule.remote_port is not None:
             self._remote_port_row.set_text(str(self._rule.remote_port))
         group.add(self._remote_port_row)
+
+        # 7. Auto Start
+        self._autostart_row = Adw.SwitchRow(title="启动应用时自动连接")
+        self._autostart_row.set_active(self._rule.auto_start if (self._is_edit and self._rule) else True)
+        group.add(self._autostart_row)
 
         form_box.append(group)
 
@@ -205,7 +211,8 @@ class PortForwardingDialog:
                 self._show_error("目标端口必须为 1 到 65535 之间的整数")
                 return
 
-        bind_addr = self._bind_addr_row.get_text().strip() or "127.0.0.1"
+        bind_addr = self._bind_addr_row.get_text().strip() or "localhost"
+        auto_start = self._autostart_row.get_active()
 
         # 5. Populate Rule details
         if self._is_edit and self._rule:
@@ -216,6 +223,7 @@ class PortForwardingDialog:
             rule.bind_port = bind_port
             rule.remote_host = remote_host
             rule.remote_port = remote_port
+            rule.auto_start = auto_start
         else:
             rule = ForwardRule(
                 connection_id=connection.id,
@@ -225,6 +233,7 @@ class PortForwardingDialog:
                 remote_host=remote_host,
                 remote_port=remote_port,
                 enabled=True,
+                auto_start=auto_start,
             )
 
         # Database save

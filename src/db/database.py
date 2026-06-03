@@ -60,11 +60,12 @@ CREATE TABLE IF NOT EXISTS forward_rules (
     id            TEXT PRIMARY KEY,
     connection_id TEXT NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
     type          TEXT NOT NULL,
-    bind_address  TEXT DEFAULT '127.0.0.1',
+    bind_address  TEXT DEFAULT 'localhost',
     bind_port     INTEGER NOT NULL,
-    remote_host   TEXT,
+    remote_host   TEXT DEFAULT 'localhost',
     remote_port   INTEGER,
-    enabled       INTEGER DEFAULT 1
+    enabled       INTEGER DEFAULT 1,
+    auto_start    INTEGER DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS known_hosts (
@@ -146,6 +147,12 @@ class Database:
 
         if "agent_forwarding" not in cols:
             self._conn.execute("ALTER TABLE connections ADD COLUMN agent_forwarding INTEGER DEFAULT 0")
+            self._conn.commit()
+
+        # Database Migration: add auto_start to forward_rules if missing
+        cols_fr = [col["name"] for col in self._conn.execute("PRAGMA table_info(forward_rules)").fetchall()]
+        if "auto_start" not in cols_fr:
+            self._conn.execute("ALTER TABLE forward_rules ADD COLUMN auto_start INTEGER DEFAULT 1")
             self._conn.commit()
 
     @property
@@ -269,10 +276,10 @@ class Database:
         self._db.execute(
             """INSERT OR REPLACE INTO forward_rules (
                 id, connection_id, type, bind_address, bind_port,
-                remote_host, remote_port, enabled
+                remote_host, remote_port, enabled, auto_start
             ) VALUES (
                 :id, :connection_id, :type, :bind_address, :bind_port,
-                :remote_host, :remote_port, :enabled
+                :remote_host, :remote_port, :enabled, :auto_start
             )""",
             data,
         )
