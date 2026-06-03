@@ -1370,3 +1370,112 @@ msgstr "已匯入的配色"
 
 #~ msgid "Please replace a different 2FA method (e.g. TOTP or Email)."
 #~ msgstr "請使用不同的兩步驟驗證方式 (例如 TOTP 或電子郵件)。"
+
+msgid "Edit Port Forwarding"
+msgstr "編輯埠轉發"
+
+msgid "New Port Forwarding"
+msgstr "新建埠轉發"
+
+msgid "No SSH connections available"
+msgstr "沒有可用的 SSH 連線"
+
+msgid "SSH Connection"
+msgstr "SSH 連線"
+
+msgid "Local Forwarding (-L)"
+msgstr "本地轉發 (-L)"
+
+msgid "Remote Forwarding (-R)"
+msgstr "遠端轉發 (-R)"
+
+msgid "Dynamic Forwarding (-D SOCKS5)"
+msgstr "動態轉發 (-D SOCKS5)"
+
+msgid "Forward Type"
+msgstr "轉發類型"
+
+msgid "Bind Address (Default: localhost)"
+msgstr "綁定地址 (預設: localhost)"
+
+msgid "Bind Port"
+msgstr "綁定埠"
+
+msgid "Remote Host"
+msgstr "目標主機"
+
+msgid "Remote Port"
+msgstr "目標埠"
+
+msgid "Automatically connect on app launch"
+msgstr "啟動應用時自動連線"
+
+msgid "Please add an SSH connection in the left sidebar first"
+msgstr "請先在主視窗左側資訊欄新增 SSH 連線"
+
+msgid "Bind port cannot be empty"
+msgstr "綁定埠不能為空"
+
+msgid "Bind port must be an integer between 1 and 65535"
+msgstr "綁定埠必須為 1 到 65535 之間的整數"
+
+msgid "Non-root users are not allowed to bind privileged ports below 1024"
+msgstr "非 root 使用者禁止綁定 1024 以下的特權埠"
+
+msgid "Remote host cannot be empty"
+msgstr "目標主機不能為空"
+
+msgid "Remote port cannot be empty"
+msgstr "目標埠不能為空"
+
+msgid "Remote port must be an integer between 1 and 65535"
+msgstr "目標埠必須為 1 到 65535 之間的整數"
+
+msgid "Local port {bind_port} is already in use, please choose another port"
+msgstr "本地埠 {bind_port} 已被佔用，請更換埠"
+
+msgid "Port Forwarding"
+msgstr "埠轉發"
+
+msgid "No port forwarding rules configured"
+msgstr "沒有配置埠轉發規則"
+
+msgid "Add port forwarding rules to forward local or remote ports through SSH tunnels."
+msgstr "新增埠轉發規則以透過 SSH 隧道轉發本地或遠端埠。"
+
+msgid "Add Rule"
+msgstr "新增規則"
+
+msgid "Unknown Connection"
+msgstr "未知連線"
+
+msgid "Local Forwarding"
+msgstr "本地轉發"
+
+msgid "Remote Forwarding"
+msgstr "遠端轉發"
+
+msgid "(remote side)"
+msgstr " (遠端側)"
+
+msgid "Dynamic Forwarding (SOCKS5)"
+msgstr "動態轉發 (SOCKS5)"
+
+msgid "Local port {bind_port}"
+msgstr "本地監聽埠 {bind_port}"
+
+msgid "Error: {err_msg}"
+msgstr "錯誤: {err_msg}"
+
+msgid "Connecting or disconnected"
+msgstr "正在連線或連線已斷開"
+
+msgid "Delete Rule"
+msgstr "刪除規則"
+
+msgid "Are you sure you want to delete this port forwarding rule?"
+msgstr "您確定要刪除此埠綁定嗎？"
+
+msgid "Port Forwarding Management"
+msgstr "埠轉發管理"
+

@@ -534,16 +534,18 @@ class SSHService:
         }
 
     def auto_start_forward_rules(self) -> None:
-        """Start all enabled port forwarding rules that are configured to autostart on app launch."""
+        """Start all port forwarding rules configured to autostart on app launch."""
         async def run_autostart():
             db = Database()
             db.open()
             try:
                 rules = db.list_forward_rules()
                 for rule in rules:
-                    if rule.enabled and rule.auto_start:
+                    if rule.auto_start:
                         try:
                             await self.start_forward_rule(rule)
+                            rule.enabled = True
+                            db.save_forward_rule(rule)
                         except Exception:
                             pass
             finally:
