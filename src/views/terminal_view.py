@@ -809,6 +809,29 @@ class TerminalTabView:
         self._tab_view.set_selected_page(page)
         return sftp_tab
 
+    def open_port_forwarding_tab(self) -> Any:
+        """Open the Port Forwarding Management tab, or focus it if already open."""
+        from views.port_forwarding_view import PortForwardingTab
+
+        # Check if already open
+        for i in range(self._tab_view.get_n_pages()):
+            page = self._tab_view.get_nth_page(i)
+            child = page.get_child()
+            if isinstance(child, PortForwardingTab):
+                self._tab_view.set_selected_page(page)
+                return child
+
+        # Not open, create new
+        pf_tab = PortForwardingTab(self._ssh_service)
+        page = self._tab_view.append(pf_tab)
+        pf_tab._on_close = lambda t=pf_tab: self._close_specific_tab_by_widget(t)
+
+        page.set_title(pf_tab.title)
+        page.set_icon(Gio.ThemedIcon.new("network-transmit-receive-symbolic"))
+
+        self._tab_view.set_selected_page(page)
+        return pf_tab
+
     def _close_specific_tab_by_widget(self, widget: Gtk.Widget) -> None:
         """Close a specific tab by its child widget."""
         for i in range(self._tab_view.get_n_pages()):

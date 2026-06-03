@@ -1,0 +1,588 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+"""Port forwarding management tab view."""
+
+import gi
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+
+import os
+import logging
+from typing import Callable, Any
+from gi.repository import Adw, Gtk, Gio, GLib
+
+from db.database import Database
+from models.forward_rule import ForwardRule, ForwardType
+from models.connection import Connection, ValidationError
+from services.ssh_service import SSHService
+
+logger = logging.getLogger(__name__)
+import gettext
+_ = gettext.gettext
+
+
+class PortForwardingDialog:
+    """Dialog to create or edit a port forwarding rule."""
+
+    def __init__(
+        self,
+        parent: Gtk.Widget,
+        ssh_service: SSHService,
+        rule: ForwardRule | None = None,
+        callback: Callable[[ForwardRule | None], None] | None = None,
+    ) -> None:
+        self._ssh_service = ssh_service
+        self._rule = rule
+        self._callback = callback
+        self._is_edit = rule is not None
+
+        # Fetch all connections from database
+        self._db = Database()
+        self._db.open()
+        try:
+            self._connections = self._db.list_connections()
+        finally:
+            self._db.close()
+
+        self._dialog = Adw.Dialog()
+        self._dialog.set_title("编辑端口转发" if self._is_edit else "新建端口转发")
+        self._dialog.set_content_width(450)
+        self._dialog.set_content_height(480)
+
+        # UI Layout
+        toolbar = Adw.ToolbarView()
+        header = Adw.HeaderBar()
+        toolbar.add_top_bar(header)
+
+        cancel_btn = Gtk.Button(label="取消")
+        cancel_btn.connect("clicked", lambda _: self._dialog.close())
+        header.pack_start(cancel_btn)
+
+        self._save_btn = Gtk.Button(label="保存")
+        self._save_btn.add_css_class("suggested-action")
+        self._save_btn.connect("clicked", self._on_save)
+        header.pack_end(self._save_btn)
+
+        scroll = Gtk.ScrolledWindow(vexpand=True)
+        form_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+
+        # Form fields Group
+        group = Adw.PreferencesGroup()
+        group.add_css_class("editor-page")
+
+        # 1. Connection selection
+        conn_names = [c.name for c in self._connections]
+        if not conn_names:
+            conn_names = ["没有可用的 SSH 连接"]
+        string_list = Gtk.StringList.new(conn_names)
+        self._conn_row = Adw.ComboRow(title="SSH 连接", model=string_list)
+        if self._is_edit and self._rule:
+            for idx, c in enumerate(self._connections):
+                if c.id == self._rule.connection_id:
+                    self._conn_row.set_selected(idx)
+                    break
+        group.add(self._conn_row)
+
+        # 2. Forwarding Type selection
+        type_options = ["本地转发 (-L)", "远程转发 (-R)", "动态转发 (-D SOCKS5)"]
+        type_list = Gtk.StringList.new(type_options)
+        self._type_row = Adw.ComboRow(title="转发类型", model=type_list)
+        type_map = {
+            ForwardType.LOCAL: 0,
+            ForwardType.REMOTE: 1,
+            ForwardType.DYNAMIC: 2,
+        }
+        self._reverse_type_map = {v: k for k, v in type_map.items()}
+        if self._is_edit and self._rule:
+            self._type_row.set_selected(type_map.get(self._rule.type, 0))
+        group.add(self._type_row)
+
+        # 3. Bind Address
+        self._bind_addr_row = Adw.EntryRow(title="绑定地址 (默认: 127.0.0.1)")
+        self._bind_addr_row.set_text(self._rule.bind_address if (self._is_edit and self._rule) else "127.0.0.1")
+        group.add(self._bind_addr_row)
+
+        # 4. Bind Port
+        self._bind_port_row = Adw.EntryRow(title="绑定端口")
+        if self._is_edit and self._rule:
+            self._bind_port_row.set_text(str(self._rule.bind_port))
+        group.add(self._bind_port_row)
+
+        # 5. Remote Host
+        self._remote_host_row = Adw.EntryRow(title="目标主机")
+        if self._is_edit and self._rule and self._rule.remote_host:
+            self._remote_host_row.set_text(self._rule.remote_host)
+        group.add(self._remote_host_row)
+
+        # 6. Remote Port
+        self._remote_port_row = Adw.EntryRow(title="目标端口")
+        if self._is_edit and self._rule and self._rule.remote_port is not None:
+            self._remote_port_row.set_text(str(self._rule.remote_port))
+        group.add(self._remote_port_row)
+
+        form_box.append(group)
+
+        # Error label
+        self._error_bar = Gtk.Label(label="")
+        self._error_bar.add_css_class("error")
+        self._error_bar.set_margin_start(12)
+        self._error_bar.set_margin_end(12)
+        self._error_bar.set_margin_top(8)
+        self._error_bar.set_visible(False)
+        form_box.append(self._error_bar)
+
+        scroll.set_child(form_box)
+        toolbar.set_content(scroll)
+        self._dialog.set_child(toolbar)
+
+        # Setup dynamic visibility based on Type selection
+        self._type_row.connect("notify::selected", self._on_type_changed)
+        self._on_type_changed()
+
+        # Connect activate on entry fields to save
+        for row in (self._bind_addr_row, self._bind_port_row, self._remote_host_row, self._remote_port_row):
+            row.connect("entry-activated", lambda _: self._on_save(None))
+
+        self._dialog.present(parent)
+
+    def _on_type_changed(self, *args) -> None:
+        selected_idx = self._type_row.get_selected()
+        rule_type = self._reverse_type_map.get(selected_idx, ForwardType.LOCAL)
+        show_remote = (rule_type != ForwardType.DYNAMIC)
+        self._remote_host_row.set_visible(show_remote)
+        self._remote_port_row.set_visible(show_remote)
+
+    def _on_save(self, _btn) -> None:
+        self._error_bar.set_visible(False)
+
+        # 1. Validate connection selection
+        if not self._connections:
+            self._show_error("请先在主窗口左侧边栏添加 SSH 连接")
+            return
+        selected_conn_idx = self._conn_row.get_selected()
+        connection = self._connections[selected_conn_idx]
+
+        # 2. Get and validate Bind Port
+        bind_port_str = self._bind_port_row.get_text().strip()
+        if not bind_port_str:
+            self._show_error("绑定端口不能为空")
+            return
+        try:
+            bind_port = int(bind_port_str)
+            if bind_port < 1 or bind_port > 65535:
+                raise ValueError
+        except ValueError:
+            self._show_error("绑定端口必须为 1 到 65535 之间的整数")
+            return
+
+        # Privilege port check for non-root users
+        if bind_port < 1024 and os.getuid() != 0:
+            self._show_error("非 root 用户禁止绑定 1024 以下的特权端口")
+            return
+
+        # 3. Get Rule Type
+        selected_type_idx = self._type_row.get_selected()
+        rule_type = self._reverse_type_map.get(selected_type_idx, ForwardType.LOCAL)
+
+        # 4. Get and validate Remote Host and Port (if not dynamic)
+        remote_host = None
+        remote_port = None
+        if rule_type != ForwardType.DYNAMIC:
+            remote_host = self._remote_host_row.get_text().strip()
+            if not remote_host:
+                self._show_error("目标主机不能为空")
+                return
+
+            remote_port_str = self._remote_port_row.get_text().strip()
+            if not remote_port_str:
+                self._show_error("目标端口不能为空")
+                return
+            try:
+                remote_port = int(remote_port_str)
+                if remote_port < 1 or remote_port > 65535:
+                    raise ValueError
+            except ValueError:
+                self._show_error("目标端口必须为 1 到 65535 之间的整数")
+                return
+
+        bind_addr = self._bind_addr_row.get_text().strip() or "127.0.0.1"
+
+        # 5. Populate Rule details
+        if self._is_edit and self._rule:
+            rule = self._rule
+            rule.connection_id = connection.id
+            rule.type = rule_type
+            rule.bind_address = bind_addr
+            rule.bind_port = bind_port
+            rule.remote_host = remote_host
+            rule.remote_port = remote_port
+        else:
+            rule = ForwardRule(
+                connection_id=connection.id,
+                type=rule_type,
+                bind_address=bind_addr,
+                bind_port=bind_port,
+                remote_host=remote_host,
+                remote_port=remote_port,
+                enabled=True,
+            )
+
+        # Database save
+        db = Database()
+        db.open()
+        try:
+            db.save_forward_rule(rule)
+        except ValidationError as e:
+            self._show_error(str(e))
+            return
+        finally:
+            db.close()
+
+        if self._callback:
+            self._callback(rule)
+
+        self._dialog.close()
+
+    def _show_error(self, message: str) -> None:
+        self._error_bar.set_label(message)
+        self._error_bar.set_visible(True)
+
+
+class PortForwardingTab(Gtk.Box):
+    """Management interface tab for port forwarding rules."""
+
+    def __init__(self, ssh_service: SSHService) -> None:
+        super().__init__(orientation=Gtk.Orientation.VERTICAL)
+        self._ssh_service = ssh_service
+
+        # Dictionary to store mapping from conn_id to Connection names to avoid DB query for each row
+        self._conn_names: dict[str, str] = {}
+        self._load_connections_map()
+
+        self._build_ui()
+
+        # Listen to SSHService forwarding updates
+        self._listener_cb = lambda: GLib.idle_add(self.refresh)
+        self._ssh_service.register_forward_rules_listener(self._listener_cb)
+
+        self.refresh()
+
+    @property
+    def title(self) -> str:
+        return "端口转发"
+
+    def terminate(self) -> None:
+        """Called when this tab is closed to unsubscribe listeners."""
+        self._ssh_service.unregister_forward_rules_listener(self._listener_cb)
+
+    def _load_connections_map(self) -> None:
+        db = Database()
+        db.open()
+        try:
+            conns = db.list_connections()
+            self._conn_names = {c.id: c.name for c in conns}
+        finally:
+            db.close()
+
+    def _build_ui(self) -> None:
+        # Title bar & Action button
+        header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        header_box.set_margin_start(16)
+        header_box.set_margin_end(16)
+        header_box.set_margin_top(16)
+        header_box.set_margin_bottom(12)
+
+        title_lbl = Gtk.Label(label="端口转发规则")
+        title_lbl.add_css_class("title-1")
+        title_lbl.set_halign(Gtk.Align.START)
+        header_box.append(title_lbl)
+
+        # Stretch space
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        header_box.append(spacer)
+
+        add_btn = Gtk.Button(label="添加规则")
+        add_btn.add_css_class("suggested-action")
+        add_btn.connect("clicked", self._on_add_rule_clicked)
+        header_box.append(add_btn)
+
+        self.append(header_box)
+
+        # Content area stack (list view OR empty state page)
+        self._stack = Gtk.Stack(
+            transition_type=Gtk.StackTransitionType.CROSSFADE,
+            transition_duration=200,
+        )
+
+        # Empty state view
+        empty_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12,
+            halign=Gtk.Align.CENTER,
+            valign=Gtk.Align.CENTER,
+            vexpand=True,
+        )
+        empty_title = Gtk.Label(label="没有配置端口转发规则")
+        empty_title.add_css_class("title-2")
+        empty_title.set_margin_bottom(6)
+        empty_box.append(empty_title)
+
+        empty_desc = Gtk.Label(label="添加端口转发规则以通过 SSH 隧道转发本地或远程端口。")
+        empty_desc.add_css_class("dim-label")
+        empty_box.append(empty_desc)
+
+        empty_add_btn = Gtk.Button(label="添加规则")
+        empty_add_btn.add_css_class("suggested-action")
+        empty_add_btn.add_css_class("pill")
+        empty_add_btn.set_margin_top(12)
+        empty_add_btn.connect("clicked", self._on_add_rule_clicked)
+        empty_box.append(empty_add_btn)
+
+        self._stack.add_named(empty_box, "empty")
+
+        # Scrollable list view
+        scroll = Gtk.ScrolledWindow(vexpand=True)
+        scroll.set_margin_start(16)
+        scroll.set_margin_end(16)
+        scroll.set_margin_bottom(16)
+
+        # Clamp the width to keep it beautiful
+        clamp = Adw.Clamp()
+        clamp.set_maximum_size(700)
+
+        # ListBox
+        self._list_box = Gtk.ListBox()
+        self._list_box.add_css_class("boxed-list")
+        self._list_box.set_selection_mode(Gtk.SelectionMode.NONE)
+        clamp.set_child(self._list_box)
+
+        scroll.set_child(clamp)
+        self._stack.add_named(scroll, "list")
+
+        self.append(self._stack)
+
+    def refresh(self) -> None:
+        """Reload all rules from database and refresh UI."""
+        self._load_connections_map()
+
+        db = Database()
+        db.open()
+        try:
+            rules = db.list_forward_rules()
+        finally:
+            db.close()
+
+        # Clear existing rows in ListBox
+        while True:
+            row = self._list_box.get_row_at_index(0)
+            if not row:
+                break
+            self._list_box.remove(row)
+
+        if not rules:
+            self._stack.set_visible_child_name("empty")
+            return
+
+        self._stack.set_visible_child_name("list")
+
+        # Add rows for rules
+        for rule in rules:
+            row_widget = self._create_rule_row(rule)
+            self._list_box.append(row_widget)
+
+    def _create_rule_row(self, rule: ForwardRule) -> Gtk.Widget:
+        # Main row horizontal container
+        row_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row_box.set_margin_start(16)
+        row_box.set_margin_end(16)
+        row_box.set_margin_top(12)
+        row_box.set_margin_bottom(12)
+
+        # Type Icon
+        icon_name = "network-transmit-receive-symbolic"
+        if rule.type == ForwardType.LOCAL:
+            icon_name = "network-transmit-symbolic"
+        elif rule.type == ForwardType.REMOTE:
+            icon_name = "network-receive-symbolic"
+        elif rule.type == ForwardType.DYNAMIC:
+            icon_name = "network-vpn-symbolic"
+
+        icon = Gtk.Image.new_from_icon_name(icon_name)
+        icon.set_valign(Gtk.Align.CENTER)
+        icon.add_css_class("dim-label")
+        row_box.append(icon)
+
+        # Text labels info
+        text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        text_box.set_hexpand(True)
+
+        conn_name = self._conn_names.get(rule.connection_id, "未知连接")
+        title_lbl = Gtk.Label(label=conn_name)
+        title_lbl.set_halign(Gtk.Align.START)
+        title_lbl.add_css_class("heading")
+        text_box.append(title_lbl)
+
+        # Format details label
+        type_str = ""
+        details = ""
+        bind_str = f"{rule.bind_address}:{rule.bind_port}"
+        if rule.type == ForwardType.LOCAL:
+            type_str = "本地转发"
+            details = f"{bind_str} ➔ {rule.remote_host}:{rule.remote_port}"
+        elif rule.type == ForwardType.REMOTE:
+            type_str = "远程转发"
+            details = f"{bind_str} ➔ {rule.remote_host}:{rule.remote_port} (远程侧)"
+        elif rule.type == ForwardType.DYNAMIC:
+            type_str = "动态转发 (SOCKS5)"
+            details = f"本地监听端口 {bind_str}"
+
+        desc_lbl = Gtk.Label(label=f"{type_str}: {details}")
+        desc_lbl.set_halign(Gtk.Align.START)
+        desc_lbl.add_css_class("dim-label")
+        desc_lbl.add_css_class("caption")
+        text_box.append(desc_lbl)
+
+        row_box.append(text_box)
+
+        # Status badge / indicator
+        status = self._ssh_service.get_forward_rule_status(rule)
+        status_lbl = Gtk.Label()
+        status_lbl.set_valign(Gtk.Align.CENTER)
+        status_lbl.add_css_class("caption")
+
+        if status == "Running":
+            status_lbl.set_label("运行中")
+            status_lbl.add_css_class("success")
+        elif status == "Disconnected":
+            status_lbl.set_label("连接未建立")
+            status_lbl.add_css_class("warning")
+        elif status == "Stopped":
+            status_lbl.set_label("已禁用")
+            status_lbl.add_css_class("dim-label")
+        elif status == "Error":
+            status_lbl.set_label("错误")
+            status_lbl.add_css_class("error")
+            err_msg = self._ssh_service.get_forward_rule_error(rule.id)
+            if err_msg:
+                status_lbl.set_tooltip_text(err_msg)
+
+        row_box.append(status_lbl)
+
+        # Enable/Disable switch
+        sw = Gtk.Switch()
+        sw.set_valign(Gtk.Align.CENTER)
+        sw.set_active(rule.enabled)
+        
+        # Connect state change handler
+        def _on_switch_state_set(switch, state) -> bool:
+            rule.enabled = state
+            db = Database()
+            db.open()
+            try:
+                db.save_forward_rule(rule)
+            finally:
+                db.close()
+
+            # Execute dynamically
+            if state:
+                async def run_start():
+                    try:
+                        await self._ssh_service.start_forward_rule(rule)
+                    except Exception:
+                        pass
+                    # UI refresh will automatically happen via SSHService callback
+                self._ssh_service.engine.run_coroutine(run_start())
+            else:
+                async def run_stop():
+                    await self._ssh_service.stop_forward_rule(rule.id)
+                self._ssh_service.engine.run_coroutine(run_stop())
+
+            return False  # Continue standard state transition
+        
+        sw.connect("state-set", _on_switch_state_set)
+        row_box.append(sw)
+
+        # Edit button
+        edit_btn = Gtk.Button(icon_name="document-edit-symbolic")
+        edit_btn.add_css_class("flat")
+        edit_btn.set_valign(Gtk.Align.CENTER)
+        edit_btn.set_tooltip_text("编辑")
+        edit_btn.connect("clicked", lambda _: self._on_edit_rule_clicked(rule))
+        row_box.append(edit_btn)
+
+        # Delete button
+        del_btn = Gtk.Button(icon_name="user-trash-symbolic")
+        del_btn.add_css_class("flat")
+        del_btn.set_valign(Gtk.Align.CENTER)
+        del_btn.set_tooltip_text("删除")
+        del_btn.connect("clicked", lambda _: self._on_delete_rule_clicked(rule))
+        row_box.append(del_btn)
+
+        # Wrap in list box row container
+        row = Gtk.ListBoxRow()
+        row.set_child(row_box)
+        return row
+
+    def _on_add_rule_clicked(self, _btn) -> None:
+        def _on_done(rule: ForwardRule | None) -> None:
+            if rule:
+                self.refresh()
+                # If enabled, try starting
+                if rule.enabled:
+                    async def run_start():
+                        try:
+                            await self._ssh_service.start_forward_rule(rule)
+                        except Exception:
+                            pass
+                    self._ssh_service.engine.run_coroutine(run_start())
+
+        PortForwardingDialog(self.get_root(), self._ssh_service, callback=_on_done)
+
+    def _on_edit_rule_clicked(self, rule: ForwardRule) -> None:
+        def _on_done(updated_rule: ForwardRule | None) -> None:
+            if updated_rule:
+                self.refresh()
+                # Restart the forwarder to apply modified config
+                async def run_restart():
+                    await self._ssh_service.stop_forward_rule(updated_rule.id)
+                    if updated_rule.enabled:
+                        try:
+                            await self._ssh_service.start_forward_rule(updated_rule)
+                        except Exception:
+                            pass
+                self._ssh_service.engine.run_coroutine(run_restart())
+
+        PortForwardingDialog(self.get_root(), self._ssh_service, rule=rule, callback=_on_done)
+
+    def _on_delete_rule_clicked(self, rule: ForwardRule) -> None:
+        # Prompt / Confirm delete using dialog
+        confirm_dialog = Adw.MessageDialog(
+            heading="删除规则",
+            body=f"您确定要删除此端口绑定吗？",
+        )
+        confirm_dialog.add_response("cancel", "取消")
+        confirm_dialog.add_response("delete", "删除")
+        confirm_dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
+        confirm_dialog.set_default_response("delete")
+        confirm_dialog.set_close_response("cancel")
+        confirm_dialog.set_modal(True)
+        confirm_dialog.set_transient_for(self.get_root())
+
+        def _on_response(dialog, response):
+            if response == "delete":
+                # Stop listener first
+                async def do_stop_and_delete():
+                    await self._ssh_service.stop_forward_rule(rule.id)
+                    db = Database()
+                    db.open()
+                    try:
+                        db.delete_forward_rule(rule.id)
+                    finally:
+                        db.close()
+                    GLib.idle_add(self.refresh)
+                self._ssh_service.engine.run_coroutine(do_stop_and_delete())
+            dialog.destroy()
+
+        confirm_dialog.connect("response", _on_response)
+        confirm_dialog.present()

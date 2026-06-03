@@ -21,6 +21,7 @@ from enum import Enum
 import asyncssh
 
 from models.connection import AuthMethod, Connection
+from models.forward_rule import ForwardRule, ForwardType
 from services.async_engine import call_ui_async, call_ui_sync, AsyncEngine
 from utils.secure import SecureBytes
 from db.database import Database
@@ -86,6 +87,10 @@ class SSHService:
         self.engine = AsyncEngine.get()
         self.engine.start()
         self._sessions: dict[str, SessionInfo] = {}
+        self._active_ssh_connections: dict[str, list[asyncssh.SSHClientConnection]] = {}
+        self._active_listeners: dict[str, tuple[asyncssh.SSHListener, asyncssh.SSHClientConnection]] = {}
+        self._rule_errors: dict[str, str] = {}
+        self._forward_rules_listeners: list[Callable[[], None]] = []
 
     def build_local_shell_command(self) -> LocalCommand:
         """Build a command for a local shell tab. 
@@ -330,6 +335,7 @@ class SSHService:
                 try:
                     set_status(f"Handshaking with {conn.hostname}...")
                     connection = await asyncssh.connect(**kwargs)
+                    self._register_ssh_connection(conn.id, connection)
                     return connection, auth_info, client_instance
                 except (Exception, asyncio.CancelledError) as e:
                     if kwargs.get("tunnel"):
@@ -473,3 +479,159 @@ class SSHService:
     @property
     def active_sessions(self) -> dict[str, SessionInfo]:
         return {k: v for k, v in self._sessions.items() if v.state in (SessionState.CONNECTING, SessionState.CONNECTED)}
+
+    # ── Port Forwarding Methods ───────────────────────────────
+
+    def _register_ssh_connection(self, connection_id: str, ssh_conn: asyncssh.SSHClientConnection) -> None:
+        """Register an active SSH connection and auto-start its enabled port forwarding rules."""
+        if connection_id not in self._active_ssh_connections:
+            self._active_ssh_connections[connection_id] = []
+        self._active_ssh_connections[connection_id].append(ssh_conn)
+
+        # Watch for connection closure to trigger cleanup
+        async def watch_conn() -> None:
+            try:
+                await ssh_conn.wait_closed()
+            finally:
+                await self._handle_connection_closed(connection_id, ssh_conn)
+                call_ui_sync(self._notify_forward_rules_changed)
+
+        asyncio.create_task(watch_conn())
+
+        # Auto-start rules associated with this connection
+        async def start_rules() -> None:
+            db = Database()
+            db.open()
+            try:
+                rules = db.list_forward_rules(connection_id)
+                for rule in rules:
+                    if rule.enabled:
+                        try:
+                            await self.start_forward_rule(rule)
+                        except Exception:
+                            pass
+            finally:
+                db.close()
+            call_ui_sync(self._notify_forward_rules_changed)
+
+        asyncio.create_task(start_rules())
+
+    async def _handle_connection_closed(self, connection_id: str, ssh_conn: asyncssh.SSHClientConnection) -> None:
+        """Clean up active listeners and connections mapping when a connection closes."""
+        if connection_id in self._active_ssh_connections:
+            if ssh_conn in self._active_ssh_connections[connection_id]:
+                self._active_ssh_connections[connection_id].remove(ssh_conn)
+            if not self._active_ssh_connections[connection_id]:
+                del self._active_ssh_connections[connection_id]
+
+        # Find and remove listeners associated with this closed connection
+        closed_rule_ids = []
+        for rule_id, (listener, conn) in list(self._active_listeners.items()):
+            if conn == ssh_conn:
+                self._active_listeners.pop(rule_id, None)
+                closed_rule_ids.append(rule_id)
+
+        # If there are other active connections for this connection_id, attempt to re-start the rules
+        if closed_rule_ids:
+            db = Database()
+            db.open()
+            try:
+                for rule_id in closed_rule_ids:
+                    rule_data = db.get_forward_rule(rule_id)
+                    if rule_data and rule_data.enabled:
+                        asyncio.create_task(self.start_forward_rule(rule_data))
+            finally:
+                db.close()
+
+    async def start_forward_rule(self, rule: ForwardRule) -> None:
+        """Start a port forwarding rule on the first active connection for its host."""
+        if rule.id in self._active_listeners:
+            return  # Already active
+
+        conns = self._active_ssh_connections.get(rule.connection_id, [])
+        if not conns:
+            return  # No active connection to start it on
+
+        ssh_conn = conns[0]
+        bind_addr = rule.bind_address or "127.0.0.1"
+
+        try:
+            listener = None
+            if rule.type == ForwardType.LOCAL:
+                if not rule.remote_host or rule.remote_port is None:
+                    raise ValueError("Remote host and port are required for Local forwarding")
+                listener = await ssh_conn.forward_local_port(
+                    bind_addr,
+                    rule.bind_port,
+                    rule.remote_host,
+                    rule.remote_port
+                )
+            elif rule.type == ForwardType.REMOTE:
+                if not rule.remote_host or rule.remote_port is None:
+                    raise ValueError("Remote host and port are required for Remote forwarding")
+                listener = await ssh_conn.forward_remote_port(
+                    bind_addr,
+                    rule.bind_port,
+                    rule.remote_host,
+                    rule.remote_port
+                )
+            elif rule.type == ForwardType.DYNAMIC:
+                listener = await ssh_conn.forward_socks(
+                    bind_addr,
+                    rule.bind_port
+                )
+
+            if listener:
+                self._active_listeners[rule.id] = (listener, ssh_conn)
+                self._rule_errors.pop(rule.id, None)
+                logger.info(f"Port forwarding rule {rule.id} started successfully")
+        except Exception as e:
+            self._rule_errors[rule.id] = str(e)
+            logger.error(f"Failed to start port forwarding rule {rule.id}: {e}")
+            raise e
+
+    async def stop_forward_rule(self, rule_id: str) -> None:
+        """Stop a running port forwarding listener."""
+        self._rule_errors.pop(rule_id, None)
+        if rule_id in self._active_listeners:
+            listener, _ = self._active_listeners.pop(rule_id)
+            try:
+                listener.close()
+                await listener.wait_closed()
+                logger.info(f"Port forwarding rule {rule_id} stopped successfully")
+            except Exception as e:
+                logger.error(f"Error closing listener for rule {rule_id}: {e}")
+
+    def get_forward_rule_status(self, rule: ForwardRule) -> str:
+        """Return the status string of a forward rule."""
+        if not rule.enabled:
+            return "Stopped"
+        if rule.id in self._active_listeners:
+            return "Running"
+        if rule.id in self._rule_errors:
+            return "Error"
+        if rule.connection_id in self._active_ssh_connections and self._active_ssh_connections[rule.connection_id]:
+            # Connection is active but listener is not running and no explicit error is cached yet
+            return "Error"
+        return "Disconnected"
+
+    def get_forward_rule_error(self, rule_id: str) -> str | None:
+        """Return the error string for a rule if it exists."""
+        return self._rule_errors.get(rule_id)
+
+    def register_forward_rules_listener(self, callback: Callable[[], None]) -> None:
+        """Register a callback to be notified when forward rules status changes."""
+        self._forward_rules_listeners.append(callback)
+
+    def unregister_forward_rules_listener(self, callback: Callable[[], None]) -> None:
+        """Unregister a rules listener callback."""
+        if callback in self._forward_rules_listeners:
+            self._forward_rules_listeners.remove(callback)
+
+    def _notify_forward_rules_changed(self) -> None:
+        """Notify all registered listeners of a change."""
+        for cb in self._forward_rules_listeners:
+            try:
+                cb()
+            except Exception as e:
+                logger.error(f"Error calling forward rules listener: {e}")

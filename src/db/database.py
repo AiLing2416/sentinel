@@ -15,6 +15,7 @@ from pathlib import Path
 
 from models.connection import Connection, ValidationError
 from models.connection_group import ConnectionGroup
+from models.forward_rule import ForwardRule
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +259,56 @@ class Database:
         if cur.rowcount > 0:
             logger.debug(f"Cleared {cur.rowcount} host keys for {hostname}:{port}")
         return cur.rowcount
+
+    # ── Forward Rule CRUD ─────────────────────────────────────
+
+    def save_forward_rule(self, rule: ForwardRule) -> None:
+        """Insert or replace a port forwarding rule."""
+        rule.validate()
+        data = rule.to_dict()
+        self._db.execute(
+            """INSERT OR REPLACE INTO forward_rules (
+                id, connection_id, type, bind_address, bind_port,
+                remote_host, remote_port, enabled
+            ) VALUES (
+                :id, :connection_id, :type, :bind_address, :bind_port,
+                :remote_host, :remote_port, :enabled
+            )""",
+            data,
+        )
+        self._db.commit()
+        logger.debug("Saved forward rule: %s", rule.id)
+
+    def get_forward_rule(self, rule_id: str) -> ForwardRule | None:
+        """Retrieve a forward rule by ID."""
+        row = self._db.execute(
+            "SELECT * FROM forward_rules WHERE id = ?", (rule_id,)
+        ).fetchone()
+        if row:
+            return ForwardRule.from_dict(dict(row))
+        return None
+
+    def list_forward_rules(self, connection_id: str | None = None) -> list[ForwardRule]:
+        """List all forward rules, optionally filtered by connection."""
+        if connection_id is not None:
+            rows = self._db.execute(
+                "SELECT * FROM forward_rules WHERE connection_id = ? ORDER BY type, bind_port",
+                (connection_id,),
+            ).fetchall()
+        else:
+            rows = self._db.execute(
+                "SELECT * FROM forward_rules ORDER BY connection_id, type, bind_port"
+            ).fetchall()
+        return [ForwardRule.from_dict(dict(r)) for r in rows]
+
+    def delete_forward_rule(self, rule_id: str) -> bool:
+        """Delete a forward rule by ID. Returns True if deleted."""
+        cur = self._db.execute("DELETE FROM forward_rules WHERE id = ?", (rule_id,))
+        self._db.commit()
+        deleted = cur.rowcount > 0
+        if deleted:
+            logger.debug("Deleted forward rule: %s", rule_id)
+        return deleted
 
     # ── Group CRUD ────────────────────────────────────────────
 

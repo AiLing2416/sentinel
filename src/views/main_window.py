@@ -155,6 +155,16 @@ class SentinelWindow(Adw.ApplicationWindow):
         shell_btn.connect("clicked", lambda _: self._open_local_shell())
         content_header.pack_end(shell_btn)
 
+        # Port Forwarding Button
+        pf_btn = Gtk.Button(
+            icon_name="network-transmit-receive-symbolic",
+            tooltip_text=_("Port Forwarding Management")
+        )
+        pf_btn.add_css_class("flat")
+        pf_btn.set_valign(Gtk.Align.CENTER)
+        pf_btn.connect("clicked", lambda _: self._open_port_forwarding())
+        content_header.pack_end(pf_btn)
+
         # "Merge All" button for TabBar (for secondary windows)
         self._merge_btn = Gtk.Button(
             icon_name="list-remove-symbolic",
@@ -524,6 +534,11 @@ class SentinelWindow(Adw.ApplicationWindow):
     def _open_local_shell(self) -> None:
         """Open a local shell tab."""
         self._terminal_tab_view.open_local_tab()
+        self._content_stack.set_visible_child_name("terminal")
+
+    def _open_port_forwarding(self) -> None:
+        """Open the port forwarding management tab."""
+        self._terminal_tab_view.open_port_forwarding_tab()
         self._content_stack.set_visible_child_name("terminal")
 
     def _open_sftp_for(self, conn: Connection) -> None:
