@@ -352,7 +352,9 @@ class HostsPage(Gtk.Box):
         basic_group.add(self._port_row)
 
         self._user_row = Adw.EntryRow(title=_("Username"))
-        self._user_row.set_placeholder_text("root")
+        delegate = self._user_row.get_delegate()
+        if delegate and hasattr(delegate, "set_placeholder_text"):
+            delegate.set_placeholder_text("root")
         basic_group.add(self._user_row)
 
         form_box.append(basic_group)
