@@ -645,8 +645,7 @@ class SentinelApplication(Adw.Application):
         entry text placeholder,
         text placeholder,
         placeholder {
-            font: inherit !important;
-            font-size: 1em !important;
+            font-size: 15px !important;
             margin: 0 !important;
             padding: 0 !important;
             opacity: 0.55;
