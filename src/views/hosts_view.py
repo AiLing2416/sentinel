@@ -352,6 +352,7 @@ class HostsPage(Gtk.Box):
         basic_group.add(self._port_row)
 
         self._user_row = Adw.EntryRow(title=_("Username"))
+        self._user_row.set_placeholder_text("root")
         basic_group.add(self._user_row)
 
         form_box.append(basic_group)
@@ -686,7 +687,7 @@ class HostsPage(Gtk.Box):
             conn.name = self._name_row.get_text()
             conn.hostname = self._host_row.get_text()
             conn.port = int(self._port_row.get_value())
-            conn.username = self._user_row.get_text()
+            conn.username = self._user_row.get_text().strip() or "root"
             conn.auth_method = auth_method
             conn.key_path = k_path
             conn.vault_item_id = self._vault_sel_id_val
@@ -697,7 +698,7 @@ class HostsPage(Gtk.Box):
                 name=self._name_row.get_text(),
                 hostname=self._host_row.get_text(),
                 port=int(self._port_row.get_value()),
-                username=self._user_row.get_text(),
+                username=self._user_row.get_text().strip() or "root",
                 auth_method=auth_method,
                 key_path=k_path,
                 vault_item_id=self._vault_sel_id_val,
