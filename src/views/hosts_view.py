@@ -352,9 +352,9 @@ class HostsPage(Gtk.Box):
         basic_group.add(self._port_row)
 
         self._user_row = Adw.EntryRow(title=_("Username"))
-        delegate = self._user_row.get_delegate()
-        if delegate and hasattr(delegate, "set_placeholder_text"):
-            delegate.set_placeholder_text("root")
+        focus_controller = Gtk.EventControllerFocus.new()
+        focus_controller.connect("enter", lambda *_: self._user_row.select_region(0, -1))
+        self._user_row.add_controller(focus_controller)
         basic_group.add(self._user_row)
 
         form_box.append(basic_group)
@@ -577,7 +577,7 @@ class HostsPage(Gtk.Box):
             self._name_row.set_text(connection.name)
             self._host_row.set_text(connection.hostname)
             self._port_row.set_value(connection.port)
-            self._user_row.set_text(connection.username or "")
+            self._user_row.set_text(connection.username or "root")
             self._auth_row.set_selected(self._auth_map.get(connection.auth_method, 0))
 
             # Determine initial key selection
@@ -656,7 +656,7 @@ class HostsPage(Gtk.Box):
             self._name_row.set_text("")
             self._host_row.set_text("")
             self._port_row.set_value(22)
-            self._user_row.set_text("")
+            self._user_row.set_text("root")
             self._auth_row.set_selected(0)
             self._key_sel_row.set_selected(0)
             self._keychain_key_row.set_selected(0)
