@@ -1168,6 +1168,88 @@ class VaultManagerWindow(Gtk.Box):
 
         self._run_coroutine(_do_unlock())
 
+    def _on_vault_setup_clicked(self, _btn) -> None:
+        pwd = self._setup_pwd_entry.get_text()
+        confirm = self._setup_pwd_confirm.get_text()
+        if not pwd:
+            self._show_toast(_("Please enter a master password."))
+            return
+        if pwd != confirm:
+            self._show_toast(_("Passwords do not match."))
+            return
+        if len(pwd) < 8:
+            self._show_toast(_("Password must be at least 8 characters."))
+            return
+
+        pwd_sb = SecureBytes(pwd)
+        self._setup_pwd_entry.set_text("")
+        self._setup_pwd_confirm.set_text("")
+        self._setup_btn.set_sensitive(False)
+        self._stack.set_visible_child_name("loading")
+
+        try:
+            VaultManager.get().initialize(pwd_sb)
+            pwd_sb.clear()
+            self._show_toast(_("Local vault created successfully."))
+            self._check_status()
+        except Exception as e:
+            pwd_sb.clear()
+            self._setup_btn.set_sensitive(True)
+            self._stack.set_visible_child_name("vault_setup")
+            self._show_toast(_("Failed to create vault: {e}").format(e=e))
+
+    def _on_local_vault_unlock_clicked(self, _btn) -> None:
+        pwd = self._vaultunlock_entry.get_text()
+        if not pwd:
+            return
+        pwd_sb = SecureBytes(pwd)
+        self._vaultunlock_entry.set_text("")
+        self._vaultunlock_btn.set_sensitive(False)
+        self._stack.set_visible_child_name("loading")
+
+        ok = VaultManager.get().unlock(pwd_sb)
+        pwd_sb.clear()
+
+        if ok:
+            self._check_status()
+        else:
+            self._vaultunlock_btn.set_sensitive(True)
+            self._stack.set_visible_child_name("vault_unlock")
+            self._show_toast(_("Wrong master password."))
+
+    def _on_local_vault_reset_clicked(self, _btn) -> None:
+        """Confirm and destroy the local vault DB to allow fresh start."""
+        dialog = Adw.MessageDialog(
+            transient_for=self.get_root(),
+            heading=_("Destroy Local Vault?"),
+            body=_(
+                "This will permanently erase your local cache of Bitwarden passwords and SSH keys. "
+                "The actual data inside Bitwarden is NOT affected. "
+                "Use this only if you lost your master key and cannot unlock Sentinel."
+            ),
+        )
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("destroy", _("Destroy Everything"))
+        dialog.set_response_appearance("destroy", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+
+        def _on_response(_d, response):
+            if response == "destroy":
+                self._stack.set_visible_child_name("loading")
+                try:
+                    VaultManager.get().destroy_vault()
+                    # Re-open the vault immediately (will recreate tables)
+                    VaultManager.get()._vault.open() 
+                    self._show_toast(_("Local vault destroyed. Please set it up again."))
+                    self._check_status()
+                except Exception as e:
+                    self._show_toast(_("Failed to destroy vault: {e}").format(e=e))
+                    self._check_status()
+
+        dialog.connect("response", _on_response)
+        dialog.present()
+
     def _on_lock_clicked(self, _btn) -> None:
         self._stack.set_visible_child_name("loading")
 
