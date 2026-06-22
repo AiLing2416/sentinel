@@ -411,6 +411,10 @@ class BitwardenBackend(VaultBackend):
             # logger.debug(f"Bitwarden: Using cached status: {self._status_cache}")
             return self._status_cache
 
+        # Try to restore session token from SecureVault first if not loaded
+        if not self._session_token:
+            self._try_load_cached_session()
+
         # Try auto-unlock if we don't have a token but might have a password in keyring
         if not self._session_token and not self._cli_session_active:
             try:

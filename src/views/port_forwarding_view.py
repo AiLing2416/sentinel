@@ -435,72 +435,94 @@ class PortForwardingTab(Gtk.Box):
         self._list_box.append(self._add_row)
 
     def _create_rule_row(self, rule: ForwardRule) -> Gtk.Widget:
-        # Get rule status
+        """Create a redesigned rule row with left color status bar and type badge."""
         status = self._ssh_service.get_forward_rule_status(rule)
 
-        # Main row horizontal container
-        row_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        row_box.set_margin_start(16)
-        row_box.set_margin_end(16)
-        row_box.set_margin_top(12)
-        row_box.set_margin_bottom(12)
+        # Status bar CSS class
+        _STATUS_BAR = {
+            "Running":      "status-bar-running",
+            "Disconnected": "status-bar-connecting",
+            "Error":        "status-bar-error",
+        }
+        status_bar_css = _STATUS_BAR.get(status, "status-bar-stopped")
 
-        # Type Icon
-        icon_name = "network-transmit-receive-symbolic"
-        if rule.type == ForwardType.LOCAL:
-            icon_name = "network-transmit-symbolic"
-        elif rule.type == ForwardType.REMOTE:
-            icon_name = "network-receive-symbolic"
-        elif rule.type == ForwardType.DYNAMIC:
-            icon_name = "network-vpn-symbolic"
+        # Type icon and badge
+        _TYPE_ICONS = {
+            ForwardType.LOCAL:   "network-transmit-symbolic",
+            ForwardType.REMOTE:  "network-receive-symbolic",
+            ForwardType.DYNAMIC: "network-vpn-symbolic",
+        }
+        _TYPE_BADGE_CSS = {
+            ForwardType.LOCAL:   "forward-type-local",
+            ForwardType.REMOTE:  "forward-type-remote",
+            ForwardType.DYNAMIC: "forward-type-dynamic",
+        }
+        _TYPE_LABELS = {
+            ForwardType.LOCAL:   _("Local"),
+            ForwardType.REMOTE:  _("Remote"),
+            ForwardType.DYNAMIC: _("Dynamic"),
+        }
 
-        icon = Gtk.Image.new_from_icon_name(icon_name)
+        # Outer row: colored status bar + content
+        outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        outer.add_css_class("forward-rule-row")
+
+        # Left color status bar
+        status_bar = Gtk.Box()
+        status_bar.add_css_class(status_bar_css)
+        outer.append(status_bar)
+
+        # Inner content area
+        inner = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        inner.set_hexpand(True)
+        inner.set_margin_start(12)
+        inner.set_margin_end(12)
+        inner.set_margin_top(12)
+        inner.set_margin_bottom(12)
+
+        # Type icon
+        icon = Gtk.Image.new_from_icon_name(
+            _TYPE_ICONS.get(rule.type, "network-transmit-receive-symbolic")
+        )
+        icon.set_pixel_size(20)
         icon.set_valign(Gtk.Align.CENTER)
-        
-        # Color code based on status: Green (success), Yellow (warning/connecting), Red (error), Gray (dim-label/stopped)
-        if status == "Running":
-            icon.add_css_class("success")
-        elif status == "Disconnected":
-            icon.add_css_class("warning")
-        elif status == "Error":
-            icon.add_css_class("error")
-        else:
-            icon.add_css_class("dim-label")
-        row_box.append(icon)
+        inner.append(icon)
 
-        # Text labels info
-        text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        # Text info column
+        text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
         text_box.set_hexpand(True)
 
+        # Connection name + type badge in one row
+        name_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         conn_name = self._conn_names.get(rule.connection_id, _("Unknown Connection"))
         title_lbl = Gtk.Label(label=conn_name)
         title_lbl.set_halign(Gtk.Align.START)
         title_lbl.add_css_class("heading")
-        text_box.append(title_lbl)
+        name_row.append(title_lbl)
 
-        # Format details label
-        type_str = ""
-        details = ""
+        type_badge = Gtk.Label(label=_TYPE_LABELS.get(rule.type, ""))
+        type_badge.add_css_class("forward-type-badge")
+        type_badge.add_css_class(_TYPE_BADGE_CSS.get(rule.type, "forward-type-local"))
+        name_row.append(type_badge)
+        text_box.append(name_row)
+
+        # Detail string
         bind_str = f"{rule.bind_address}:{rule.bind_port}"
         if rule.type == ForwardType.LOCAL:
-            type_str = _("Local Forwarding")
-            details = f"{bind_str} ➔ {rule.remote_host}:{rule.remote_port}"
+            detail = f"{bind_str} ➔ {rule.remote_host}:{rule.remote_port}"
         elif rule.type == ForwardType.REMOTE:
-            type_str = _("Remote Forwarding")
-            details = f"{bind_str} ➔ {rule.remote_host}:{rule.remote_port} " + _("(remote side)")
-        elif rule.type == ForwardType.DYNAMIC:
-            type_str = _("Dynamic Forwarding (SOCKS5)")
-            details = _("Local port {bind_str}").format(bind_str=bind_str)
+            detail = f"{bind_str} ➔ {rule.remote_host}:{rule.remote_port} " + _("(remote side)")
+        else:
+            detail = _("SOCKS5 proxy on {bind_str}").format(bind_str=bind_str)
 
-        desc_lbl = Gtk.Label(label=f"{type_str}: {details}")
+        desc_lbl = Gtk.Label(label=detail)
         desc_lbl.set_halign(Gtk.Align.START)
-        desc_lbl.add_css_class("dim-label")
         desc_lbl.add_css_class("caption")
+        desc_lbl.add_css_class("dim-label")
         text_box.append(desc_lbl)
+        inner.append(text_box)
 
-        row_box.append(text_box)
-
-        # Enable/Disable switch directly representing the running status
+        # Enable/Disable switch
         sw = Gtk.Switch()
         sw.set_valign(Gtk.Align.CENTER)
         sw.set_active(status == "Running")
@@ -511,8 +533,7 @@ class PortForwardingTab(Gtk.Box):
                 sw.set_tooltip_text(_("Error: {err_msg}").format(err_msg=err_msg))
         elif status == "Disconnected" and rule.enabled:
             sw.set_tooltip_text(_("Connecting or disconnected"))
-        
-        # Connect state change handler
+
         def _on_switch_state_set(switch, state) -> bool:
             rule.enabled = state
             db = Database()
@@ -522,24 +543,22 @@ class PortForwardingTab(Gtk.Box):
             finally:
                 db.close()
 
-            # Execute dynamically
             if state:
                 async def run_start():
                     try:
                         await self._ssh_service.start_forward_rule(rule)
                     except Exception:
                         pass
-                    # UI refresh will automatically happen via SSHService callback
                 self._ssh_service.engine.run_coroutine(run_start())
             else:
                 async def run_stop():
                     await self._ssh_service.stop_forward_rule(rule.id)
                 self._ssh_service.engine.run_coroutine(run_stop())
 
-            return False  # Continue standard state transition
-        
+            return False
+
         sw.connect("state-set", _on_switch_state_set)
-        row_box.append(sw)
+        inner.append(sw)
 
         # Edit button
         edit_btn = Gtk.Button(icon_name="document-edit-symbolic")
@@ -547,7 +566,7 @@ class PortForwardingTab(Gtk.Box):
         edit_btn.set_valign(Gtk.Align.CENTER)
         edit_btn.set_tooltip_text(_("Edit"))
         edit_btn.connect("clicked", lambda _: self._on_edit_rule_clicked(rule))
-        row_box.append(edit_btn)
+        inner.append(edit_btn)
 
         # Delete button
         del_btn = Gtk.Button(icon_name="user-trash-symbolic")
@@ -555,12 +574,14 @@ class PortForwardingTab(Gtk.Box):
         del_btn.set_valign(Gtk.Align.CENTER)
         del_btn.set_tooltip_text(_("Delete"))
         del_btn.connect("clicked", lambda _: self._on_delete_rule_clicked(rule))
-        row_box.append(del_btn)
+        inner.append(del_btn)
 
-        # Wrap in list box row container
+        outer.append(inner)
+
+        # Wrap in list box row
         row = Gtk.ListBoxRow()
         row.set_activatable(False)
-        row.set_child(row_box)
+        row.set_child(outer)
         return row
 
     def _on_add_rule_clicked(self, _btn) -> None:

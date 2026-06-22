@@ -255,7 +255,7 @@ class TerminalTab(Gtk.Box):
         scrollbar = Gtk.Scrollbar(orientation=Gtk.Orientation.VERTICAL)
         vadjust = self._terminal.get_vadjustment()
         scrollbar.set_adjustment(vadjust)
-        vadjust.connect("value-changed", self._on_scroll_value_changed)
+        self._scroll_handler_id = vadjust.connect("value-changed", self._on_scroll_value_changed)
         terminal_container.append(scrollbar)
         
         self.append(terminal_container)
@@ -516,15 +516,21 @@ class TerminalTab(Gtk.Box):
         self._terminal.feed(f"\r\n\033[1;31m{msg}\033[0m\r\n".encode("utf-8"))
         
     def _show_reconnect_prompt(self) -> None:
+        if self._reconnect_sid:
+            return
         self._terminal.feed(b"\r\n\033[1;33m[Session ended. Press Enter to reconnect, or Ctrl+D to close this tab.]\033[0m\r\n")
         self._reconnect_sid = self._terminal.connect("commit", self._on_reconnect_key)
 
     def _on_reconnect_key(self, terminal: Vte.Terminal, text: str, size: int) -> None:
         if "\x04" in text:
-            terminal.disconnect(self._reconnect_sid)
+            if self._reconnect_sid:
+                terminal.disconnect(self._reconnect_sid)
+                self._reconnect_sid = 0
             self.request_close()
         elif "\r" in text or "\n" in text:
-            terminal.disconnect(self._reconnect_sid)
+            if self._reconnect_sid:
+                terminal.disconnect(self._reconnect_sid)
+                self._reconnect_sid = 0
             self._status_label.set_label(_("Reconnecting…"))
             self._terminal.reset(True, True)
             if self.is_remote:
@@ -684,6 +690,15 @@ class TerminalTab(Gtk.Box):
         return self._terminal.grab_focus()
 
     def terminate(self) -> None:
+        if hasattr(self, "_scroll_handler_id") and self._scroll_handler_id:
+            try:
+                vadjust = self._terminal.get_vadjustment()
+                if vadjust:
+                    vadjust.disconnect(self._scroll_handler_id)
+            except Exception:
+                pass
+            self._scroll_handler_id = 0
+
         if self._pty_watch_id:
             GLib.source_remove(self._pty_watch_id)
             self._pty_watch_id = 0

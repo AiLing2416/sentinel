@@ -82,12 +82,9 @@ class SentinelApplication(Adw.Application):
 
 
     def _on_vault_settings(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
-        from views.vault_settings_dialog import VaultManagerWindow
         win = self.props.active_window
-        vault_win = VaultManagerWindow(app=self)
-        vault_win.set_transient_for(win)
-        vault_win.set_modal(False)  # Non-modal: user can still use the main window
-        vault_win.present()
+        if win and hasattr(win, "show_vault_settings"):
+            win.show_vault_settings()
 
     def _on_terminal_theme(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
         import logging
@@ -304,5 +301,343 @@ class SentinelApplication(Adw.Application):
             box-shadow: inset 0 0 10px alpha(@accent_color, 0.3);
             transition: background 200ms ease-in-out;
         }
-        """
 
+        /* ── FlowBox Cards Hover/Selection fixes ── */
+        .host-card {
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+        }
+        .key-card {
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+        }
+        .host-card:hover {
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+        }
+        .key-card:hover {
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+        }
+        .host-card:selected {
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+        }
+        .key-card:selected {
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+        }
+        .host-card:focus {
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+        }
+        .key-card:focus {
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+        }
+
+        /* Hover card style */
+        .host-card:hover .card,
+        .key-card:hover .card {
+            background-image: linear-gradient(
+                to bottom,
+                alpha(currentColor, 0.04),
+                alpha(currentColor, 0.04)
+            ) !important;
+        }
+
+        /* Selected card style */
+        .host-card:selected .card,
+        .key-card:selected .card {
+            box-shadow: inset 0 0 0 2px @accent_color !important;
+            background-image: linear-gradient(
+                to bottom,
+                alpha(@accent_color, 0.08),
+                alpha(@accent_color, 0.08)
+            ) !important;
+        }
+        .host-card:selected:hover .card,
+        .key-card:selected:hover .card {
+            box-shadow: inset 0 0 0 2px @accent_color !important;
+            background-image: linear-gradient(
+                to bottom,
+                alpha(@accent_color, 0.12),
+                alpha(@accent_color, 0.12)
+            ) !important;
+        }
+
+        /* Micro-animation transitions for smooth hover/selection state */
+        .card {
+            transition: box-shadow 150ms ease, background-image 150ms ease;
+        }
+
+        /* ═══════════════════════════════════════════════
+         *  NEW REDESIGN STYLES
+         * ═══════════════════════════════════════════════ */
+
+        /* ── Sidebar Navigation (pill style) ──────────── */
+        .nav-section-label {
+            font-size: 0.70em;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: alpha(@sidebar_fg_color, 0.42);
+            padding: 14px 16px 4px 16px;
+        }
+        /* nav-item is a Gtk.Button — override flat button defaults */
+        .nav-item {
+            border-radius: 999px;
+            padding: 7px 12px;
+            margin: 1px 8px;
+            transition: all 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            color: @sidebar_fg_color;
+            box-shadow: none;
+            border: none;
+            outline: none;
+        }
+        .nav-item:hover {
+            background-color: alpha(@sidebar_fg_color, 0.07);
+            box-shadow: none;
+        }
+        .nav-item.selected {
+            background-color: alpha(@accent_color, 0.14);
+            color: @accent_color;
+            font-weight: bold;
+            box-shadow: none;
+        }
+        .nav-item:active {
+            box-shadow: none;
+        }
+
+        /* ── Collapsed rail: 36x36 circular buttons (sidebar is 52px wide) ── */
+        .nav-collapsed-item {
+            padding: 9px !important;
+            margin-left: 8px !important;
+            margin-right: 8px !important;
+            border-radius: 999px !important;
+            min-width: 36px !important;
+            min-height: 36px !important;
+        }
+
+        /* Sidebar header/footer CenterBox */
+        .sidebar-header-box {
+            background-color: @headerbar_bg_color;
+            border-bottom: 1px solid @borders;
+            min-height: 47px;
+        }
+        .sidebar-bottom-bar {
+            border-top: 1px solid @borders;
+            padding: 4px 8px;
+        }
+
+        .sidebar-action-btn {
+            transition: margin-left 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .sidebar-action-btn.header-expanded { margin-left: 13px; }
+        .sidebar-action-btn.header-collapsed { margin-left: 10px; }
+        .sidebar-action-btn.footer-expanded { margin-left: 5px; }
+        .sidebar-action-btn.footer-collapsed { margin-left: 2px; }
+
+        /* ── Host Card (redesigned) ────────────────────── */
+        .host-card-v2 {
+            border-radius: 12px;
+            background-color: @card_bg_color;
+            border: 1px solid @card_shade_color;
+            transition: box-shadow 150ms ease;
+            box-shadow: 0 1px 3px alpha(black, 0.06);
+        }
+        .host-card-v2:hover {
+            box-shadow: 0 3px 8px alpha(black, 0.12);
+        }
+        .host-card-v2.selected {
+            border-color: @accent_color;
+            box-shadow: 0 0 0 2px alpha(@accent_color, 0.3);
+        }
+
+        /* Auth type accent stripe (integrated as top 4px background on host card) */
+        .host-card-v2.auth-stripe-key,
+        .host-card-v2.auth-stripe-password,
+        .host-card-v2.auth-stripe-agent,
+        .host-card-v2.auth-stripe-vault,
+        .host-card-v2.auth-stripe-key_passphrase {
+            border-top-color: transparent;
+            background-size: 100% 4px;
+            background-repeat: no-repeat;
+            background-position: top left;
+        }
+        .host-card-v2.auth-stripe-key {
+            background-image: linear-gradient(90deg, @blue_3, @blue_4);
+        }
+        .host-card-v2.auth-stripe-password {
+            background-image: linear-gradient(90deg, @orange_3, @orange_4);
+        }
+        .host-card-v2.auth-stripe-agent {
+            background-image: linear-gradient(90deg, @green_3, @green_4);
+        }
+        .host-card-v2.auth-stripe-vault {
+            background-image: linear-gradient(90deg, @purple_3, @purple_4);
+        }
+        .host-card-v2.auth-stripe-key_passphrase {
+            background-image: linear-gradient(90deg, @blue_3, @purple_3);
+        }
+
+        /* Auth badge (small pill in card corner) */
+        .auth-badge {
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.70em;
+            font-weight: 600;
+            background-color: alpha(@accent_color, 0.12);
+            color: @accent_color;
+        }
+
+        /* ── Key Card (redesigned) ─────────────────────── */
+        /* Left accent stripe for key type */
+        .key-accent-ed25519 {
+            background-color: @blue_4;
+            border-radius: 12px 0 0 12px;
+            min-width: 4px;
+        }
+        .key-accent-rsa {
+            background-color: @green_4;
+            border-radius: 12px 0 0 12px;
+            min-width: 4px;
+        }
+        .key-accent-ecdsa {
+            background-color: @purple_4;
+            border-radius: 12px 0 0 12px;
+            min-width: 4px;
+        }
+        .key-accent-default {
+            background-color: @accent_color;
+            border-radius: 12px 0 0 12px;
+            min-width: 4px;
+        }
+
+        /* Key type badge */
+        .key-type-badge {
+            border-radius: 5px;
+            padding: 2px 7px;
+            font-size: 0.70em;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+        .key-type-badge.ed25519 {
+            background-color: alpha(@blue_3, 0.15);
+            color: @blue_4;
+        }
+        .key-type-badge.rsa {
+            background-color: alpha(@green_3, 0.15);
+            color: @green_5;
+        }
+        .key-type-badge.ecdsa {
+            background-color: alpha(@purple_3, 0.15);
+            color: @purple_4;
+        }
+        .key-type-badge.other {
+            background-color: alpha(@accent_color, 0.12);
+            color: @accent_color;
+        }
+
+        /* Fingerprint monospace label */
+        .fingerprint-label {
+            font-family: monospace;
+            font-size: 0.76em;
+            background-color: alpha(@card_shade_color, 0.7);
+            border-radius: 5px;
+            padding: 3px 7px;
+        }
+
+        /* ── Port Forwarding Rule Row ───────────────────── */
+        .forward-rule-row {
+            border-radius: 10px;
+            background-color: @card_bg_color;
+            border: 1px solid @card_shade_color;
+            margin: 3px 0;
+        }
+        /* Status indicator left bars */
+        .status-bar-running {
+            background-color: @success_color;
+            border-radius: 9px 0 0 9px;
+            min-width: 4px;
+        }
+        .status-bar-stopped {
+            background-color: alpha(@dim_label_color, 0.28);
+            border-radius: 9px 0 0 9px;
+            min-width: 4px;
+        }
+        .status-bar-error {
+            background-color: @error_color;
+            border-radius: 9px 0 0 9px;
+            min-width: 4px;
+        }
+        .status-bar-connecting {
+            background-color: @warning_color;
+            border-radius: 9px 0 0 9px;
+            min-width: 4px;
+        }
+        /* Forward type badge */
+        .forward-type-badge {
+            border-radius: 5px;
+            padding: 2px 7px;
+            font-size: 0.70em;
+            font-weight: 700;
+        }
+        .forward-type-local {
+            background-color: alpha(@blue_3, 0.15);
+            color: @blue_4;
+        }
+        .forward-type-remote {
+            background-color: alpha(@orange_3, 0.15);
+            color: @orange_4;
+        }
+        .forward-type-dynamic {
+            background-color: alpha(@purple_3, 0.15);
+            color: @purple_4;
+        }
+
+        /* ── Right Detail Panel ────────────────────────── */
+        .detail-panel {
+            background-color: @card_bg_color;
+            border-left: 1px solid @borders;
+        }
+
+        /* ── Unlock Screen Card ────────────────────────── */
+        .unlock-card {
+            border-radius: 16px;
+            background-color: @card_bg_color;
+            border: 1px solid alpha(@borders, 0.6);
+            box-shadow: 0 4px 20px alpha(black, 0.10), 0 1px 4px alpha(black, 0.06);
+        }
+        """

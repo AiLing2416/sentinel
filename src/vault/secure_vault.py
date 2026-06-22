@@ -47,10 +47,21 @@ CREATE TABLE IF NOT EXISTS vault_items (
     label         TEXT NOT NULL,
     hostname      TEXT DEFAULT '',
     username      TEXT DEFAULT '',
-    item_type     TEXT NOT NULL,     -- 'ssh-key' | 'password' | 'bitwarden-session'
+    item_type     TEXT NOT NULL,     -- 'ssh-key' | 'password' | 'bitwarden-session' | 'connection' | 'group' | 'forward_rule' | 'global-key'
     created_at    TEXT NOT NULL,
     nonce         TEXT NOT NULL,     -- Base64 AES-GCM nonce (12 bytes)
     ciphertext    TEXT NOT NULL      -- Base64 AES-GCM ciphertext
+);
+
+CREATE TABLE IF NOT EXISTS known_hosts (
+    hostname    TEXT NOT NULL,
+    port        INTEGER NOT NULL,
+    key_type    TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    first_seen  TEXT NOT NULL,
+    last_seen   TEXT NOT NULL,
+    trusted     INTEGER DEFAULT 0,
+    PRIMARY KEY (hostname, port, key_type)
 );
 """
 
@@ -522,6 +533,323 @@ class SecureVault:
                 "SELECT id, label, hostname, username, item_type, created_at FROM vault_items"
             ).fetchall()
         return [dict(r) for r in rows]
+
+    def store_connection(self, conn: Any) -> None:
+        """Store a connection configuration (encrypted)."""
+        assert self._conn is not None
+        import datetime
+        
+        payload = {
+            "name": conn.name,
+            "hostname": conn.hostname,
+            "port": str(conn.port),
+            "username": conn.username,
+            "auth_method": conn.auth_method.value,
+            "key_path": conn.key_path or "",
+            "vault_item_id": conn.vault_item_id or "",
+            "vault_item_name": conn.vault_item_name or "",
+            "jump_host_id": conn.jump_host_id or "",
+            "group_id": conn.group_id or "",
+            "os_id": conn.os_id or "",
+            "notes": conn.notes or "",
+            "last_connected": conn.last_connected.isoformat() if conn.last_connected else "",
+            "created_at": conn.created_at.isoformat(),
+            "agent_forwarding": "1" if conn.agent_forwarding else "0",
+            "sort_order": str(conn.sort_order),
+        }
+        
+        nonce, ct = self._encrypt(payload)
+        self._conn.execute(
+            """INSERT OR REPLACE INTO vault_items
+               (id, label, hostname, username, item_type, created_at, nonce, ciphertext)
+               VALUES (?, ?, ?, ?, 'connection', ?, ?, ?)""",
+            (conn.id, conn.name, conn.hostname, conn.username,
+             datetime.datetime.now(datetime.timezone.utc).isoformat(), nonce, ct)
+        )
+        self._conn.commit()
+
+    def get_connection(self, conn_id: str) -> Any | None:
+        """Retrieve and decrypt a connection by ID."""
+        assert self._conn is not None
+        from models.connection import Connection, AuthMethod
+        import datetime
+        
+        row = self._conn.execute(
+            "SELECT nonce, ciphertext FROM vault_items WHERE id = ? AND item_type = 'connection'",
+            (conn_id,)
+        ).fetchone()
+        if not row:
+            return None
+            
+        try:
+            payload = self._decrypt(row["nonce"], row["ciphertext"])
+            # Helper to safely decode values
+            def val(k: str) -> str:
+                return bytes(payload[k]).decode("utf-8") if k in payload else ""
+                
+            last_conn_str = val("last_connected")
+            last_conn = datetime.datetime.fromisoformat(last_conn_str) if last_conn_str else None
+            
+            return Connection(
+                id=conn_id,
+                name=val("name"),
+                hostname=val("hostname"),
+                port=int(val("port") or 22),
+                username=val("username"),
+                auth_method=AuthMethod(val("auth_method") or "key"),
+                key_path=val("key_path") or None,
+                vault_item_id=val("vault_item_id") or None,
+                vault_item_name=val("vault_item_name") or None,
+                jump_host_id=val("jump_host_id") or None,
+                group_id=val("group_id") or None,
+                os_id=val("os_id") or None,
+                notes=val("notes"),
+                last_connected=last_conn,
+                created_at=datetime.datetime.fromisoformat(val("created_at")),
+                agent_forwarding=val("agent_forwarding") == "1",
+                sort_order=int(val("sort_order") or 0)
+            )
+        except Exception as e:
+            logger.error("SecureVault: Failed to decrypt connection '%s': %s", conn_id, e)
+            return None
+
+    def list_connections(self) -> list[Any]:
+        """List and decrypt all connections."""
+        assert self._conn is not None
+        rows = self._conn.execute(
+            "SELECT id FROM vault_items WHERE item_type = 'connection'"
+        ).fetchall()
+        
+        conns = []
+        for r in rows:
+            c = self.get_connection(r["id"])
+            if c:
+                conns.append(c)
+        return conns
+
+    def delete_connection(self, conn_id: str) -> None:
+        """Delete a connection and its associated port forwarding rules."""
+        assert self._conn is not None
+        self.delete_item(conn_id)
+        self.delete_item(f"pwd:{conn_id}")
+        
+        # Delete rules for this connection
+        rules = self.list_forward_rules()
+        for r in rules:
+            if r.connection_id == conn_id:
+                self.delete_item(r.id)
+
+    def store_group(self, group: Any) -> None:
+        """Store a connection group (encrypted)."""
+        assert self._conn is not None
+        import datetime
+        
+        payload = {
+            "name": group.name,
+            "parent_id": group.parent_id or "",
+            "sort_order": str(group.sort_order),
+            "color": group.color or "",
+        }
+        
+        nonce, ct = self._encrypt(payload)
+        self._conn.execute(
+            """INSERT OR REPLACE INTO vault_items
+               (id, label, hostname, username, item_type, created_at, nonce, ciphertext)
+               VALUES (?, ?, '', '', 'group', ?, ?, ?)""",
+            (group.id, group.name,
+             datetime.datetime.now(datetime.timezone.utc).isoformat(), nonce, ct)
+        )
+        self._conn.commit()
+
+    def list_groups(self) -> list[Any]:
+        """List and decrypt all connection groups."""
+        assert self._conn is not None
+        from models.connection_group import ConnectionGroup
+        
+        rows = self._conn.execute(
+            "SELECT id, nonce, ciphertext FROM vault_items WHERE item_type = 'group'"
+        ).fetchall()
+        
+        groups = []
+        for r in rows:
+            try:
+                payload = self._decrypt(r["nonce"], r["ciphertext"])
+                def val(k: str) -> str:
+                    return bytes(payload[k]).decode("utf-8") if k in payload else ""
+                
+                groups.append(ConnectionGroup(
+                    id=r["id"],
+                    name=val("name"),
+                    parent_id=val("parent_id") or None,
+                    sort_order=int(val("sort_order") or 0),
+                    color=val("color") or None
+                ))
+            except Exception as e:
+                logger.error("SecureVault: Failed to decrypt group '%s': %s", r["id"], e)
+        return groups
+
+    def delete_group(self, group_id: str) -> None:
+        """Delete a group and clear group_id references in connections."""
+        assert self._conn is not None
+        self.delete_item(group_id)
+        
+        # Clear group_id from connection payloads
+        conns = self.list_connections()
+        for c in conns:
+            if c.group_id == group_id:
+                c.group_id = None
+                self.store_connection(c)
+
+    def store_forward_rule(self, rule: Any) -> None:
+        """Store a port forwarding rule (encrypted)."""
+        assert self._conn is not None
+        import datetime
+        
+        payload = {
+            "connection_id": rule.connection_id,
+            "type": rule.type.value,
+            "bind_address": rule.bind_address or "",
+            "bind_port": str(rule.bind_port),
+            "remote_host": rule.remote_host or "",
+            "remote_port": str(rule.remote_port) if rule.remote_port is not None else "",
+            "enabled": "1" if rule.enabled else "0",
+            "auto_start": "1" if rule.auto_start else "0",
+        }
+        
+        nonce, ct = self._encrypt(payload)
+        self._conn.execute(
+            """INSERT OR REPLACE INTO vault_items
+               (id, label, hostname, username, item_type, created_at, nonce, ciphertext)
+               VALUES (?, ?, '', '', 'forward_rule', ?, ?, ?)""",
+            (rule.id, rule.id,
+             datetime.datetime.now(datetime.timezone.utc).isoformat(), nonce, ct)
+        )
+        self._conn.commit()
+
+    def get_forward_rule(self, rule_id: str) -> Any | None:
+        """Retrieve and decrypt a forward rule by ID."""
+        assert self._conn is not None
+        from models.forward_rule import ForwardRule, ForwardType
+        
+        row = self._conn.execute(
+            "SELECT nonce, ciphertext FROM vault_items WHERE id = ? AND item_type = 'forward_rule'",
+            (rule_id,)
+        ).fetchone()
+        if not row:
+            return None
+            
+        try:
+            payload = self._decrypt(row["nonce"], row["ciphertext"])
+            def val(k: str) -> str:
+                return bytes(payload[k]).decode("utf-8") if k in payload else ""
+                
+            rem_port_str = val("remote_port")
+            remote_port = int(rem_port_str) if rem_port_str else None
+            
+            return ForwardRule(
+                id=rule_id,
+                connection_id=val("connection_id"),
+                type=ForwardType(val("type") or "local"),
+                bind_address=val("bind_address") or None,
+                bind_port=int(val("bind_port") or 0),
+                remote_host=val("remote_host") or None,
+                remote_port=remote_port,
+                enabled=val("enabled") == "1",
+                auto_start=val("auto_start") == "1"
+            )
+        except Exception as e:
+            logger.error("SecureVault: Failed to decrypt forward rule '%s': %s", rule_id, e)
+            return None
+
+    def list_forward_rules(self) -> list[Any]:
+        """List and decrypt all port forwarding rules."""
+        assert self._conn is not None
+        rows = self._conn.execute(
+            "SELECT id FROM vault_items WHERE item_type = 'forward_rule'"
+        ).fetchall()
+        
+        rules = []
+        for r in rows:
+            rule = self.get_forward_rule(r["id"])
+            if rule:
+                rules.append(rule)
+        return rules
+
+    def store_global_key(
+        self,
+        item_id: str,
+        label: str,
+        private_key_pem: SecureBytes,
+        public_key_openssh: str,
+        key_type: str,
+        fingerprint: str,
+        passphrase: SecureBytes | None = None
+    ) -> None:
+        """Store a global SSH key pair (encrypted)."""
+        assert self._conn is not None
+        import datetime
+        
+        payload = {
+            "private_key": private_key_pem,
+            "public_key": public_key_openssh,
+            "key_type": key_type,
+            "fingerprint": fingerprint,
+            "passphrase": passphrase
+        }
+        nonce, ct = self._encrypt(payload)
+        self._conn.execute(
+            """INSERT OR REPLACE INTO vault_items
+               (id, label, hostname, username, item_type, created_at, nonce, ciphertext)
+               VALUES (?, ?, '', '', 'global-key', ?, ?, ?)""",
+            (item_id, label,
+             datetime.datetime.now(datetime.timezone.utc).isoformat(), nonce, ct)
+        )
+        self._conn.commit()
+
+    def get_global_key(self, item_id: str) -> dict | None:
+        """Retrieve and decrypt a global SSH key by ID."""
+        assert self._conn is not None
+        row = self._conn.execute(
+            "SELECT label, nonce, ciphertext FROM vault_items WHERE id = ? AND item_type = 'global-key'",
+            (item_id,)
+        ).fetchone()
+        if not row:
+            return None
+            
+        try:
+            payload = self._decrypt(row["nonce"], row["ciphertext"])
+            pk_mv = payload.get("private_key")
+            pass_mv = payload.get("passphrase")
+            
+            def val(k: str) -> str:
+                return bytes(payload[k]).decode("utf-8") if k in payload else ""
+                
+            return {
+                "id": item_id,
+                "label": row["label"],
+                "private_key": SecureBytes(pk_mv) if pk_mv else None,
+                "public_key": val("public_key"),
+                "key_type": val("key_type") or "unknown",
+                "fingerprint": val("fingerprint") or "unknown",
+                "passphrase": SecureBytes(pass_mv) if pass_mv and len(pass_mv) > 0 else None,
+            }
+        except Exception as e:
+            logger.error("SecureVault: Failed to decrypt global key '%s': %s", item_id, e)
+            return None
+
+    def list_global_keys(self) -> list[dict]:
+        """List and decrypt all global SSH keys."""
+        assert self._conn is not None
+        rows = self._conn.execute(
+            "SELECT id FROM vault_items WHERE item_type = 'global-key'"
+        ).fetchall()
+        
+        keys = []
+        for r in rows:
+            k = self.get_global_key(r["id"])
+            if k:
+                keys.append(k)
+        return keys
 
     def clear_all(self) -> None:
         """Delete all vault items (but keep the master key envelope)."""

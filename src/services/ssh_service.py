@@ -208,27 +208,52 @@ class SSHService:
             
             # 1. Key Loading
             if conn.auth_method in (AuthMethod.KEY, AuthMethod.KEY_PASSPHRASE) and conn.key_path:
-                set_status("Loading local keys...")
-                key_path = Path(conn.key_path).expanduser()
-                auth_info["key_path"] = str(key_path)
-                
-                async def ask_passphrase() -> SecureBytes:
-                    pw = await call_ui_async(ui_callbacks["ask_passphrase"], str(key_path))
-                    if pw is None: raise asyncio.CancelledError("User cancelled passphrase input")
-                    return pw
+                set_status("Loading keys...")
+                if conn.key_path.startswith("keychain:"):
+                    key_id = conn.key_path.split(":", 1)[1]
+                    from services.vault_manager import VaultManager
+                    vm = VaultManager.get()
+                    if not vm.is_unlocked:
+                        raise ValueError("Local vault is locked. Please unlock it to retrieve SSH key.")
+                    k_data = vm.get_global_key(key_id)
+                    if not k_data:
+                        raise ValueError(f"Key '{key_id}' not found in local Keychain.")
                     
-                try:
-                    keys = asyncssh.read_private_key(key_path)
-                    _loaded_keys.append(keys)
-                except asyncssh.KeyImportError:
-                    pwd = await ask_passphrase()
+                    pem_ba = bytearray(k_data["private_key"].get_view())
+                    pass_ba = bytearray(k_data["passphrase"].get_view()) if k_data["passphrase"] else None
                     try:
-                        keys = asyncssh.read_private_key(key_path, pwd.get_view())
-                        _loaded_keys.append(keys)
-                        auth_info["key_passphrase"] = pwd
+                        private_key = asyncssh.import_private_key(pem_ba, pass_ba)
+                        _loaded_keys.append(private_key)
+                        auth_info["private_key_pem"] = k_data["private_key"]
+                        if k_data["passphrase"]:
+                            auth_info["key_passphrase"] = k_data["passphrase"]
                     except Exception as final_e:
-                        pwd.clear()
-                        raise ValueError(f"AuthenticationFailedError: {final_e}") from None
+                        raise ValueError(f"Failed to import Keychain key: {final_e}") from None
+                    finally:
+                        for b in range(len(pem_ba)): pem_ba[b] = 0
+                        if pass_ba:
+                            for b in range(len(pass_ba)): pass_ba[b] = 0
+                else:
+                    key_path = Path(conn.key_path).expanduser()
+                    auth_info["key_path"] = str(key_path)
+                    
+                    async def ask_passphrase() -> SecureBytes:
+                        pw = await call_ui_async(ui_callbacks["ask_passphrase"], str(key_path))
+                        if pw is None: raise asyncio.CancelledError("User cancelled passphrase input")
+                        return pw
+                        
+                    try:
+                        keys = asyncssh.read_private_key(key_path)
+                        _loaded_keys.append(keys)
+                    except asyncssh.KeyImportError:
+                        pwd = await ask_passphrase()
+                        try:
+                            keys = asyncssh.read_private_key(key_path, pwd.get_view())
+                            _loaded_keys.append(keys)
+                            auth_info["key_passphrase"] = pwd
+                        except Exception as final_e:
+                            pwd.clear()
+                            raise ValueError(f"AuthenticationFailedError: {final_e}") from None
 
             # 2. Base Kwargs
             kwargs: dict[str, Any] = {

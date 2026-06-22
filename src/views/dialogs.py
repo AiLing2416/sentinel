@@ -187,12 +187,38 @@ class VaultKeyPickerDialog(Adw.Window):
         # UI Components
         self._toolbar = Adw.ToolbarView()
         self._header = Adw.HeaderBar()
+        self._header.set_show_start_title_buttons(False)
+        self._header.set_show_end_title_buttons(False)
         self._toolbar.add_top_bar(self._header)
  
         cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.add_css_class("flat")
         cancel_btn.connect("clicked", lambda _: self._finish(None, ""))
         self._header.pack_start(cancel_btn)
+
+        # Title widget stack to switch between standard title and search entry
+        self._title_stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+        
+        self._title_label = Gtk.Label(label=_("Select SSH Key from Vault"))
+        self._title_label.add_css_class("title")
+        self._title_stack.add_named(self._title_label, "title")
+        
+        self._search_entry = Gtk.SearchEntry()
+        self._search_entry.set_placeholder_text(_("Search keys…"))
+        self._search_entry.set_hexpand(True)
+        self._search_entry.set_size_request(240, -1)
+        self._search_entry.connect("search-changed", self._on_search_changed)
+        self._search_entry.connect("stop-search", lambda _: self._stop_search())
+        self._search_entry.connect("activate", self._on_search_entry_activated)
+        self._title_stack.add_named(self._search_entry, "search")
+        
+        self._header.set_title_widget(self._title_stack)
+
+        # Search button
+        self._search_btn = Gtk.Button(icon_name="edit-find-symbolic")
+        self._search_btn.add_css_class("flat")
+        self._search_btn.connect("clicked", lambda _: self._start_search())
+        self._header.pack_end(self._search_btn)
 
         # Main Layout
         self._main_stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
@@ -237,6 +263,11 @@ class VaultKeyPickerDialog(Adw.Window):
         self.set_content(self._toolbar)
         self.connect("close-request", lambda _: self._finish(None, "") and False)
 
+        # Key event controller for direct typing
+        key_controller = Gtk.EventControllerKey()
+        key_controller.connect("key-pressed", self._on_window_key_pressed)
+        self.add_controller(key_controller)
+
         # Start loading
         self._main_stack.set_visible_child_name("loading")
         self._spinner.start()
@@ -276,6 +307,68 @@ class VaultKeyPickerDialog(Adw.Window):
 
         self._spinner.stop()
         self._main_stack.set_visible_child_name("content")
+        
+        # Apply search filter if active
+        if self._title_stack.get_visible_child_name() == "search":
+            self._on_search_changed(self._search_entry)
+
+    def _start_search(self, initial_text: str = "") -> None:
+        self._title_stack.set_visible_child_name("search")
+        self._search_btn.set_visible(False)
+        if initial_text:
+            self._search_entry.set_text(initial_text)
+            self._search_entry.set_position(-1)
+        self._search_entry.grab_focus()
+
+    def _stop_search(self) -> None:
+        self._search_entry.set_text("")
+        self._title_stack.set_visible_child_name("title")
+        self._search_btn.set_visible(True)
+        self._list_box.grab_focus()
+
+    def _on_search_changed(self, entry: Gtk.SearchEntry) -> None:
+        text = entry.get_text().lower()
+        row = self._list_box.get_first_child()
+        while row:
+            if isinstance(row, Adw.ActionRow):
+                title = (row.get_title() or "").lower()
+                subtitle = (row.get_subtitle() or "").lower()
+                row.set_visible(text in title or text in subtitle)
+            row = row.get_next_sibling()
+
+    def _on_search_entry_activated(self, _entry) -> None:
+        row = self._list_box.get_first_child()
+        while row:
+            if isinstance(row, Adw.ActionRow) and row.get_visible():
+                self._on_row_activated(self._list_box, row)
+                break
+            row = row.get_next_sibling()
+
+    def _on_window_key_pressed(self, controller, keyval, keycode, state) -> bool:
+        if self._search_entry.is_focus():
+            return False
+            
+        if self._main_stack.get_visible_child_name() != "content":
+            return False
+            
+        modifiers = (
+            Gdk.ModifierType.CONTROL_MASK |
+            Gdk.ModifierType.ALT_MASK |
+            Gdk.ModifierType.META_MASK
+        )
+        if state & modifiers:
+            return False
+            
+        unicode_char = Gdk.keyval_to_unicode(keyval)
+        if unicode_char == 0:
+            return False
+            
+        char = chr(unicode_char)
+        if char.isprintable() and not char.isspace():
+            self._start_search(char)
+            return True
+            
+        return False
 
     def _on_row_activated(self, _lb, row: Adw.ActionRow) -> None:
         self._finish(getattr(row, "_item_id", None), getattr(row, "_item_name", ""))
@@ -483,6 +576,8 @@ class AppChooserReplica(Adw.Window):
         
         # Header
         header = Adw.HeaderBar()
+        header.set_show_start_title_buttons(False)
+        header.set_show_end_title_buttons(False)
         cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.connect("clicked", lambda _: self._finish(None))
         header.pack_start(cancel_btn)

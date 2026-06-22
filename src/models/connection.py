@@ -139,6 +139,7 @@ class Connection:
     auth_method: AuthMethod = AuthMethod.KEY
     key_path: str | None = None
     vault_item_id: str | None = None
+    vault_item_name: str | None = None
     jump_host_id: str | None = None
     group_id: str | None = None
     os_id: str | None = None
@@ -168,6 +169,7 @@ class Connection:
             "auth_method": self.auth_method.value,
             "key_path": self.key_path,
             "vault_item_id": self.vault_item_id,
+            "vault_item_name": self.vault_item_name,
             "jump_host_id": self.jump_host_id,
             "group_id": self.group_id,
             "os_id": self.os_id,
@@ -190,6 +192,7 @@ class Connection:
             auth_method=AuthMethod(data.get("auth_method", "key")),
             key_path=data.get("key_path"),
             vault_item_id=data.get("vault_item_id"),
+            vault_item_name=data.get("vault_item_name"),
             jump_host_id=data.get("jump_host_id"),
             group_id=data.get("group_id"),
             os_id=data.get("os_id"),

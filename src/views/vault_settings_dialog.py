@@ -26,39 +26,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class VaultManagerWindow(Adw.Window):
-    """A standalone window for managing Bitwarden Vault settings.
-    
-    Opens independently of the main window so the user can log in,
-    unlock, and choose a default folder without blocking the main UI.
-    """
+class VaultManagerWindow(Gtk.Box):
+    """A settings view for managing Bitwarden Vault settings."""
 
     def __init__(self, app: Adw.Application, on_close_callback: Callable[[], None] | None = None) -> None:
-        super().__init__(
-            application=app,
-            title=_("Vault Manager"),
-            default_width=480,
-            default_height=560,
-            resizable=False,
-        )
+        super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self._app = app
         self._on_close_callback = on_close_callback
         self._vault = VaultService.get().get_backend("bitwarden")
         self._ignore_folder_changes = False
         self._login_pwd: SecureBytes | None = None
 
-        self.connect("close-request", self._on_window_close)
-
         self._build_ui()
         self._check_status()
-
-    def _on_window_close(self, _window) -> bool:
-        if self._login_pwd:
-            self._login_pwd.clear()
-            self._login_pwd = None
-        if self._on_close_callback:
-            self._on_close_callback()
-        return False  # Allow close
 
     def _build_ui(self) -> None:
         self._toast_overlay = Adw.ToastOverlay()
@@ -97,7 +77,7 @@ class VaultManagerWindow(Adw.Window):
 
         toolbar.set_content(self._stack)
         self._toast_overlay.set_child(toolbar)
-        self.set_content(self._toast_overlay)
+        self.append(self._toast_overlay)
 
     def _build_loading_page(self) -> Gtk.Widget:
         box = Gtk.Box(
@@ -279,7 +259,7 @@ class VaultManagerWindow(Adw.Window):
     def _on_local_vault_reset_clicked(self, _btn) -> None:
         """Confirm and destroy the local vault DB to allow fresh start."""
         dialog = Adw.MessageDialog(
-            transient_for=self,
+            transient_for=self.get_root(),
             heading=_("Destroy Local Vault?"),
             body=_(
                 "This will permanently erase your local cache of Bitwarden passwords and SSH keys. "

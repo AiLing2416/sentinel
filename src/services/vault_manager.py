@@ -75,6 +75,11 @@ class VaultManager:
         if raw_key:
             if self._vault.unlock_with_raw_key(raw_key):
                 logger.info("VaultManager: Auto-unlocked via GNOME Keyring.")
+                try:
+                    from db.migration import migrate_if_needed
+                    migrate_if_needed()
+                except Exception as me:
+                    logger.error("VaultManager: Auto-unlock migration failed: %s", me)
                 return True
             else:
                 logger.warning("VaultManager: Key from Keyring was rejected. SecureVault might be out of sync.")
@@ -97,6 +102,11 @@ class VaultManager:
                 else:
                     logger.error("VaultManager: Failed to save master key to keyring. Auto-unlock will not work.")
                 
+                try:
+                    from db.migration import migrate_if_needed
+                    migrate_if_needed()
+                except Exception as me:
+                    logger.error("VaultManager: Init auto-migration failed: %s", me)
                 return True
             except Exception as e:
                 logger.error("VaultManager: Initialization failed: %s", e)
@@ -117,6 +127,11 @@ class VaultManager:
         if raw_key:
             save_master_key(raw_key)
             logger.info("VaultManager: New vault initialized. Master key saved to keyring.")
+        try:
+            from db.migration import migrate_if_needed
+            migrate_if_needed()
+        except Exception as me:
+            logger.error("VaultManager: Init migration failed: %s", me)
 
     def unlock(self, password: SecureBytes | str) -> bool:
         """Unlock the vault with the user-provided master password.
@@ -127,6 +142,11 @@ class VaultManager:
             raw_key = self._vault.get_raw_master_key()
             if raw_key:
                 save_master_key(raw_key)
+            try:
+                from db.migration import migrate_if_needed
+                migrate_if_needed()
+            except Exception as me:
+                logger.error("VaultManager: Unlock migration failed: %s", me)
         return ok
 
     def lock(self) -> None:
@@ -201,14 +221,22 @@ class VaultManager:
         """Cache a password into the local vault."""
         if not self._vault.is_unlocked:
             return False
-        self._vault.store_password(item_id, label, password, hostname, username)
+        self._vault.store_password(f"pwd:{item_id}", label, password, hostname, username)
         return True
 
     def get_cached_password(self, item_id: str) -> SecureBytes | None:
         """Retrieve a cached password from the local vault."""
         if not self._vault.is_unlocked:
             return None
+        res = self._vault.get_password(f"pwd:{item_id}")
+        if res is not None:
+            return res
         return self._vault.get_password(item_id)
+
+    def delete_cached_password(self, item_id: str) -> None:
+        """Delete cached password."""
+        if self._vault.is_unlocked:
+            self._vault.delete_item(f"pwd:{item_id}")
 
     # ── Bitwarden Support ─────────────────────────────────────
     
@@ -249,6 +277,88 @@ class VaultManager:
         """Remove the stored Bitwarden session token."""
         if self._vault.is_unlocked:
             self._vault.delete_item("bw_session")
+
+    # ── Connections, Groups, Rules, and Keys ─────────────────
+
+    def store_connection(self, conn: Any) -> bool:
+        if not self._vault.is_unlocked:
+            return False
+        self._vault.store_connection(conn)
+        return True
+
+    def get_connection(self, conn_id: str) -> Any | None:
+        if not self._vault.is_unlocked:
+            return None
+        return self._vault.get_connection(conn_id)
+
+    def list_connections(self) -> list[Any]:
+        if not self._vault.is_unlocked:
+            return []
+        return self._vault.list_connections()
+
+    def delete_connection(self, conn_id: str) -> None:
+        if self._vault.is_unlocked:
+            self._vault.delete_connection(conn_id)
+
+    def store_group(self, group: Any) -> bool:
+        if not self._vault.is_unlocked:
+            return False
+        self._vault.store_group(group)
+        return True
+
+    def list_groups(self) -> list[Any]:
+        if not self._vault.is_unlocked:
+            return []
+        return self._vault.list_groups()
+
+    def delete_group(self, group_id: str) -> None:
+        if self._vault.is_unlocked:
+            self._vault.delete_group(group_id)
+
+    def store_forward_rule(self, rule: Any) -> bool:
+        if not self._vault.is_unlocked:
+            return False
+        self._vault.store_forward_rule(rule)
+        return True
+
+    def get_forward_rule(self, rule_id: str) -> Any | None:
+        if not self._vault.is_unlocked:
+            return None
+        return self._vault.get_forward_rule(rule_id)
+
+    def list_forward_rules(self) -> list[Any]:
+        if not self._vault.is_unlocked:
+            return []
+        return self._vault.list_forward_rules()
+
+    def delete_forward_rule(self, rule_id: str) -> None:
+        if self._vault.is_unlocked:
+            self._vault.delete_item(rule_id)
+
+    def store_global_key(
+        self,
+        item_id: str,
+        label: str,
+        private_key_pem: SecureBytes,
+        public_key_openssh: str,
+        key_type: str,
+        fingerprint: str,
+        passphrase: SecureBytes | None = None
+    ) -> bool:
+        if not self._vault.is_unlocked:
+            return False
+        self._vault.store_global_key(item_id, label, private_key_pem, public_key_openssh, key_type, fingerprint, passphrase)
+        return True
+
+    def get_global_key(self, item_id: str) -> dict | None:
+        if not self._vault.is_unlocked:
+            return None
+        return self._vault.get_global_key(item_id)
+
+    def list_global_keys(self) -> list[dict]:
+        if not self._vault.is_unlocked:
+            return []
+        return self._vault.list_global_keys()
 
     # ── Management ────────────────────────────────────────────
 
