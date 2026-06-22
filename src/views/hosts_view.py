@@ -349,11 +349,14 @@ class HostsPage(Gtk.Box):
 
         self._port_row = Adw.SpinRow.new_with_range(1, 65535, 1)
         self._port_row.set_title(_("Port"))
+        port_focus_controller = Gtk.EventControllerFocus.new()
+        port_focus_controller.connect("enter", lambda *_: GLib.idle_add(self._port_row.select_region, 0, -1))
+        self._port_row.add_controller(port_focus_controller)
         basic_group.add(self._port_row)
 
         self._user_row = Adw.EntryRow(title=_("Username"))
         focus_controller = Gtk.EventControllerFocus.new()
-        focus_controller.connect("enter", lambda *_: self._user_row.select_region(0, -1))
+        focus_controller.connect("enter", lambda *_: GLib.idle_add(self._user_row.select_region, 0, -1))
         self._user_row.add_controller(focus_controller)
         basic_group.add(self._user_row)
 
