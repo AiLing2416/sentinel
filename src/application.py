@@ -579,6 +579,39 @@ class SentinelApplication(Adw.Application):
             padding: 3px 7px;
         }
 
+        /* ── Port Forwarding Rule Card ──────────────────── */
+        .forward-card {
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+        }
+        .forward-card:hover .card {
+            background-image: linear-gradient(
+                to bottom,
+                alpha(currentColor, 0.04),
+                alpha(currentColor, 0.04)
+            ) !important;
+        }
+        .forward-card:selected .card {
+            box-shadow: inset 0 0 0 2px @accent_color !important;
+            background-image: linear-gradient(
+                to bottom,
+                alpha(@accent_color, 0.08),
+                alpha(@accent_color, 0.08)
+            ) !important;
+        }
+        .forward-card:selected:hover .card {
+            box-shadow: inset 0 0 0 2px @accent_color !important;
+            background-image: linear-gradient(
+                to bottom,
+                alpha(@accent_color, 0.12),
+                alpha(@accent_color, 0.12)
+            ) !important;
+        }
+
         /* ── Port Forwarding Rule Row ───────────────────── */
         .forward-rule-row {
             border-radius: 10px;
