@@ -134,7 +134,7 @@ class DetailRow(Gtk.ListBoxRow):
         self.value_lbl = Gtk.Label()
         self.value_lbl.set_halign(Gtk.Align.START)
         self.value_lbl.set_ellipsize(Pango.EllipsizeMode.END)
-        self.value_lbl.set_max_width_chars(25)
+        self.value_lbl.set_max_width_chars(38)
         self.value_lbl.add_css_class("caption")
         self.value_lbl.add_css_class("dim-label")
         box.append(self.value_lbl)
@@ -256,12 +256,12 @@ class KeychainPage(Gtk.Box):
 
         # Right Panel (Forms / Details)
         self._right_panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self._right_panel.set_size_request(260, -1)
+        self._right_panel.set_size_request(390, -1)
         self._right_panel.set_visible(True)
 
         # Clamp wrapper for right panel
         self._right_clamp = Adw.Clamp()
-        self._right_clamp.set_maximum_size(260)
+        self._right_clamp.set_maximum_size(390)
         self._right_clamp.set_child(self._right_panel)
         self._right_clamp.set_hexpand(False)
         self._right_clamp.set_halign(Gtk.Align.END)

@@ -41,7 +41,7 @@ class DetailRow(Gtk.ListBoxRow):
         self.value_lbl = Gtk.Label()
         self.value_lbl.set_halign(Gtk.Align.START)
         self.value_lbl.set_ellipsize(Pango.EllipsizeMode.END)
-        self.value_lbl.set_max_width_chars(25)
+        self.value_lbl.set_max_width_chars(38)
         self.value_lbl.add_css_class("caption")
         self.value_lbl.add_css_class("dim-label")
         box.append(self.value_lbl)
@@ -292,12 +292,12 @@ class HostsPage(Gtk.Box):
 
         # Right Panel (Host Info)
         self._right_panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self._right_panel.set_size_request(260, -1)
+        self._right_panel.set_size_request(390, -1)
         self._right_panel.set_visible(True)
 
         # Clamp wrapper for right panel
         self._right_clamp = Adw.Clamp()
-        self._right_clamp.set_maximum_size(260)
+        self._right_clamp.set_maximum_size(390)
         self._right_clamp.set_child(self._right_panel)
         self._right_clamp.set_hexpand(False)
         self._right_clamp.set_halign(Gtk.Align.END)
@@ -318,15 +318,10 @@ class HostsPage(Gtk.Box):
         header_spacer.set_hexpand(True)
         header_box.append(header_spacer)
 
-        cancel_btn = Gtk.Button(label=_("Cancel"))
-        cancel_btn.add_css_class("flat")
-        cancel_btn.connect("clicked", lambda _: self._close_right_panel())
-        header_box.append(cancel_btn)
-
-        save_btn = Gtk.Button(label=_("Save"))
-        save_btn.add_css_class("suggested-action")
-        save_btn.connect("clicked", self._on_save_clicked)
-        header_box.append(save_btn)
+        close_btn = Gtk.Button(icon_name="window-close-symbolic")
+        close_btn.add_css_class("flat")
+        close_btn.connect("clicked", lambda _: self._close_right_panel())
+        header_box.append(close_btn)
 
         self._right_panel.append(header_box)
 
@@ -410,7 +405,7 @@ class HostsPage(Gtk.Box):
         vault_subtitle_lbl.add_css_class("caption")
         vault_subtitle_lbl.add_css_class("dim-label")
         vault_subtitle_lbl.set_wrap(True)
-        vault_subtitle_lbl.set_max_width_chars(25)
+        vault_subtitle_lbl.set_max_width_chars(38)
         vault_box.append(vault_subtitle_lbl)
 
         # Spacer
@@ -468,6 +463,14 @@ class HostsPage(Gtk.Box):
         self._error_bar.set_margin_top(8)
         self._error_bar.set_visible(False)
         form_box.append(self._error_bar)
+
+        # Save Button
+        self._save_btn = Gtk.Button(label=_("Save"))
+        self._save_btn.add_css_class("suggested-action")
+        self._save_btn.add_css_class("pill")
+        self._save_btn.set_margin_top(16)
+        self._save_btn.connect("clicked", self._on_save_clicked)
+        form_box.append(self._save_btn)
 
         scroll.set_child(form_box)
         self._right_panel.append(scroll)
