@@ -376,9 +376,14 @@ class HostsPage(Gtk.Box):
         auth_group.add(self._auth_row)
 
         # Key selection row
-        key_list = Gtk.StringList.new([_("Local File Path")])
+        key_list = Gtk.StringList.new([_("Local File Path"), _("Keychain")])
         self._key_sel_row = Adw.ComboRow(title=_("Key Source"), model=key_list)
         auth_group.add(self._key_sel_row)
+
+        # Keychain key selection row
+        keychain_key_list = Gtk.StringList.new([_("No keys stored")])
+        self._keychain_key_row = Adw.ComboRow(title=_("Keychain Key"), model=keychain_key_list)
+        auth_group.add(self._keychain_key_row)
 
         self._key_row = Adw.EntryRow(title=_("Key File Path (optional)"))
         auth_group.add(self._key_row)
@@ -479,7 +484,13 @@ class HostsPage(Gtk.Box):
         method = self._reverse_auth_map.get(self._auth_row.get_selected(), AuthMethod.KEY)
         is_key_method = method in (AuthMethod.KEY, AuthMethod.KEY_PASSPHRASE)
         self._key_sel_row.set_visible(is_key_method)
-        self._key_row.set_visible(is_key_method and self._key_sel_row.get_selected() == 0)
+        
+        is_local_file = is_key_method and self._key_sel_row.get_selected() == 0
+        is_keychain = is_key_method and self._key_sel_row.get_selected() == 1
+        
+        self._key_row.set_visible(is_local_file)
+        self._keychain_key_row.set_visible(is_keychain)
+        
         self._password_row.set_visible(method == AuthMethod.PASSWORD)
         self._vault_row.set_visible(method == AuthMethod.VAULT)
 
@@ -549,10 +560,12 @@ class HostsPage(Gtk.Box):
             except Exception:
                 pass
 
-        # Build options for Keychain selection
-        key_options = [_("Local File Path")] + [k.get("label", "Unnamed Key") for k in self._keychain_keys]
-        key_list = Gtk.StringList.new(key_options)
-        self._key_sel_row.set_model(key_list)
+        # Build options for Keychain keys selection
+        keychain_options = [k.get("label", "Unnamed Key") for k in self._keychain_keys]
+        if not keychain_options:
+            keychain_options = [_("No keys stored")]
+        keychain_list = Gtk.StringList.new(keychain_options)
+        self._keychain_key_row.set_model(keychain_list)
 
         self._error_bar.set_visible(False)
 
@@ -565,14 +578,17 @@ class HostsPage(Gtk.Box):
             self._auth_row.set_selected(self._auth_map.get(connection.auth_method, 0))
 
             # Determine initial key selection
-            initial_key_sel = 0
+            key_source_sel = 0
+            keychain_key_sel = 0
             if connection.key_path and connection.key_path.startswith("keychain:"):
+                key_source_sel = 1
                 target_id = connection.key_path.split(":", 1)[1]
                 for idx, k in enumerate(self._keychain_keys):
                     if k.get("id") == target_id:
-                        initial_key_sel = idx + 1
+                        keychain_key_sel = idx
                         break
-            self._key_sel_row.set_selected(initial_key_sel)
+            self._key_sel_row.set_selected(key_source_sel)
+            self._keychain_key_row.set_selected(keychain_key_sel)
 
             if connection.key_path and not connection.key_path.startswith("keychain:"):
                 self._key_row.set_text(connection.key_path)
@@ -640,6 +656,7 @@ class HostsPage(Gtk.Box):
             self._user_row.set_text("")
             self._auth_row.set_selected(0)
             self._key_sel_row.set_selected(0)
+            self._keychain_key_row.set_selected(0)
             self._key_row.set_text("")
             self._password_row.set_text("")
             self._update_vault_label(None)
@@ -659,8 +676,10 @@ class HostsPage(Gtk.Box):
             sel_idx = self._key_sel_row.get_selected()
             if sel_idx == 0:
                 k_path = self._key_row.get_text() or None
-            else:
-                k_path = f"keychain:{self._keychain_keys[sel_idx - 1]['id']}"
+            elif sel_idx == 1 and self._keychain_keys:
+                kc_idx = self._keychain_key_row.get_selected()
+                if 0 <= kc_idx < len(self._keychain_keys):
+                    k_path = f"keychain:{self._keychain_keys[kc_idx]['id']}"
 
         if is_edit and self._editing_conn:
             conn = self._editing_conn
