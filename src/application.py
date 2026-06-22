@@ -640,4 +640,15 @@ class SentinelApplication(Adw.Application):
             border: 1px solid alpha(@borders, 0.6);
             box-shadow: 0 4px 20px alpha(black, 0.10), 0 1px 4px alpha(black, 0.06);
         }
+
+        /* ── Entry Placeholder Fix ─────────────────────── */
+        entry text placeholder,
+        text placeholder,
+        placeholder {
+            font: inherit !important;
+            font-size: 1em !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            opacity: 0.55;
+        }
         """
