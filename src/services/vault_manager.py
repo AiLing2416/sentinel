@@ -84,37 +84,41 @@ class VaultManager:
             else:
                 logger.warning("VaultManager: Key from Keyring was rejected. SecureVault might be out of sync.")
 
-        # ── 2. If not initialized, initialize now ──
-        if not self._vault.is_initialized:
-            logger.info("VaultManager: No secure vault found. Initializing...")
+        # ── 2. If keyring lookup failed/rejected but vault is already initialized, re-initialize automatically ──
+        if self._vault.is_initialized:
+            logger.warning("VaultManager: Keyring lookup failed or key rejected, but vault is already initialized. Re-initializing automatically...")
             try:
-                # initialize_with_random_key() will open/write/commit to DB
-                raw_key_ba = self._vault.initialize_with_random_key()
-                key_to_save = bytes(raw_key_ba)
-                
-                # Zero out the sensitive info
-                for i in range(len(raw_key_ba)):
-                    raw_key_ba[i] = 0
-                
-                # Save to keyring
-                if save_master_key(key_to_save):
-                    logger.info("VaultManager: Random master key generated and saved to keyring.")
-                else:
-                    logger.error("VaultManager: Failed to save master key to keyring. Auto-unlock will not work.")
-                
-                try:
-                    from db.migration import migrate_if_needed
-                    migrate_if_needed()
-                except Exception as me:
-                    logger.error("VaultManager: Init auto-migration failed: %s", me)
-                return True
-            except Exception as e:
-                logger.error("VaultManager: Initialization failed: %s", e)
-                return False
+                self.destroy_vault()
+                self._vault.open()
+            except Exception as de:
+                logger.error("VaultManager: Failed to destroy vault for auto-reset: %s", de)
 
-        # ── 3. Initialized but no key ──
-        logger.warning("VaultManager: Keyring lookup failed and vault is already initialized.")
-        return False
+        # ── 3. Initialize now ──
+        logger.info("VaultManager: Initializing auto-managed secure vault...")
+        try:
+            # initialize_with_random_key() will open/write/commit to DB
+            raw_key_ba = self._vault.initialize_with_random_key()
+            key_to_save = bytes(raw_key_ba)
+            
+            # Zero out the sensitive info
+            for i in range(len(raw_key_ba)):
+                raw_key_ba[i] = 0
+            
+            # Save to keyring
+            if save_master_key(key_to_save):
+                logger.info("VaultManager: Random master key generated and saved to keyring.")
+            else:
+                logger.error("VaultManager: Failed to save master key to keyring. Auto-unlock will not work on next launch.")
+            
+            try:
+                from db.migration import migrate_if_needed
+                migrate_if_needed()
+            except Exception as me:
+                logger.error("VaultManager: Init auto-migration failed: %s", me)
+            return True
+        except Exception as e:
+            logger.error("VaultManager: Initialization failed: %s", e)
+            return False
 
     # ── Unlock / Lock ─────────────────────────────────────────
 
