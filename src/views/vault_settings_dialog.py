@@ -181,11 +181,7 @@ class VaultManagerWindow(Gtk.Box):
 
         box.append(list_box)
 
-        # Remember Password
-        self._login_remember_check = Gtk.CheckButton(label=_("Save master password securely in system keyring"))
-        self._login_remember_check.set_active(True)
-        self._login_remember_check.set_margin_start(6)
-        box.append(self._login_remember_check)
+
 
         # Login button
         self._login_btn = Gtk.Button(label=_("Log In"))
@@ -271,10 +267,7 @@ class VaultManagerWindow(Gtk.Box):
         list_box.append(self._unlock_entry)
         box.append(list_box)
 
-        self._unlock_remember_check = Gtk.CheckButton(label=_("Save master password securely in system keyring"))
-        self._unlock_remember_check.set_active(True)
-        self._unlock_remember_check.set_margin_start(6)
-        box.append(self._unlock_remember_check)
+
 
         # Buttons
         btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -326,17 +319,7 @@ class VaultManagerWindow(Gtk.Box):
         self._account_row.add_suffix(btn_box_auth)
         list_box.append(self._account_row)
 
-        self._forget_pwd_row = Adw.ActionRow(
-            title=_("Saved Password"),
-            subtitle=_("Master password is saved in system keyring for auto-unlock")
-        )
-        forget_btn = Gtk.Button(label=_("Forget"))
-        forget_btn.set_valign(Gtk.Align.CENTER)
-        forget_btn.add_css_class("flat")
-        forget_btn.add_css_class("destructive-action")
-        forget_btn.connect("clicked", self._on_forget_password_clicked)
-        self._forget_pwd_row.add_suffix(forget_btn)
-        list_box.append(self._forget_pwd_row)
+
 
         self._folder_items = Gtk.StringList.new()
         self._folder_combo = Adw.ComboRow(title=_("Folder"), model=self._folder_items)
@@ -422,9 +405,7 @@ class VaultManagerWindow(Gtk.Box):
                 else:
                     self._local_status_row.set_subtitle(_("Locked / Failed to initialize ⚠"))
 
-                # Update Bitwarden integration UI
-                has_saved = VaultManager.get().get_bitwarden_password() is not None
-                self._forget_pwd_row.set_visible(has_saved)
+
 
                 if state == "unauthenticated":
                     self._server_entry.set_text(server or "")
@@ -609,8 +590,7 @@ class VaultManagerWindow(Gtk.Box):
                     except Exception:
                         pass
 
-                remember = self._login_remember_check.get_active()
-                success = await self._vault.login(self._login_email, self._login_pwd, remember=remember)
+                success = await self._vault.login(self._login_email, self._login_pwd, remember=False)
 
                 if success:
                     if self._login_pwd:
@@ -670,8 +650,7 @@ class VaultManagerWindow(Gtk.Box):
                 if not self._login_pwd:
                      raise RuntimeError(_("Login password missing for 2FA"))
                 
-                remember = self._login_remember_check.get_active()
-                success = await self._vault.login(self._login_email, self._login_pwd, method=method_id, code=code_sb, remember=remember)
+                success = await self._vault.login(self._login_email, self._login_pwd, method=method_id, code=code_sb, remember=False)
                 code_sb.clear()
                 
                 if success:
@@ -709,8 +688,7 @@ class VaultManagerWindow(Gtk.Box):
         async def _do_unlock():
             pwd_sb = SecureBytes(self._unlock_entry.get_text())
             self._unlock_entry.set_text("")
-            remember = self._unlock_remember_check.get_active()
-            success = await self._vault.unlock(pwd_sb, remember=remember)
+            success = await self._vault.unlock(pwd_sb, remember=False)
             pwd_sb.clear()
 
             def _update():
@@ -789,10 +767,7 @@ class VaultManagerWindow(Gtk.Box):
 
         self._run_coroutine(_do_logout())
 
-    def _on_forget_password_clicked(self, _btn) -> None:
-        VaultManager.get().clear_bitwarden_password()
-        self._forget_pwd_row.set_visible(False)
-        self._show_toast(_("Saved master password removed from keyring."))
+
 
     def _on_sync_clicked(self, _btn) -> None:
         self._show_toast(_("Syncing vault…"))

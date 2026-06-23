@@ -262,15 +262,6 @@ class BitwardenBackend(VaultBackend):
                 import time
                 self._status_cache_time = time.time()
                 
-                # Save master password to keyring if requested
-                if remember:
-                    try:
-                        from services.vault_manager import VaultManager
-                        VaultManager.get().save_bitwarden_password(password)
-                        logger.info("Bitwarden: Master password saved to keyring for future auto-unlock.")
-                    except Exception as _e:
-                        logger.warning("Bitwarden: Failed to save password to keyring: %s", _e)
-
                 return True
             
             logger.warning(f"Bitwarden: Login command returned success but no session token for {email}.")
@@ -356,15 +347,6 @@ class BitwardenBackend(VaultBackend):
                 import time
                 self._status_cache_time = time.time()
                 
-                # Save master password to keyring if requested
-                if remember:
-                    try:
-                        from services.vault_manager import VaultManager
-                        VaultManager.get().save_bitwarden_password(master_password)
-                        logger.info("Bitwarden: Master password saved to keyring for future auto-unlock.")
-                    except Exception as _e:
-                        logger.warning("Bitwarden: Failed to save password to keyring: %s", _e)
-
                 return True
             
             logger.warning("Bitwarden: Unlock command finished but no session token was returned.")
@@ -415,20 +397,7 @@ class BitwardenBackend(VaultBackend):
         if not self._session_token:
             self._try_load_cached_session()
 
-        # Try auto-unlock if we don't have a token but might have a password in keyring
-        if not self._session_token and not self._cli_session_active:
-            try:
-                from services.vault_manager import VaultManager
-                saved_pwd = VaultManager.get().get_bitwarden_password()
-                if saved_pwd:
-                    logger.info("Bitwarden: Attempting auto-unlock with saved password from keyring...")
-                    # Note: unlock() handles status caching
-                    success = await self.unlock(saved_pwd)
-                    if success:
-                        logger.info("Bitwarden: Auto-unlock successful.")
-                        return True
-            except Exception as e:
-                logger.debug("Bitwarden: Auto-unlock attempt failed: %s", e)
+
 
         try:
             logger.debug("Bitwarden: Cache expired or missing, checking 'bw status'...")
@@ -610,20 +579,7 @@ class BitwardenBackend(VaultBackend):
         
     async def get_server(self) -> str | None:
         """Get currently configured server."""
-        # Try auto-unlock if we don't have a token but might have a password in keyring
-        if not self._session_token and not self._cli_session_active:
-            try:
-                from services.vault_manager import VaultManager
-                saved_pwd = VaultManager.get().get_bitwarden_password()
-                if saved_pwd:
-                    logger.info("Bitwarden: Attempting auto-unlock with saved password from keyring...")
-                    # We use a temporary SecureBytes for the saved password
-                    success = await self.unlock(saved_pwd)
-                    if success:
-                        logger.info("Bitwarden: Auto-unlock successful.")
-                        return True
-            except Exception as e:
-                logger.debug("Bitwarden: Auto-unlock attempt failed: %s", e)
+
 
         try:
             status_raw = await self._run_bw(["status"])
