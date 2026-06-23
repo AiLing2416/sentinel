@@ -42,12 +42,16 @@ class VaultManagerWindow(Gtk.Box):
         self._check_status()
 
     def _build_ui(self) -> None:
-        # Top-level main stack for switching loading and content
+        # Toast Overlay is the top-level container of this Box
+        self._toast_overlay = Adw.ToastOverlay()
+        self.append(self._toast_overlay)
+
+        # Create main stack inside Toast Overlay
         self._main_stack = Gtk.Stack(
             transition_type=Gtk.StackTransitionType.CROSSFADE,
             transition_duration=250,
         )
-        self.append(self._main_stack)
+        self._toast_overlay.set_child(self._main_stack)
 
         # ── Loading Page ──
         self._loading_page = self._build_loading_page()
@@ -67,16 +71,15 @@ class VaultManagerWindow(Gtk.Box):
         content_box.set_margin_bottom(24)
         content_clamp.set_child(content_box)
 
+        # Register content scroll page to the main stack
+        self._main_stack.add_named(content_scroll, "content")
+
         # Title Label
         title_label = Gtk.Label(label=_("Vault Settings"))
         title_label.add_css_class("title-1")
         title_label.set_halign(Gtk.Align.START)
         title_label.set_margin_bottom(12)
         content_box.append(title_label)
-
-        # Toast Overlay
-        self._toast_overlay = Adw.ToastOverlay()
-        self._toast_overlay.set_child(content_scroll)
 
         # ── 1. Local Vault Preferences Group ──
         self._local_group = Adw.PreferencesGroup(
@@ -132,8 +135,6 @@ class VaultManagerWindow(Gtk.Box):
 
         self._settings_subpage = self._build_settings_subpage()
         self._bw_stack.add_named(self._settings_subpage, "settings")
-
-        self.append(self._toast_overlay)
 
     def _build_loading_page(self) -> Gtk.Widget:
         box = Gtk.Box(
