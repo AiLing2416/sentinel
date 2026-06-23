@@ -543,6 +543,7 @@ class VaultManagerWindow(Gtk.Box):
         self._update_2fa_hints(detected_idx)
         self._2fa_code_entry.set_text("")
         self._bw_stack.set_visible_child_name("two_factor")
+        self._main_stack.set_visible_child_name("content")
         self._2fa_code_entry.grab_focus()
 
     def _on_2fa_method_changed(self, _row, _pspec) -> None:
