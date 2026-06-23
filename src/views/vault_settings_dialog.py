@@ -86,7 +86,7 @@ class VaultManagerWindow(Gtk.Box):
         
         self._local_status_row = Adw.ActionRow(
             title=_("Status"),
-            subtitle=_("Active & Auto-unlocked ✓")
+            subtitle=_("Active and Auto-unlocked ✓")
         )
         status_icon = Gtk.Image.new_from_icon_name("emblem-ok-symbolic")
         status_icon.add_css_class("accent")
@@ -378,7 +378,7 @@ class VaultManagerWindow(Gtk.Box):
         if not self._vault:
             def _update_no_bw():
                 if local_unlocked:
-                    self._local_status_row.set_subtitle(_("Active & Auto-unlocked ✓"))
+                    self._local_status_row.set_subtitle(_("Active and Auto-unlocked ✓"))
                 else:
                     self._local_status_row.set_subtitle(_("Locked / Failed to initialize ⚠"))
                 
@@ -417,7 +417,7 @@ class VaultManagerWindow(Gtk.Box):
             def _update():
                 # Update Local Vault UI status
                 if local_unlocked:
-                    self._local_status_row.set_subtitle(_("Active & Auto-unlocked ✓"))
+                    self._local_status_row.set_subtitle(_("Active and Auto-unlocked ✓"))
                 else:
                     self._local_status_row.set_subtitle(_("Locked / Failed to initialize ⚠"))
 
