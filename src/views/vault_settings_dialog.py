@@ -409,7 +409,7 @@ class VaultManagerWindow(Gtk.Box):
 
             if state == "unlocked":
                 try:
-                    email_val, _ = VaultManager.get().get_bitwarden_session()
+                    email_val, _unused = VaultManager.get().get_bitwarden_session()
                     email = email_val or ""
                 except Exception:
                     pass
@@ -431,7 +431,7 @@ class VaultManagerWindow(Gtk.Box):
                 elif state == "locked":
                     saved_email = ""
                     try:
-                        saved_email_val, _ = VaultManager.get().get_bitwarden_session()
+                        saved_email_val, _unused = VaultManager.get().get_bitwarden_session()
                         saved_email = saved_email_val or ""
                     except Exception:
                         pass
