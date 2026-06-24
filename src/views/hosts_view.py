@@ -77,6 +77,7 @@ class HostCard(Gtk.FlowBoxChild):
     def __init__(self, connection: Connection) -> None:
         super().__init__()
         self.connection = connection
+        self.set_size_request(210, -1)
         self.set_margin_start(5)
         self.set_margin_end(5)
         self.set_margin_top(5)
