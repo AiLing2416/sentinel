@@ -42,6 +42,7 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
         self.set_margin_end(5)
         self.set_margin_top(5)
         self.set_margin_bottom(5)
+        self.set_halign(Gtk.Align.START)
         self.add_css_class("forward-card")
 
         # Outer container (vertical, top-stripe styled in CSS)

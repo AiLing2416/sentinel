@@ -49,6 +49,7 @@ class KeyCard(Gtk.FlowBoxChild):
         self.set_margin_end(5)
         self.set_margin_top(5)
         self.set_margin_bottom(5)
+        self.set_halign(Gtk.Align.START)
         self.add_css_class("key-card")
 
         raw_type = key_data.get("key_type", "ED25519").upper()
@@ -66,7 +67,6 @@ class KeyCard(Gtk.FlowBoxChild):
 
         # Card body
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
-        body.set_hexpand(True)
         body.set_margin_start(12)
         body.set_margin_end(12)
         body.set_margin_top(10)
