@@ -81,7 +81,6 @@ class HostCard(Gtk.FlowBoxChild):
         self.set_margin_end(5)
         self.set_margin_top(5)
         self.set_margin_bottom(5)
-        self.set_halign(Gtk.Align.START)
         self.add_css_class("host-card")
 
         auth_val = connection.auth_method.value
@@ -217,7 +216,6 @@ class HostsPage(Gtk.Box):
         self._search_entry = Gtk.SearchEntry(placeholder_text=_("Search hosts…"))
         self._search_entry.set_size_request(240, -1)
         self._search_entry.connect("search-changed", self._on_search_changed)
-        self._search_entry.set_key_capture_widget(self)
         actions_bar.append(self._search_entry)
 
         actions_spacer = Gtk.Box()

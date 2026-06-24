@@ -49,7 +49,6 @@ class KeyCard(Gtk.FlowBoxChild):
         self.set_margin_end(5)
         self.set_margin_top(5)
         self.set_margin_bottom(5)
-        self.set_halign(Gtk.Align.START)
         self.add_css_class("key-card")
 
         raw_type = key_data.get("key_type", "ED25519").upper()
@@ -64,6 +63,7 @@ class KeyCard(Gtk.FlowBoxChild):
             if type_key else "key-stripe-default"
         )
         outer.set_size_request(210, -1)
+        outer.set_halign(Gtk.Align.START)
 
         # Card body
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
@@ -172,7 +172,6 @@ class KeychainPage(Gtk.Box):
         self._search_entry = Gtk.SearchEntry(placeholder_text=_("Search keys…"))
         self._search_entry.set_size_request(240, -1)
         self._search_entry.connect("search-changed", self._on_search_changed)
-        self._search_entry.set_key_capture_widget(self)
         actions_bar.append(self._search_entry)
 
         actions_spacer = Gtk.Box()

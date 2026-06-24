@@ -329,9 +329,20 @@ class SentinelWindow(Adw.ApplicationWindow):
         GLib.timeout_add(1000, self._refresh_merge_button_visibility)
 
         # Only show TabBar when viewing the "Terminals" tab
+        # Only show TabBar when viewing the "Terminals" tab & update key capture for search entries
         def _on_stack_visible_child_changed(stack, _pspec):
             active_child = stack.get_visible_child_name()
             self._tab_bar.set_visible(active_child == "terminals")
+
+            # Reset key capture for all search entries to prevent inactive pages from intercepting keys
+            for page in [self._hosts_page, self._keychain_page, self._port_forwarding_tab]:
+                if hasattr(page, "_search_entry") and page._search_entry:
+                    page._search_entry.set_key_capture_widget(None)
+
+            # Assign key capture to the currently active page's search entry
+            active_page = stack.get_visible_child()
+            if active_page and hasattr(active_page, "_search_entry") and active_page._search_entry:
+                active_page._search_entry.set_key_capture_widget(self)
 
         self._content_stack.connect("notify::visible-child", _on_stack_visible_child_changed)
         self._tab_bar.set_visible(False)
