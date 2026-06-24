@@ -46,7 +46,7 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
 
         # Outer container (horizontal: status stripe + body)
         outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        outer.add_css_class("card")
+        outer.add_css_class("host-card-v2")
         outer.set_size_request(210, -1)
 
         # Left status-stripe

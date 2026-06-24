@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""Vault Manager Window — standalone preferences view for Bitwarden integration and Local Vault status."""
+"""Vault Manager Window — standalone preferences view for Bitwarden integration and Configuration Sync."""
 
 from __future__ import annotations
 
 import asyncio
-from typing import Callable
+from typing import Callable, Any
 
 import gi
 
@@ -13,12 +13,14 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
 import gettext
+import json
 from gi.repository import Adw, Gtk, GLib, Pango
 
 _ = gettext.gettext
 
 from services.vault_service import VaultService
 from services.vault_manager import VaultManager
+from services.sync_manager import SyncManager
 from utils.secure import SecureBytes
 from db.database import Database
 import logging
@@ -26,8 +28,161 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class SyncSettingsDialog(Adw.MessageDialog):
+    """Dialog for binding Bitwarden sync note items."""
+
+    def __init__(self, parent: Gtk.Window, vault: Any) -> None:
+        super().__init__(
+            transient_for=parent,
+            heading=_("Configuration Sync Settings"),
+            body=_("Select or create a Bitwarden Secure Note to store your Sentinel sync profile."),
+        )
+        self._vault = vault
+        self._selected_id: str | None = None
+        self._selected_name: str = "Sentinel Sync Profile"
+        self._mode: str = "auto"  # "auto", "manual", "create"
+        self._notes_list: list[dict] = []
+
+        self.add_response("cancel", _("Cancel"))
+        self.add_response("save", _("Save"))
+        self.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
+        self.set_default_response("save")
+        self.set_close_response("cancel")
+
+        self._build_ui()
+        self._load_data()
+
+    def _build_ui(self) -> None:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        
+        list_box = Gtk.ListBox()
+        list_box.add_css_class("boxed-list")
+        list_box.set_selection_mode(Gtk.SelectionMode.NONE)
+        box.append(list_box)
+
+        # 1. Auto-detect option
+        self._auto_btn = Gtk.CheckButton(active=True)
+        self._auto_row = Adw.ActionRow(
+            title=_("Auto-detect Sync Note"),
+            subtitle=_("Search for notes with 'sentinel_sync = true' or named 'Sentinel Sync Profile'")
+        )
+        self._auto_row.add_prefix(self._auto_btn)
+        list_box.append(self._auto_row)
+
+        # 2. Manual select option
+        self._manual_btn = Gtk.CheckButton(group=self._auto_btn)
+        self._manual_row = Adw.ActionRow(
+            title=_("Select Existing Note"),
+            subtitle=_("Choose from your existing Bitwarden Secure Notes")
+        )
+        self._manual_row.add_prefix(self._manual_btn)
+        list_box.append(self._manual_row)
+
+        # ComboRow for manual select
+        self._combo_items = Gtk.StringList.new()
+        self._combo_row = Adw.ComboRow(
+            title=_("Available Notes"),
+            model=self._combo_items,
+            sensitive=False
+        )
+        self._combo_row_map: list[dict] = []
+        list_box.append(self._combo_row)
+
+        # 3. Create new option
+        self._create_btn = Gtk.CheckButton(group=self._auto_btn)
+        self._create_row = Adw.ActionRow(
+            title=_("Create New Sync Note"),
+            subtitle=_("Create a brand-new Note in your Bitwarden vault")
+        )
+        self._create_row.add_prefix(self._create_btn)
+        list_box.append(self._create_row)
+
+        # EntryRow for custom name
+        self._name_entry = Adw.EntryRow(
+            title=_("Note Name"),
+            text="Sentinel Sync Profile",
+            sensitive=False
+        )
+        list_box.append(self._name_entry)
+
+        # Connect events
+        self._auto_btn.connect("toggled", self._on_mode_changed)
+        self._manual_btn.connect("toggled", self._on_mode_changed)
+        self._create_btn.connect("toggled", self._on_mode_changed)
+
+        self.set_extra_child(box)
+
+    def _on_mode_changed(self, _btn) -> None:
+        is_auto = self._auto_btn.get_active()
+        is_manual = self._manual_btn.get_active()
+        is_create = self._create_btn.get_active()
+
+        self._combo_row.set_sensitive(is_manual)
+        self._name_entry.set_sensitive(is_create)
+
+        if is_auto:
+            self._mode = "auto"
+        elif is_manual:
+            self._mode = "manual"
+        elif is_create:
+            self._mode = "create"
+
+    def _load_data(self) -> None:
+        async def _fetch():
+            try:
+                # list_sync_notes is added to Bitwarden backend
+                notes = await self._vault.list_sync_notes()
+                
+                def _update_ui():
+                    self._notes_list = notes
+                    self._combo_items.splice(0, self._combo_items.get_n_items(), [])
+                    self._combo_row_map = []
+                    
+                    for note in notes:
+                        self._combo_items.append(note["name"])
+                        self._combo_row_map.append(note)
+                        
+                    db = Database()
+                    db.open()
+                    saved_id = db.get_meta("sync_item_id")
+                    saved_detection = db.get_meta("sync_fields_detection", "true")
+                    db.close()
+
+                    if saved_detection == "false" and saved_id:
+                        for idx, note in enumerate(self._combo_row_map):
+                            if note["id"] == saved_id:
+                                self._manual_btn.set_active(True)
+                                self._combo_row.set_selected(idx)
+                                break
+                    else:
+                        self._auto_btn.set_active(True)
+                        
+                GLib.idle_add(_update_ui)
+            except Exception as e:
+                logger.error(f"Failed to fetch secure notes for settings: {e}")
+                
+        from services.ssh_service import SSHService
+        SSHService().engine.run_coroutine(_fetch())
+
+    def get_settings(self) -> tuple[str, str, str | None, str]:
+        """Returns (mode, name_to_create, selected_id, selected_name)."""
+        mode = self._mode
+        name = self._name_entry.get_text().strip() or "Sentinel Sync Profile"
+        
+        selected_id = None
+        selected_name = ""
+        
+        if mode == "manual":
+            idx = self._combo_row.get_selected()
+            if 0 <= idx < len(self._combo_row_map):
+                selected_id = self._combo_row_map[idx]["id"]
+                selected_name = self._combo_row_map[idx]["name"]
+                
+        return mode, name, selected_id, selected_name
+
+
 class VaultManagerWindow(Gtk.Box):
-    """A settings view for managing Bitwarden and Local Vault settings in a single modern preferences page."""
+    """A settings view for managing Bitwarden settings and Configuration Sync."""
 
     def __init__(self, app: Adw.Application, on_close_callback: Callable[[], None] | None = None) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
@@ -37,16 +192,15 @@ class VaultManagerWindow(Gtk.Box):
         self._ignore_folder_changes = False
         self._login_pwd: SecureBytes | None = None
         self._login_email: str | None = None
+        self._loading_sync_pref = False
 
         self._build_ui()
         self._check_status()
 
     def _build_ui(self) -> None:
-        # Toast Overlay is the top-level container of this Box
         self._toast_overlay = Adw.ToastOverlay()
         self.append(self._toast_overlay)
 
-        # Create main stack inside Toast Overlay
         self._main_stack = Gtk.Stack(
             transition_type=Gtk.StackTransitionType.CROSSFADE,
             transition_duration=250,
@@ -71,7 +225,6 @@ class VaultManagerWindow(Gtk.Box):
         content_box.set_margin_bottom(24)
         content_clamp.set_child(content_box)
 
-        # Register content scroll page to the main stack
         self._main_stack.add_named(content_scroll, "content")
 
         # Title Label
@@ -81,36 +234,7 @@ class VaultManagerWindow(Gtk.Box):
         title_label.set_margin_bottom(12)
         content_box.append(title_label)
 
-        # ── 1. Local Vault Preferences Group ──
-        self._local_group = Adw.PreferencesGroup(
-            title=_("Local Vault"),
-            description=_("Sentinel automatically manages an encrypted local database to cache your configurations, rules, and keys.")
-        )
-        
-        self._local_status_row = Adw.ActionRow(
-            title=_("Status"),
-            subtitle=_("Active and Auto-unlocked ✓")
-        )
-        status_icon = Gtk.Image.new_from_icon_name("emblem-ok-symbolic")
-        status_icon.add_css_class("accent")
-        self._local_status_row.add_prefix(status_icon)
-        self._local_group.add(self._local_status_row)
-
-        self._local_reset_row = Adw.ActionRow(
-            title=_("Reset Local Vault"),
-            subtitle=_("Permanently erase all connection cache and local keys")
-        )
-        reset_btn = Gtk.Button(label=_("Reset"))
-        reset_btn.set_valign(Gtk.Align.CENTER)
-        reset_btn.add_css_class("flat")
-        reset_btn.add_css_class("destructive-action")
-        reset_btn.connect("clicked", self._on_local_vault_reset_clicked)
-        self._local_reset_row.add_suffix(reset_btn)
-        self._local_group.add(self._local_reset_row)
-
-        content_box.append(self._local_group)
-
-        # ── 2. Bitwarden Preferences Group ──
+        # ── 1. Bitwarden Preferences Group ── (Moved to the top)
         self._bw_group = Adw.PreferencesGroup(
             title=_("Bitwarden Integration"),
             description=_("Sync your SSH keys and passwords from your Bitwarden cloud vault.")
@@ -135,6 +259,64 @@ class VaultManagerWindow(Gtk.Box):
 
         self._settings_subpage = self._build_settings_subpage()
         self._bw_stack.add_named(self._settings_subpage, "settings")
+
+        # ── 2. Configuration Sync Preferences Group ── (Added at the bottom)
+        self._sync_group = Adw.PreferencesGroup(
+            title=_("Configuration Sync"),
+            description=_("Sync connections, groups, and forwarding rules across devices via a Bitwarden Secure Note.")
+        )
+
+        # Enable Switch Row
+        self._sync_enable_row = Adw.SwitchRow(
+            title=_("Enable Configuration Sync"),
+            subtitle=_("Activate Secure Note sync for this vault")
+        )
+        self._sync_enable_row.connect("notify::active", self._on_sync_enabled_toggled)
+        self._sync_group.add(self._sync_enable_row)
+
+        # Sync Note Selector Row
+        self._sync_note_row = Adw.ActionRow(
+            title=_("Sync Note Item"),
+            subtitle=_("Not bound"),
+            activatable=True
+        )
+        self._sync_note_row.connect("activated", self._on_sync_note_row_activated)
+        selector_arrow = Gtk.Image.new_from_icon_name("document-edit-symbolic")
+        selector_arrow.add_css_class("dim-label")
+        self._sync_note_row.add_suffix(selector_arrow)
+        self._sync_group.add(self._sync_note_row)
+
+        # Auto Sync Switch Row
+        self._sync_auto_row = Adw.SwitchRow(
+            title=_("Auto Sync on Changes"),
+            subtitle=_("Automatically upload changes to Bitwarden note in background")
+        )
+        self._sync_auto_row.connect("notify::active", self._on_sync_auto_toggled)
+        self._sync_group.add(self._sync_auto_row)
+
+        # Sync Action Buttons Row
+        self._sync_actions_row = Adw.ActionRow(
+            title=_("Sync Actions"),
+            subtitle=_("Manually push local configuration or pull from Bitwarden note")
+        )
+        
+        sync_actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        sync_actions_box.set_valign(Gtk.Align.CENTER)
+
+        self._push_btn = Gtk.Button(label=_("Upload (Push)"))
+        self._push_btn.add_css_class("flat")
+        self._push_btn.connect("clicked", self._on_push_clicked)
+        sync_actions_box.append(self._push_btn)
+
+        self._pull_btn = Gtk.Button(label=_("Download (Pull)"))
+        self._pull_btn.add_css_class("flat")
+        self._pull_btn.connect("clicked", self._on_pull_clicked)
+        sync_actions_box.append(self._pull_btn)
+
+        self._sync_actions_row.add_suffix(sync_actions_box)
+        self._sync_group.add(self._sync_actions_row)
+
+        content_box.append(self._sync_group)
 
     def _build_loading_page(self) -> Gtk.Widget:
         box = Gtk.Box(
@@ -180,8 +362,6 @@ class VaultManagerWindow(Gtk.Box):
         list_box.append(self._password_row)
 
         box.append(list_box)
-
-
 
         # Login button
         self._login_btn = Gtk.Button(label=_("Log In"))
@@ -267,8 +447,6 @@ class VaultManagerWindow(Gtk.Box):
         list_box.append(self._unlock_entry)
         box.append(list_box)
 
-
-
         # Buttons
         btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         
@@ -319,8 +497,6 @@ class VaultManagerWindow(Gtk.Box):
         self._account_row.add_suffix(btn_box_auth)
         list_box.append(self._account_row)
 
-
-
         self._folder_items = Gtk.StringList.new()
         self._folder_combo = Adw.ComboRow(title=_("Folder"), model=self._folder_items)
         self._folder_combo_map: list[str | None] = []
@@ -348,34 +524,25 @@ class VaultManagerWindow(Gtk.Box):
         SSHService().engine.run_coroutine(coro)
 
     def _check_status(self) -> None:
-        # Check Local Vault status first
+        # Check Local Vault status first in backend (keeps initialized and auto-unlocked)
         vm = VaultManager.get()
-        local_initialized = vm.is_initialized
         local_unlocked = vm.is_unlocked
-
         if not local_unlocked:
-            success = vm.startup()
-            local_initialized = vm.is_initialized
+            vm.startup()
             local_unlocked = vm.is_unlocked
 
         # Check Bitwarden CLI status
         if not self._vault:
             def _update_no_bw():
-                if local_unlocked:
-                    self._local_status_row.set_subtitle(_("Active and Auto-unlocked ✓"))
-                else:
-                    self._local_status_row.set_subtitle(_("Locked / Failed to initialize ⚠"))
-                
-                # If there's no Bitwarden CLI, show unavailability message
                 self._server_info_row.set_subtitle(_("Bitwarden CLI not found"))
                 self._account_row.set_subtitle(_("Unavailable"))
                 self._bw_stack.set_visible_child_name("settings")
+                self._sync_group.set_sensitive(False)
                 self._main_stack.set_visible_child_name("content")
                 return False
             GLib.idle_add(_update_no_bw)
             return
 
-        # Bitwarden CLI exists
         async def _do_check():
             await self._vault.is_unlocked()
             
@@ -383,7 +550,6 @@ class VaultManagerWindow(Gtk.Box):
             server = ""
             email = ""
             try:
-                import json
                 status_raw = await self._vault._run_bw(["status"])
                 status = json.loads(status_raw)
                 state = status.get("status", "unauthenticated")
@@ -399,14 +565,6 @@ class VaultManagerWindow(Gtk.Box):
                     pass
 
             def _update():
-                # Update Local Vault UI status
-                if local_unlocked:
-                    self._local_status_row.set_subtitle(_("Active and Auto-unlocked ✓"))
-                else:
-                    self._local_status_row.set_subtitle(_("Locked / Failed to initialize ⚠"))
-
-
-
                 if state == "unauthenticated":
                     self._server_entry.set_text(server or "")
                     self._bw_stack.set_visible_child_name("login")
@@ -425,12 +583,313 @@ class VaultManagerWindow(Gtk.Box):
                     self._bw_stack.set_visible_child_name("settings")
                     self._load_folders()
 
+                # Update Sync preferences card group
+                self._update_sync_ui(state)
+
                 self._main_stack.set_visible_child_name("content")
                 return False
 
             GLib.idle_add(_update)
 
         self._run_coroutine(_do_check())
+
+    def _update_sync_ui(self, bw_state: str) -> None:
+        db = Database()
+        db.open()
+        try:
+            sync_enabled = db.get_meta("sync_enabled", "false") == "true"
+            sync_auto = db.get_meta("sync_auto", "false") == "true"
+            sync_item_name = db.get_meta("sync_item_name", "")
+            sync_detection = db.get_meta("sync_fields_detection", "true") == "true"
+        finally:
+            db.close()
+
+        is_unlocked_bw = (bw_state == "unlocked")
+        self._sync_group.set_sensitive(is_unlocked_bw)
+
+        # Temporarily block callbacks using a flag
+        self._loading_sync_pref = True
+        try:
+            self._sync_enable_row.set_active(sync_enabled)
+            self._sync_auto_row.set_active(sync_auto)
+        finally:
+            self._loading_sync_pref = False
+
+        self._sync_note_row.set_sensitive(sync_enabled)
+        self._sync_auto_row.set_sensitive(sync_enabled)
+        self._sync_actions_row.set_sensitive(sync_enabled)
+
+        if sync_item_name:
+            if sync_detection:
+                self._sync_note_row.set_subtitle(f"{sync_item_name} ({_('Auto-detect')})")
+            else:
+                self._sync_note_row.set_subtitle(f"{sync_item_name} ({_('Manual')})")
+        else:
+            self._sync_note_row.set_subtitle(_("Not bound"))
+
+    def _on_sync_enabled_toggled(self, row: Adw.SwitchRow, _pspec) -> None:
+        if getattr(self, "_loading_sync_pref", False):
+            return
+        active = row.get_active()
+        db = Database()
+        db.open()
+        try:
+            db.set_meta("sync_enabled", "true" if active else "false")
+            item_id = db.get_meta("sync_item_id")
+        finally:
+            db.close()
+
+        self._sync_note_row.set_sensitive(active)
+        self._sync_auto_row.set_sensitive(active)
+        self._sync_actions_row.set_sensitive(active)
+
+        if active and not item_id:
+            self._auto_detect_sync_note()
+
+    def _on_sync_auto_toggled(self, row: Adw.SwitchRow, _pspec) -> None:
+        if getattr(self, "_loading_sync_pref", False):
+            return
+        active = row.get_active()
+        db = Database()
+        db.open()
+        try:
+            db.set_meta("sync_auto", "true" if active else "false")
+        finally:
+            db.close()
+
+    def _on_sync_note_row_activated(self, _row: Adw.ActionRow) -> None:
+        dialog = SyncSettingsDialog(self.get_root(), self._vault)
+        
+        def _on_response(d: SyncSettingsDialog, response: str):
+            if response == "save":
+                mode, name, selected_id, selected_name = d.get_settings()
+                self._main_stack.set_visible_child_name("loading")
+                
+                async def _apply_settings():
+                    try:
+                        if mode == "auto":
+                            notes = await self._vault.list_sync_notes()
+                            match = await self._find_best_sync_note(notes)
+                            if match:
+                                def _save_auto(found=match):
+                                    db = Database()
+                                    db.open()
+                                    try:
+                                        db.set_meta("sync_item_id", found["id"])
+                                        db.set_meta("sync_item_name", found["name"])
+                                        db.set_meta("sync_fields_detection", "true")
+                                    finally:
+                                        db.close()
+                                    self._show_toast(_("Bound to auto-detected note: {name}").format(name=found["name"]))
+                                    self._check_status()
+                                GLib.idle_add(_save_auto)
+                            else:
+                                # Create default Sentinel Sync Profile in Bitwarden
+                                config_data = SyncManager.get().serialize_local_config()
+                                payload = SyncManager.get().encrypt_data(config_data)
+                                new_id = await self._vault.create_sync_note("Sentinel Sync Profile", payload)
+                                
+                                def _save_new(nid=new_id):
+                                    db = Database()
+                                    db.open()
+                                    try:
+                                        db.set_meta("sync_item_id", nid)
+                                        db.set_meta("sync_item_name", "Sentinel Sync Profile")
+                                        db.set_meta("sync_fields_detection", "true")
+                                    finally:
+                                        db.close()
+                                    self._show_toast(_("Created new sync note: Sentinel Sync Profile"))
+                                    self._check_status()
+                                GLib.idle_add(_save_new)
+                                
+                        elif mode == "create":
+                            config_data = SyncManager.get().serialize_local_config()
+                            payload = SyncManager.get().encrypt_data(config_data)
+                            new_id = await self._vault.create_sync_note(name, payload)
+                            
+                            def _save_created(nid=new_id, nname=name):
+                                db = Database()
+                                db.open()
+                                try:
+                                    db.set_meta("sync_item_id", nid)
+                                    db.set_meta("sync_item_name", nname)
+                                    db.set_meta("sync_fields_detection", "false")
+                                finally:
+                                    db.close()
+                                self._show_toast(_("Created new sync note: {name}").format(name=nname))
+                                self._check_status()
+                            GLib.idle_add(_save_created)
+                            
+                        elif mode == "manual":
+                            if not selected_id:
+                                raise ValueError(_("No note selected"))
+                            
+                            def _save_manual(nid=selected_id, nname=selected_name):
+                                db = Database()
+                                db.open()
+                                try:
+                                    db.set_meta("sync_item_id", nid)
+                                    db.set_meta("sync_item_name", nname)
+                                    db.set_meta("sync_fields_detection", "false")
+                                finally:
+                                    db.close()
+                                self._show_toast(_("Bound to note: {name}").format(name=nname))
+                                self._check_status()
+                            GLib.idle_add(_save_manual)
+                            
+                    except Exception as e:
+                        err_msg = str(e)
+                        GLib.idle_add(lambda err=err_msg: (
+                            self._show_toast(_("Failed to configure sync note: {e}").format(e=err)),
+                            self._check_status()
+                        ) and False)
+                
+                self._run_coroutine(_apply_settings())
+            else:
+                self._check_status()
+                
+        dialog.connect("response", _on_response)
+        dialog.present()
+
+    async def _find_best_sync_note(self, notes: list[dict]) -> dict | None:
+        """Find the best matching sync note using a robust multi-stage detection algorithm."""
+        match = None
+        # Stage 1: Marked with sentinel_sync AND can be successfully decrypted
+        for n in notes:
+            if n.get("is_sentinel_sync"):
+                try:
+                    content = await self._vault.get_sync_note(n["id"])
+                    decrypted = SyncManager.get().decrypt_data(content)
+                    if "connections" in decrypted:
+                        match = n
+                        break
+                except Exception:
+                    pass
+
+        # Stage 2: Marked with sentinel_sync only
+        if not match:
+            for n in notes:
+                if n.get("is_sentinel_sync"):
+                    match = n
+                    break
+
+        # Stage 3: Named 'Sentinel Sync Profile' AND can be successfully decrypted
+        if not match:
+            for n in notes:
+                if n.get("name") == "Sentinel Sync Profile":
+                    try:
+                        content = await self._vault.get_sync_note(n["id"])
+                        decrypted = SyncManager.get().decrypt_data(content)
+                        if "connections" in decrypted:
+                            match = n
+                            break
+                    except Exception:
+                        pass
+
+        # Stage 4: Named 'Sentinel Sync Profile' only
+        if not match:
+            for n in notes:
+                if n.get("name") == "Sentinel Sync Profile":
+                    match = n
+                    break
+
+        return match
+
+    def _auto_detect_sync_note(self) -> None:
+        async def _do_detect():
+            try:
+                notes = await self._vault.list_sync_notes()
+                match = await self._find_best_sync_note(notes)
+                            
+                def _update(found=match):
+                    if found:
+                        db = Database()
+                        db.open()
+                        try:
+                            db.set_meta("sync_item_id", found["id"])
+                            db.set_meta("sync_item_name", found["name"])
+                            db.set_meta("sync_fields_detection", "true")
+                        finally:
+                            db.close()
+                        self._show_toast(_("Auto-detected sync note: {name}").format(name=found["name"]))
+                    else:
+                        self._show_toast(_("No existing sync note found. Please select or create one."))
+                    self._check_status()
+                    
+                GLib.idle_add(_update)
+            except Exception as e:
+                logger.error(f"Auto detection failed: {e}")
+                
+        self._run_coroutine(_do_detect())
+
+    def _on_push_clicked(self, _btn) -> None:
+        db = Database()
+        db.open()
+        try:
+            item_id = db.get_meta("sync_item_id")
+        finally:
+            db.close()
+        
+        if not item_id:
+            self._show_toast(_("Please configure a sync note first."))
+            return
+            
+        self._push_btn.set_sensitive(False)
+        self._show_toast(_("Uploading configuration to Bitwarden…"))
+        
+        async def _do_push():
+            try:
+                await SyncManager.get().push_sync(item_id)
+                GLib.idle_add(lambda: (
+                    self._push_btn.set_sensitive(True),
+                    self._show_toast(_("Configuration uploaded successfully ✓"))
+                ) and False)
+            except Exception as e:
+                err_msg = str(e)
+                GLib.idle_add(lambda err=err_msg: (
+                    self._push_btn.set_sensitive(True),
+                    self._show_toast(_("Upload failed: {e}").format(e=err))
+                ) and False)
+                
+        self._run_coroutine(_do_push())
+
+    def _on_pull_clicked(self, _btn) -> None:
+        db = Database()
+        db.open()
+        try:
+            item_id = db.get_meta("sync_item_id")
+        finally:
+            db.close()
+        
+        if not item_id:
+            self._show_toast(_("Please configure a sync note first."))
+            return
+            
+        self._pull_btn.set_sensitive(False)
+        self._show_toast(_("Downloading configuration from Bitwarden…"))
+        
+        async def _do_pull():
+            try:
+                await SyncManager.get().pull_sync(item_id)
+                
+                def _success():
+                    self._pull_btn.set_sensitive(True)
+                    self._show_toast(_("Configuration downloaded and merged successfully ✓"))
+                    root = self.get_root()
+                    if root and hasattr(root, "_load_connections"):
+                        root._load_connections()
+                    if root and hasattr(root, "_hosts_page") and hasattr(root._hosts_page, "refresh"):
+                        root._hosts_page.refresh()
+                        
+                GLib.idle_add(_success)
+            except Exception as e:
+                err_msg = str(e)
+                GLib.idle_add(lambda err=err_msg: (
+                    self._pull_btn.set_sensitive(True),
+                    self._show_toast(_("Download failed: {e}").format(e=err))
+                ) and False)
+                
+        self._run_coroutine(_do_pull())
 
     def _load_folders(self) -> None:
         logger.debug("VaultManagerWindow: _load_folders() triggered.")
@@ -705,46 +1164,6 @@ class VaultManagerWindow(Gtk.Box):
 
         self._run_coroutine(_do_unlock())
 
-    def _on_local_vault_reset_clicked(self, _btn) -> None:
-        """Confirm and destroy the local vault DB to allow fresh start."""
-        dialog = Adw.MessageDialog(
-            transient_for=self.get_root(),
-            heading=_("Reset Local Vault?"),
-            body=_(
-                "This will permanently erase all connection cache and local keys. "
-                "The actual data inside Bitwarden is NOT affected. "
-                "Use this to wipe all local cached credentials."
-            ),
-        )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("reset", _("Reset"))
-        dialog.set_response_appearance("reset", Adw.ResponseAppearance.DESTRUCTIVE)
-        dialog.set_default_response("cancel")
-        dialog.set_close_response("cancel")
-
-        def _on_response(_d, response):
-            if response == "reset":
-                self._main_stack.set_visible_child_name("loading")
-                try:
-                    # Wipe and restart the vault automatically
-                    VaultManager.get().destroy_vault()
-                    VaultManager.get().startup()
-                    self._show_toast(_("Local vault reset successfully."))
-                    self._check_status()
-                    
-                    # Proactively reload references in main window
-                    root = self.get_root()
-                    if root and hasattr(root, "_load_connections"):
-                        root._load_connections()
-                    if root and hasattr(root, "_hosts_page") and hasattr(root._hosts_page, "refresh"):
-                        root._hosts_page.refresh()
-                except Exception as e:
-                    self._show_toast(_("Failed to reset vault: {e}").format(e=e))
-                    self._check_status()
-
-        dialog.connect("response", _on_response)
-        dialog.present()
-
     def _on_lock_clicked(self, _btn) -> None:
         self._main_stack.set_visible_child_name("loading")
 
@@ -767,8 +1186,6 @@ class VaultManagerWindow(Gtk.Box):
 
         self._run_coroutine(_do_logout())
 
-
-
     def _on_sync_clicked(self, _btn) -> None:
         self._show_toast(_("Syncing vault…"))
 
@@ -778,7 +1195,8 @@ class VaultManagerWindow(Gtk.Box):
                 GLib.idle_add(lambda: self._show_toast(_("Sync completed.")) or False)
                 self._load_folders()
             except Exception as e:
-                GLib.idle_add(lambda: self._show_toast(_("Sync failed: {e}").format(e=e)) or False)
+                err_msg = str(e)
+                GLib.idle_add(lambda err=err_msg: self._show_toast(_("Sync failed: {e}").format(e=err)) or False)
 
         self._run_coroutine(_do_sync())
 

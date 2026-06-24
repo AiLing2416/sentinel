@@ -57,7 +57,7 @@ class KeyCard(Gtk.FlowBoxChild):
 
         # Outer horizontal container: left stripe + body
         outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        outer.add_css_class("card")
+        outer.add_css_class("host-card-v2")
         outer.set_size_request(210, -1)
 
         # Left color stripe

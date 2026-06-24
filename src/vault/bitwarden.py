@@ -162,8 +162,9 @@ class BitwardenBackend(VaultBackend):
         logger.info(f"Bitwarden: Command finished with return code {process.returncode}")
 
         if process.returncode != 0:
-            logger.error("Bitwarden CLI error (Return Code: %d)", process.returncode)
-            raise RuntimeError(f"Bitwarden CLI failed with code {process.returncode}")
+            err_msg = stderr.decode().strip() if stderr else "Unknown error"
+            logger.error("Bitwarden CLI error (Return Code: %d): %s", process.returncode, err_msg)
+            raise RuntimeError(f"Bitwarden CLI failed with code {process.returncode}: {err_msg}")
 
         return stdout
 
@@ -805,12 +806,123 @@ class BitwardenBackend(VaultBackend):
             return None
 
     async def store_connection_config(self, config: dict) -> str:
-        """Bitwarden sync of configs is a bonus Phase 4 feature."""
-        raise NotImplementedError("Syncing configs to Bitwarden notes is not yet implemented.")
+        """Bitwarden sync of configs. Uses the sync note if configured."""
+        from services.sync_manager import SyncManager
+        from db.database import Database
+        db = Database()
+        db.open()
+        item_id = db.get_meta("sync_item_id")
+        db.close()
+        if not item_id:
+            raise RuntimeError("No sync profile note configured")
+        await SyncManager.get().push_sync(item_id)
+        return item_id
 
     async def retrieve_connection_configs(self) -> list[dict]:
-        """Bitwarden sync of configs is a bonus Phase 4 feature."""
-        raise NotImplementedError("Syncing configs to Bitwarden notes is not yet implemented.")
+        """Bitwarden sync of configs. Pulls and merges."""
+        from services.sync_manager import SyncManager
+        from db.database import Database
+        db = Database()
+        db.open()
+        item_id = db.get_meta("sync_item_id")
+        db.close()
+        if not item_id:
+            raise RuntimeError("No sync profile note configured")
+        await SyncManager.get().pull_sync(item_id)
+        return [c.to_dict() for c in SyncManager.get().serialize_local_config().get("connections", [])]
+
+    async def list_sync_notes(self) -> list[dict]:
+        """List all secure notes from Bitwarden to allow user selection."""
+        if not await self.is_unlocked():
+            return []
+        try:
+            items_raw = await self._run_bw(["list", "items"])
+            items = json.loads(items_raw)
+            results = []
+            for item in items:
+                # type == 2 is Secure Note
+                if item.get("type") == 2:
+                    is_sentinel_sync = False
+                    for f in item.get("fields", []):
+                        if f.get("name") == "sentinel_sync" and f.get("value") == "true":
+                            is_sentinel_sync = True
+                            break
+                    results.append({
+                        "id": item["id"],
+                        "name": item["name"],
+                        "is_sentinel_sync": is_sentinel_sync
+                    })
+            return results
+        except Exception as e:
+            logger.error(f"Failed to list sync notes: {e}")
+            return []
+
+    async def create_sync_note(self, name: str, payload: str) -> str:
+        """Create a new Secure Note with sync payload and a sentinel_sync marker field."""
+        if not await self.is_unlocked():
+            raise RuntimeError("Bitwarden vault is locked")
+        try:
+            item_data = {
+                "organizationId": None,
+                "folderId": None,
+                "type": 2,
+                "name": name,
+                "notes": payload,
+                "favorite": False,
+                "fields": [
+                    {
+                        "name": "sentinel_sync",
+                        "value": "true",
+                        "type": 0
+                    }
+                ],
+                "secureNote": {
+                    "type": 0
+                }
+            }
+            encoded = await self._run_bw(["encode"], input_str=json.dumps(item_data))
+            res = await self._run_bw(["create", "item"], input_str=encoded)
+            created = json.loads(res)
+            return created["id"]
+        except Exception as e:
+            logger.error(f"Failed to create sync note '{name}': {e}")
+            raise
+
+    async def update_sync_note(self, item_id: str, payload: str) -> None:
+        """Update an existing sync note with new payload."""
+        if not await self.is_unlocked():
+            raise RuntimeError("Bitwarden vault is locked")
+        try:
+            res = await self._run_bw(["get", "item", item_id])
+            item_data = json.loads(res)
+            item_data["notes"] = payload
+            
+            if "fields" not in item_data or not isinstance(item_data["fields"], list):
+                item_data["fields"] = []
+            if not any(f.get("name") == "sentinel_sync" for f in item_data["fields"]):
+                item_data["fields"].append({
+                    "name": "sentinel_sync",
+                    "value": "true",
+                    "type": 0
+                })
+                
+            encoded = await self._run_bw(["encode"], input_str=json.dumps(item_data))
+            await self._run_bw(["edit", "item", item_id], input_str=encoded)
+        except Exception as e:
+            logger.error(f"Failed to update sync note '{item_id}': {e}")
+            raise
+
+    async def get_sync_note(self, item_id: str) -> str:
+        """Get the notes text from a secure note by id."""
+        if not await self.is_unlocked():
+            raise RuntimeError("Bitwarden vault is locked")
+        try:
+            res = await self._run_bw(["get", "item", item_id])
+            item_data = json.loads(res)
+            return item_data.get("notes", "") or ""
+        except Exception as e:
+            logger.error(f"Failed to get sync note '{item_id}': {e}")
+            raise
 
     # ── Helpers ─────────────────────────────────────────────────
 

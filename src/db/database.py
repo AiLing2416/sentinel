@@ -211,6 +211,12 @@ class Database:
             raise RuntimeError("Cannot save connection: Local Vault is locked.")
         vm.store_connection(conn)
 
+        try:
+            from services.sync_manager import SyncManager
+            SyncManager.get().trigger_auto_sync()
+        except Exception as se:
+            logger.debug("Failed to trigger auto sync: %s", se)
+
     def get_connection(self, conn_id: str) -> Connection | None:
         """Retrieve a connection by ID."""
         if self._path != _default_db_path():
@@ -254,6 +260,11 @@ class Database:
         vm = VaultManager.get()
         if vm.is_unlocked:
             vm.delete_connection(conn_id)
+            try:
+                from services.sync_manager import SyncManager
+                SyncManager.get().trigger_auto_sync()
+            except Exception as se:
+                logger.debug("Failed to trigger auto sync: %s", se)
             return True
         return False
 
@@ -320,6 +331,12 @@ class Database:
             raise RuntimeError("Cannot save forward rule: Local Vault is locked.")
         vm.store_forward_rule(rule)
 
+        try:
+            from services.sync_manager import SyncManager
+            SyncManager.get().trigger_auto_sync()
+        except Exception as se:
+            logger.debug("Failed to trigger auto sync: %s", se)
+
     def get_forward_rule(self, rule_id: str) -> ForwardRule | None:
         """Retrieve a forward rule by ID."""
         if self._path != _default_db_path():
@@ -363,6 +380,11 @@ class Database:
         vm = VaultManager.get()
         if vm.is_unlocked:
             vm.delete_forward_rule(rule_id)
+            try:
+                from services.sync_manager import SyncManager
+                SyncManager.get().trigger_auto_sync()
+            except Exception as se:
+                logger.debug("Failed to trigger auto sync: %s", se)
             return True
         return False
 
@@ -391,6 +413,12 @@ class Database:
             raise RuntimeError("Cannot save group: Local Vault is locked.")
         vm.store_group(group)
 
+        try:
+            from services.sync_manager import SyncManager
+            SyncManager.get().trigger_auto_sync()
+        except Exception as se:
+            logger.debug("Failed to trigger auto sync: %s", se)
+
     def list_groups(self) -> list[ConnectionGroup]:
         """List all connection groups."""
         if self._path != _default_db_path():
@@ -415,6 +443,11 @@ class Database:
         vm = VaultManager.get()
         if vm.is_unlocked:
             vm.delete_group(group_id)
+            try:
+                from services.sync_manager import SyncManager
+                SyncManager.get().trigger_auto_sync()
+            except Exception as se:
+                logger.debug("Failed to trigger auto sync: %s", se)
             return True
         return False
 
