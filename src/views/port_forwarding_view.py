@@ -264,6 +264,7 @@ class PortForwardingTab(Gtk.Box):
         self._search_entry = Gtk.SearchEntry(placeholder_text=_("Search rules…"))
         self._search_entry.set_size_request(240, -1)
         self._search_entry.connect("search-changed", self._on_search_changed)
+        self._search_entry.set_key_capture_widget(self)
         actions_bar.append(self._search_entry)
 
         actions_spacer = Gtk.Box()

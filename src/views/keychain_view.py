@@ -168,6 +168,13 @@ class KeychainPage(Gtk.Box):
         title_label.add_css_class("title-1")
         actions_bar.append(title_label)
 
+        # Search Entry
+        self._search_entry = Gtk.SearchEntry(placeholder_text=_("Search keys…"))
+        self._search_entry.set_size_request(240, -1)
+        self._search_entry.connect("search-changed", self._on_search_changed)
+        self._search_entry.set_key_capture_widget(self)
+        actions_bar.append(self._search_entry)
+
         actions_spacer = Gtk.Box()
         actions_spacer.set_hexpand(True)
         actions_bar.append(actions_spacer)
@@ -478,6 +485,9 @@ class KeychainPage(Gtk.Box):
 
     # ── Grid Refresh & Handlers ───────────────────────────────
 
+    def _on_search_changed(self, _entry: Gtk.SearchEntry) -> None:
+        self.refresh()
+
     def refresh(self) -> None:
         """Reload all keys from the vault and rebuild the flowbox."""
         # Check if the vault is unlocked. If not, don't query
@@ -499,11 +509,24 @@ class KeychainPage(Gtk.Box):
             logger.error(f"Keychain: Failed to list keys: {e}")
             keys = []
 
-        if not keys:
+        # Filter keys by search query
+        query = self._search_entry.get_text().strip().lower()
+        if query:
+            filtered = []
+            for k in keys:
+                label = k.get("label", "").lower()
+                raw_type = k.get("key_type", "").lower()
+                fp = k.get("fingerprint", "").lower()
+                if query in label or query in raw_type or query in fp:
+                    filtered.append(k)
+        else:
+            filtered = keys
+
+        if not filtered:
             self._left_stack.set_visible_child_name("empty")
             return
 
-        for k in keys:
+        for k in filtered:
             card = KeyCard(k)
             self._flow_box.append(card)
             self._setup_context_menu(card)
