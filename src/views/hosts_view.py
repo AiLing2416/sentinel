@@ -98,7 +98,7 @@ class HostCard(Gtk.FlowBoxChild):
         body.set_margin_top(10)
         body.set_margin_bottom(10)
 
-        # Row 1: OS icon + connection name
+        # Row 1: OS icon + connection name + auth badge (top-right)
         row1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7)
         row1.append(self._get_os_icon_widget(connection.os_id))
 
@@ -108,6 +108,10 @@ class HostCard(Gtk.FlowBoxChild):
         name_lbl.add_css_class("heading")
         name_lbl.set_ellipsize(Pango.EllipsizeMode.END)
         row1.append(name_lbl)
+
+        badge = Gtk.Label(label=self._AUTH_BADGE.get(auth_val, auth_val))
+        badge.add_css_class("auth-badge")
+        row1.append(badge)
         body.append(row1)
 
         # Row 2: host string
@@ -125,16 +129,6 @@ class HostCard(Gtk.FlowBoxChild):
         host_lbl.add_css_class("dim-label")
         host_lbl.set_ellipsize(Pango.EllipsizeMode.END)
         body.append(host_lbl)
-
-        # Row 3: auth badge (right-aligned)
-        row3 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        spacer = Gtk.Box()
-        spacer.set_hexpand(True)
-        row3.append(spacer)
-        badge = Gtk.Label(label=self._AUTH_BADGE.get(auth_val, auth_val))
-        badge.add_css_class("auth-badge")
-        row3.append(badge)
-        body.append(row3)
 
         outer.append(body)
         self.set_child(outer)

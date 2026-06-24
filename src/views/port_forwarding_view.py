@@ -44,20 +44,17 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
         self.set_margin_bottom(5)
         self.add_css_class("forward-card")
 
-        # Outer container (horizontal: status stripe + body)
-        outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        # Outer container (vertical, top-stripe styled in CSS)
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         outer.add_css_class("host-card-v2")
-        outer.set_size_request(210, -1)
-
-        # Left status-stripe
-        self._stripe = Gtk.Box()
+        
         _STATUS_STRIPE = {
             "Running":      "status-bar-running",
             "Disconnected": "status-bar-connecting",
             "Error":        "status-bar-error",
         }
-        self._stripe.add_css_class(_STATUS_STRIPE.get(status, "status-bar-stopped"))
-        outer.append(self._stripe)
+        outer.add_css_class(_STATUS_STRIPE.get(status, "status-bar-stopped"))
+        outer.set_size_request(210, -1)
 
         # Card body (vertical)
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)

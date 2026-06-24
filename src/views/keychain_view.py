@@ -55,18 +55,14 @@ class KeyCard(Gtk.FlowBoxChild):
         # Normalise RSA-2048, RSA-3072 etc. -> "RSA"
         type_key = next((k for k in self._KEY_ACCENT if raw_type.startswith(k)), None)
 
-        # Outer horizontal container: left stripe + body
-        outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        # Outer vertical container (top-stripe styled in CSS)
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         outer.add_css_class("host-card-v2")
-        outer.set_size_request(210, -1)
-
-        # Left color stripe
-        stripe = Gtk.Box()
-        stripe.add_css_class(
+        outer.add_css_class(
             self._KEY_ACCENT.get(type_key, "key-accent-default")
             if type_key else "key-accent-default"
         )
-        outer.append(stripe)
+        outer.set_size_request(210, -1)
 
         # Card body
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)

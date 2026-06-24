@@ -512,6 +512,52 @@ class SentinelApplication(Adw.Application):
             background-image: linear-gradient(90deg, @blue_3, @purple_3);
         }
 
+        /* Port Forwarding status bars integrated as top 4px background on host card */
+        .host-card-v2.status-bar-running,
+        .host-card-v2.status-bar-stopped,
+        .host-card-v2.status-bar-error,
+        .host-card-v2.status-bar-connecting {
+            border-top-color: transparent;
+            background-size: 100% 4px;
+            background-repeat: no-repeat;
+            background-position: top left;
+        }
+        .host-card-v2.status-bar-running {
+            background-image: linear-gradient(90deg, @success_color, @success_color);
+        }
+        .host-card-v2.status-bar-stopped {
+            background-image: linear-gradient(90deg, alpha(@dim_label_color, 0.28), alpha(@dim_label_color, 0.28));
+        }
+        .host-card-v2.status-bar-error {
+            background-image: linear-gradient(90deg, @error_color, @error_color);
+        }
+        .host-card-v2.status-bar-connecting {
+            background-image: linear-gradient(90deg, @warning_color, @warning_color);
+        }
+
+        /* Keychain key type accents integrated as top 4px background on host card */
+        .host-card-v2.key-accent-ed25519,
+        .host-card-v2.key-accent-rsa,
+        .host-card-v2.key-accent-ecdsa,
+        .host-card-v2.key-accent-default {
+            border-top-color: transparent;
+            background-size: 100% 4px;
+            background-repeat: no-repeat;
+            background-position: top left;
+        }
+        .host-card-v2.key-accent-ed25519 {
+            background-image: linear-gradient(90deg, @blue_4, @blue_4);
+        }
+        .host-card-v2.key-accent-rsa {
+            background-image: linear-gradient(90deg, @green_4, @green_4);
+        }
+        .host-card-v2.key-accent-ecdsa {
+            background-image: linear-gradient(90deg, @purple_4, @purple_4);
+        }
+        .host-card-v2.key-accent-default {
+            background-image: linear-gradient(90deg, @accent_color, @accent_color);
+        }
+
         /* Auth badge (small pill in card corner) */
         .auth-badge {
             border-radius: 4px;
