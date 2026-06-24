@@ -55,6 +55,7 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
         }
         outer.add_css_class(_STATUS_STRIPE.get(status, "forward-stripe-stopped"))
         outer.set_size_request(210, -1)
+        outer.set_halign(Gtk.Align.START)
 
         # Card body (vertical)
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
@@ -292,7 +293,6 @@ class PortForwardingTab(Gtk.Box):
         # Grid view (FlowBox)
         self._flow_box = Gtk.FlowBox()
         self._flow_box.set_valign(Gtk.Align.START)
-        self._flow_box.set_halign(Gtk.Align.START)
         self._flow_box.set_max_children_per_line(10)
         self._flow_box.set_min_children_per_line(1)
         self._flow_box.set_selection_mode(Gtk.SelectionMode.SINGLE)
