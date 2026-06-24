@@ -28,11 +28,11 @@ _ = gettext.gettext
 class KeyCard(Gtk.FlowBoxChild):
     """A card representing a single SSH key in the Keychain grid."""
 
-    # Map key type string prefix -> CSS accent class (left color bar)
+    # Map key type string prefix -> CSS accent class (top color band)
     _KEY_ACCENT: dict[str, str] = {
-        "ED25519": "key-accent-ed25519",
-        "RSA":     "key-accent-rsa",
-        "ECDSA":   "key-accent-ecdsa",
+        "ED25519": "key-stripe-ed25519",
+        "RSA":     "key-stripe-rsa",
+        "ECDSA":   "key-stripe-ecdsa",
     }
 
     # Map key type -> CSS badge modifier class
@@ -59,18 +59,18 @@ class KeyCard(Gtk.FlowBoxChild):
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         outer.add_css_class("host-card-v2")
         outer.add_css_class(
-            self._KEY_ACCENT.get(type_key, "key-accent-default")
-            if type_key else "key-accent-default"
+            self._KEY_ACCENT.get(type_key, "key-stripe-default")
+            if type_key else "key-stripe-default"
         )
         outer.set_size_request(210, -1)
 
         # Card body
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
         body.set_hexpand(True)
-        body.set_margin_start(11)
-        body.set_margin_end(11)
-        body.set_margin_top(11)
-        body.set_margin_bottom(11)
+        body.set_margin_start(12)
+        body.set_margin_end(12)
+        body.set_margin_top(10)
+        body.set_margin_bottom(10)
 
         # Row 1: icon + name + type badge
         row1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7)

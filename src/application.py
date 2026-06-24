@@ -513,48 +513,48 @@ class SentinelApplication(Adw.Application):
         }
 
         /* Port Forwarding status bars integrated as top 4px background on host card */
-        .host-card-v2.status-bar-running,
-        .host-card-v2.status-bar-stopped,
-        .host-card-v2.status-bar-error,
-        .host-card-v2.status-bar-connecting {
+        .host-card-v2.forward-stripe-running,
+        .host-card-v2.forward-stripe-stopped,
+        .host-card-v2.forward-stripe-error,
+        .host-card-v2.forward-stripe-connecting {
             border-top-color: transparent;
             background-size: 100% 4px;
             background-repeat: no-repeat;
             background-position: top left;
         }
-        .host-card-v2.status-bar-running {
+        .host-card-v2.forward-stripe-running {
             background-image: linear-gradient(90deg, @success_color, @success_color);
         }
-        .host-card-v2.status-bar-stopped {
+        .host-card-v2.forward-stripe-stopped {
             background-image: linear-gradient(90deg, alpha(@dim_label_color, 0.28), alpha(@dim_label_color, 0.28));
         }
-        .host-card-v2.status-bar-error {
+        .host-card-v2.forward-stripe-error {
             background-image: linear-gradient(90deg, @error_color, @error_color);
         }
-        .host-card-v2.status-bar-connecting {
+        .host-card-v2.forward-stripe-connecting {
             background-image: linear-gradient(90deg, @warning_color, @warning_color);
         }
 
         /* Keychain key type accents integrated as top 4px background on host card */
-        .host-card-v2.key-accent-ed25519,
-        .host-card-v2.key-accent-rsa,
-        .host-card-v2.key-accent-ecdsa,
-        .host-card-v2.key-accent-default {
+        .host-card-v2.key-stripe-ed25519,
+        .host-card-v2.key-stripe-rsa,
+        .host-card-v2.key-stripe-ecdsa,
+        .host-card-v2.key-stripe-default {
             border-top-color: transparent;
             background-size: 100% 4px;
             background-repeat: no-repeat;
             background-position: top left;
         }
-        .host-card-v2.key-accent-ed25519 {
-            background-image: linear-gradient(90deg, @blue_4, @blue_4);
+        .host-card-v2.key-stripe-ed25519 {
+            background-image: linear-gradient(90deg, @blue_3, @blue_4);
         }
-        .host-card-v2.key-accent-rsa {
-            background-image: linear-gradient(90deg, @green_4, @green_4);
+        .host-card-v2.key-stripe-rsa {
+            background-image: linear-gradient(90deg, @green_3, @green_4);
         }
-        .host-card-v2.key-accent-ecdsa {
-            background-image: linear-gradient(90deg, @purple_4, @purple_4);
+        .host-card-v2.key-stripe-ecdsa {
+            background-image: linear-gradient(90deg, @purple_3, @purple_4);
         }
-        .host-card-v2.key-accent-default {
+        .host-card-v2.key-stripe-default {
             background-image: linear-gradient(90deg, @accent_color, @accent_color);
         }
 
