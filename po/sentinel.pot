@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
+# This file is distributed under the same license as the sentinel package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: sentinel 0.2.5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-26 09:20-0700\n"
+"POT-Creation-Date: 2026-06-24 07:17-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,1187 +17,24 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/utils/themes.py:27
-msgid "Catppuccin Mocha"
-msgstr ""
-
-#: src/utils/themes.py:43
-msgid "Nord"
-msgstr ""
-
-#: src/utils/themes.py:59
-msgid "Solarized Dark"
-msgstr ""
-
-#: src/utils/themes.py:75
-msgid "Dracula"
-msgstr ""
-
-#: src/utils/themes.py:91
-msgid "GNOME Dark"
-msgstr ""
-
-#: src/application.py:65 src/views/main_window.py:33
-#: src/views/main_window.py:113 src/views/main_window.py:214
+#: src/application.py:64 src/views/main_window.py:41
+#: src/views/main_window.py:251 src/views/main_window.py:256
+#: src/views/main_window.py:590
 msgid "Sentinel"
 msgstr ""
 
-#: src/application.py:67 src/application.py:69
+#: src/application.py:66 src/application.py:68
 msgid "Sentinel Contributors"
 msgstr ""
 
-#: src/application.py:70
+#: src/application.py:69
 msgid "© 2026 Sentinel Contributors"
 msgstr ""
 
-#: src/application.py:72
+#: src/application.py:71
 msgid ""
 "A secure GNOME SSH connection manager\n"
 "with password manager integration."
-msgstr ""
-
-#: src/vault/bitwarden.py:689
-#, python-brace-format
-msgid "No password found in item. Check item ID '{id}'."
-msgstr ""
-
-#: src/views/main_window.py:59
-msgid "Connections"
-msgstr ""
-
-#: src/views/main_window.py:65
-msgid "New Connection  (Ctrl+N)"
-msgstr ""
-
-#: src/views/main_window.py:70
-msgid "Menu"
-msgstr ""
-
-#: src/views/main_window.py:72 src/views/terminal_theme_dialog.py:34
-msgid "Terminal Theme"
-msgstr ""
-
-#: src/views/main_window.py:73
-msgid "Vault Settings"
-msgstr ""
-
-#: src/views/main_window.py:74
-msgid "About Sentinel"
-msgstr ""
-
-#: src/views/main_window.py:75
-msgid "Quit"
-msgstr ""
-
-#: src/views/main_window.py:82
-msgid "Search connections…"
-msgstr ""
-
-#: src/views/main_window.py:134
-msgid "Terminal"
-msgstr ""
-
-#: src/views/main_window.py:151
-msgid "Open Local Shell (Ctrl+T)"
-msgstr ""
-
-#: src/views/main_window.py:161
-msgid "Merge all tabs into another window and close"
-msgstr ""
-
-#: src/views/main_window.py:218
-msgid "Secure SSH Connection Manager"
-msgstr ""
-
-#: src/views/main_window.py:229 src/views/main_window.py:259
-msgid "New Connection"
-msgstr ""
-
-#: src/views/main_window.py:235 src/views/terminal_view.py:75
-#: src/views/terminal_view.py:389 src/views/terminal_view.py:638
-msgid "Local Shell"
-msgstr ""
-
-#: src/views/main_window.py:244
-msgid "Ctrl+N  New Connection  ·  Ctrl+T  Local Shell  ·  Ctrl+F  Search"
-msgstr ""
-
-#: src/views/main_window.py:259
-msgid "Edit Connection"
-msgstr ""
-
-#: src/views/main_window.py:267 src/views/main_window.py:637
-#: src/views/dialogs.py:20 src/views/dialogs.py:105 src/views/dialogs.py:167
-#: src/views/dialogs.py:288 src/views/dialogs.py:329
-#: src/views/terminal_theme_dialog.py:331
-#: src/views/terminal_theme_dialog.py:367
-#: src/views/terminal_theme_dialog.py:474
-msgid "Cancel"
-msgstr ""
-
-#: src/views/main_window.py:271
-msgid "Save"
-msgstr ""
-
-#: src/views/main_window.py:279
-msgid "Basic"
-msgstr ""
-
-#: src/views/main_window.py:282 src/views/dialogs.py:419
-#: src/views/sftp_view.py:201
-msgid "Name"
-msgstr ""
-
-#: src/views/main_window.py:287
-msgid "Hostname"
-msgstr ""
-
-#: src/views/main_window.py:293
-msgid "Port"
-msgstr ""
-
-#: src/views/main_window.py:297
-msgid "Username"
-msgstr ""
-
-#: src/views/main_window.py:305
-msgid "Authentication"
-msgstr ""
-
-#: src/views/main_window.py:309
-msgid "SSH Key"
-msgstr ""
-
-#: src/views/main_window.py:309
-msgid "Password"
-msgstr ""
-
-#: src/views/main_window.py:309
-msgid "Key + Passphrase"
-msgstr ""
-
-#: src/views/main_window.py:309
-msgid "SSH Agent"
-msgstr ""
-
-#: src/views/main_window.py:309
-msgid "Vault"
-msgstr ""
-
-#: src/views/main_window.py:311
-msgid "Method"
-msgstr ""
-
-#: src/views/main_window.py:321
-msgid "Key File Path (optional)"
-msgstr ""
-
-#: src/views/main_window.py:340
-msgid "SSH Key from Vault"
-msgstr ""
-
-#: src/views/main_window.py:341
-msgid "Select the vault item that stores the SSH private key"
-msgstr ""
-
-#: src/views/main_window.py:348 src/views/main_window.py:350
-#: src/views/main_window.py:376
-msgid "Not selected"
-msgstr ""
-
-#: src/views/main_window.py:353
-msgid "Clear vault key selection"
-msgstr ""
-
-#: src/views/main_window.py:358
-msgid "Select…"
-msgstr ""
-
-#: src/views/main_window.py:359
-msgid "Select SSH key from Vault"
-msgstr ""
-
-#: src/views/main_window.py:391
-msgid "Bitwarden CLI not found. Install it first."
-msgstr ""
-
-#: src/views/main_window.py:408
-msgid "Please log in / unlock Bitwarden via Vault Settings first."
-msgstr ""
-
-#: src/views/main_window.py:420
-#, python-brace-format
-msgid "Failed to fetch vault items: {fetch_err}"
-msgstr ""
-
-#: src/views/main_window.py:434 src/views/main_window.py:436
-msgid "Notes"
-msgstr ""
-
-#: src/views/main_window.py:453
-msgid "Delete Connection"
-msgstr ""
-
-#: src/views/main_window.py:498
-#, python-brace-format
-msgid "Updated: {name}"
-msgstr ""
-
-#: src/views/main_window.py:498
-#, python-brace-format
-msgid "Added: {name}"
-msgstr ""
-
-#: src/views/main_window.py:524
-#, python-brace-format
-msgid "Connection error: {e}"
-msgstr ""
-
-#: src/views/main_window.py:547
-msgid "Welcome"
-msgstr ""
-
-#: src/views/main_window.py:568
-msgid "Untitled"
-msgstr ""
-
-#: src/views/main_window.py:634
-#, python-brace-format
-msgid "Delete \"{name}\"?"
-msgstr ""
-
-#: src/views/main_window.py:635
-msgid "This connection will be permanently removed."
-msgstr ""
-
-#: src/views/main_window.py:638 src/views/sftp_view.py:277
-#: src/views/sftp_view.py:1414 src/views/terminal_theme_dialog.py:368
-msgid "Delete"
-msgstr ""
-
-#: src/views/main_window.py:646
-#, python-brace-format
-msgid "Deleted: {name}"
-msgstr ""
-
-#: src/views/main_window.py:670
-#, python-brace-format
-msgid "Cleared host key and OS info for {hostname}"
-msgstr ""
-
-#: src/views/main_window.py:672
-#, python-brace-format
-msgid "Cleared OS info for {hostname}"
-msgstr ""
-
-#: src/views/terminal_view.py:178
-msgid "Find in terminal..."
-msgstr ""
-
-#: src/views/terminal_view.py:182
-msgid "Find next"
-msgstr ""
-
-#: src/views/terminal_view.py:187
-msgid "Find previous"
-msgstr ""
-
-#: src/views/terminal_view.py:213
-#, python-brace-format
-msgid "Connecting to {title}…"
-msgstr ""
-
-#: src/views/terminal_view.py:213
-msgid "Spawning local shell..."
-msgstr ""
-
-#: src/views/terminal_view.py:324
-#, python-brace-format
-msgid "Connected — {title}"
-msgstr ""
-
-#: src/views/terminal_view.py:334
-#, python-brace-format
-msgid "Disconnected: {exc}"
-msgstr ""
-
-#: src/views/terminal_view.py:334
-msgid "Disconnected"
-msgstr ""
-
-#: src/views/terminal_view.py:366
-#, python-brace-format
-msgid "Exited with code {exit_status}"
-msgstr ""
-
-#: src/views/terminal_view.py:386
-#, python-brace-format
-msgid "Error: {error}"
-msgstr ""
-
-#: src/views/terminal_view.py:393
-#, python-brace-format
-msgid "Exited code {exit_status}"
-msgstr ""
-
-#: src/views/terminal_view.py:411
-msgid "Reconnecting…"
-msgstr ""
-
-#: src/views/terminal_view.py:426 src/views/sftp_view.py:269
-msgid "Copy"
-msgstr ""
-
-#: src/views/terminal_view.py:427 src/views/sftp_view.py:270
-msgid "Paste"
-msgstr ""
-
-#: src/views/terminal_view.py:431
-msgid "Find…"
-msgstr ""
-
-#: src/views/terminal_view.py:432
-msgid "Read-only"
-msgstr ""
-
-#: src/views/terminal_view.py:436
-msgid "Select All"
-msgstr ""
-
-#: src/views/terminal_view.py:437
-msgid "Clear"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:39
-msgid "Vault Manager"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:112
-msgid "Checking Vault Status…"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:129
-msgid "Set Up Local Vault"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:135
-msgid ""
-"Sentinel stores credentials in an encrypted local database. Please pick a "
-"strong master password. You will only need to enter it once — after that, it "
-"is stored securely in the system keyring."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:149
-#: src/views/vault_settings_dialog.py:194
-#: src/views/vault_settings_dialog.py:316
-#: src/views/vault_settings_dialog.py:461
-msgid "Master Password"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:152
-msgid "Confirm Password"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:156
-msgid "Create Vault"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:179
-msgid "Unlock Local Vault"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:184
-msgid "Enter your Sentinel vault master password to continue."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:201
-#: src/views/vault_settings_dialog.py:482 src/views/dialogs.py:106
-msgid "Unlock"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:219
-msgid "Please enter a master password."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:222
-msgid "Passwords do not match."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:225
-msgid "Password must be at least 8 characters."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:237
-msgid "Local vault created successfully."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:243
-#, python-brace-format
-msgid "Failed to create vault: {e}"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:262
-msgid "Wrong master password."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:280
-msgid "Log in to Bitwarden"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:285
-msgid "Enter your credentials to access your vault."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:301
-msgid "https://bitwarden.com (leave blank for default)"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:303
-msgid "Custom Server"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:303
-msgid "For self-hosted Bitwarden / VaultWarden"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:312
-msgid "Email Address"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:319
-#: src/views/vault_settings_dialog.py:464
-msgid "Save master password securely in system keyring"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:328
-msgid "Log In"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:356
-msgid "Two-Step Verification"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:361
-msgid "Your account requires two-step verification."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:377
-#: src/views/vault_settings_dialog.py:712
-msgid "Authenticator App (TOTP)"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:378
-msgid "Email"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:379
-#: src/views/vault_settings_dialog.py:714
-#: src/views/vault_settings_dialog.py:756
-msgid "YubiKey OTP"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:380
-#: src/views/vault_settings_dialog.py:715
-msgid "Duo"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:381
-msgid "FIDO2 / WebAuthn (hardware key)"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:386
-msgid "Verification Method"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:392
-msgid "Verification Code"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:408
-msgid "Back"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:414
-msgid "Verify & Log In"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:442
-msgid "Vault Locked"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:447
-msgid "Enter your master password to unlock."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:475
-#: src/views/vault_settings_dialog.py:518
-msgid "Log Out"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:503
-msgid "Account"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:505
-msgid "Server"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:505
-msgid "Loading…"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:508
-msgid "Status"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:508
-#: src/views/vault_settings_dialog.py:624
-msgid "Unlocked ✓"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:513
-msgid "Lock"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:528
-msgid "Saved Password"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:529
-msgid "Master password is saved in system keyring for auto-unlock"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:531
-msgid "Forget"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:543
-msgid "Default Folder for Key Selection"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:544
-msgid ""
-"Only items inside this folder will appear when picking a vault SSH key in "
-"connection settings. Leave as 'All Items' to search everywhere."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:548
-msgid "Folder"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:554
-msgid "Sync Vault"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:554
-msgid "Pull the latest items from the server"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:555
-msgid "Sync Now"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:583
-msgid "Bitwarden CLI ('bw') not found. Please install it."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:623
-msgid "Official Cloud Server"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:648
-#, python-brace-format
-msgid "Failed to load folders: {e}"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:660
-msgid "[All Items]"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:713
-msgid "Email Verification"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:716
-msgid "FIDO2 / WebAuthn"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:743
-msgid ""
-"Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) "
-"and enter the 6-digit code."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:745
-msgid "Check your email inbox for a verification code sent by Bitwarden."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:747
-msgid "Insert your YubiKey and tap it to generate an OTP."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:749
-msgid ""
-"Approve the Duo push notification on your device, or enter the Duo passcode."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:751
-msgid "Touch your hardware security key when it lights up."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:754
-msgid "6-digit TOTP code"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:755
-msgid "Email verification code"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:757
-msgid "Duo passcode (or leave blank for push)"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:758
-msgid "(Not supported in CLI mode — use another method)"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:771
-msgid "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:772
-msgid "Please use a different 2FA method (e.g. TOTP or Email)."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:783
-msgid "Please provide email and master password."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:836
-#, python-brace-format
-msgid "Login failed: {err}"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:863
-msgid "Please enter your verification code."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:882
-msgid "Login password missing for 2FA"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:905
-#, python-brace-format
-msgid "Verification failed: {err}"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:933
-msgid "Incorrect master password, or unlock failed."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:967
-msgid "Saved master password removed from keyring."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:970
-msgid "Syncing vault…"
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:975
-msgid "Sync completed."
-msgstr ""
-
-#: src/views/vault_settings_dialog.py:978
-#, python-brace-format
-msgid "Sync failed: {e}"
-msgstr ""
-
-#: src/views/dialogs.py:21
-msgid "Connect"
-msgstr ""
-
-#: src/views/dialogs.py:71
-#, python-brace-format
-msgid "Unknown Host Key ({hostname})"
-msgstr ""
-
-#: src/views/dialogs.py:73
-#, python-brace-format
-msgid ""
-"The authenticity of host '{hostname}' can't be established.\n"
-"\n"
-msgstr ""
-
-#: src/views/dialogs.py:74
-#, python-brace-format
-msgid "Algorithm: {algorithm}\n"
-msgstr ""
-
-#: src/views/dialogs.py:75
-#, python-brace-format
-msgid ""
-"Fingerprint: {fingerprint}\n"
-"\n"
-msgstr ""
-
-#: src/views/dialogs.py:76
-msgid "Are you sure you want to continue connecting?"
-msgstr ""
-
-#: src/views/dialogs.py:79
-msgid "Reject"
-msgstr ""
-
-#: src/views/dialogs.py:80
-msgid "Accept and Connect"
-msgstr ""
-
-#: src/views/dialogs.py:102
-#, python-brace-format
-msgid "Unlock {vault_name}"
-msgstr ""
-
-#: src/views/dialogs.py:103
-#, python-brace-format
-msgid "Please enter your master password to access {vault_name} credentials."
-msgstr ""
-
-#: src/views/dialogs.py:153
-msgid "Select SSH Key from Vault"
-msgstr ""
-
-#: src/views/dialogs.py:180
-msgid "Retrieving data from Vault..."
-msgstr ""
-
-#: src/views/dialogs.py:191
-msgid ""
-"Choose the vault item that contains the SSH private key for this connection."
-msgstr ""
-
-#: src/views/dialogs.py:238
-msgid "Select"
-msgstr ""
-
-#: src/views/dialogs.py:289
-msgid "Confirm"
-msgstr ""
-
-#: src/views/dialogs.py:354
-msgid "OK"
-msgstr ""
-
-#: src/views/dialogs.py:374
-#, python-brace-format
-msgid "Properties: {name}"
-msgstr ""
-
-#: src/views/dialogs.py:374 src/views/dialogs.py:420
-msgid "File"
-msgstr ""
-
-#: src/views/dialogs.py:420
-msgid "Type"
-msgstr ""
-
-#: src/views/dialogs.py:420
-msgid "Directory"
-msgstr ""
-
-#: src/views/dialogs.py:421 src/views/sftp_view.py:227
-msgid "Size"
-msgstr ""
-
-#: src/views/dialogs.py:422
-msgid "Last Modified"
-msgstr ""
-
-#: src/views/dialogs.py:423
-msgid "Permissions"
-msgstr ""
-
-#: src/views/dialogs.py:424
-msgid "Owner"
-msgstr ""
-
-#: src/views/dialogs.py:424
-#, python-brace-format
-msgid "UID: {uid} / GID: {gid}"
-msgstr ""
-
-#: src/views/dialogs.py:425
-msgid "Remote Path"
-msgstr ""
-
-#: src/views/dialogs.py:430
-msgid "Close"
-msgstr ""
-
-#: src/views/sftp_view.py:141
-msgid "New..."
-msgstr ""
-
-#: src/views/sftp_view.py:143 src/views/sftp_view.py:821
-msgid "New File"
-msgstr ""
-
-#: src/views/sftp_view.py:144 src/views/sftp_view.py:792
-#: src/views/sftp_view.py:794
-msgid "New Folder"
-msgstr ""
-
-#: src/views/sftp_view.py:154
-msgid "View Options"
-msgstr ""
-
-#: src/views/sftp_view.py:159
-msgid "Show Hidden Files"
-msgstr ""
-
-#: src/views/sftp_view.py:164
-msgid "Auto-sync on Save"
-msgstr ""
-
-#: src/views/sftp_view.py:246
-msgid "Date Modified"
-msgstr ""
-
-#: src/views/sftp_view.py:267 src/views/connection_list.py:253
-msgid "Edit"
-msgstr ""
-
-#: src/views/sftp_view.py:268
-msgid "Open With..."
-msgstr ""
-
-#: src/views/sftp_view.py:271
-msgid "Synchronize"
-msgstr ""
-
-#: src/views/sftp_view.py:272
-msgid "Download"
-msgstr ""
-
-#: src/views/sftp_view.py:273
-msgid "Calculate Size"
-msgstr ""
-
-#: src/views/sftp_view.py:276
-msgid "Rename"
-msgstr ""
-
-#: src/views/sftp_view.py:278
-msgid "Properties"
-msgstr ""
-
-#: src/views/sftp_view.py:432
-msgid "Connecting…"
-msgstr ""
-
-#: src/views/sftp_view.py:615
-#, python-brace-format
-msgid "Password for {hostname}"
-msgstr ""
-
-#: src/views/sftp_view.py:617
-msgid "Unlock SSH Key"
-msgstr ""
-
-#: src/views/sftp_view.py:617
-#, python-brace-format
-msgid "Enter passphrase for {path}"
-msgstr ""
-
-#: src/views/sftp_view.py:671
-#, python-brace-format
-msgid "Connected to {hostname}"
-msgstr ""
-
-#: src/views/sftp_view.py:685
-#, python-brace-format
-msgid "Loading {path}…"
-msgstr ""
-
-#: src/views/sftp_view.py:726
-#, python-brace-format
-msgid "Error: {msg}"
-msgstr ""
-
-#: src/views/sftp_view.py:778
-#, python-brace-format
-msgid "Creating folder {name}..."
-msgstr ""
-
-#: src/views/sftp_view.py:783
-#, python-brace-format
-msgid "Created folder {name}"
-msgstr ""
-
-#: src/views/sftp_view.py:786 src/views/sftp_view.py:815
-#, python-brace-format
-msgid "Error: {e}"
-msgstr ""
-
-#: src/views/sftp_view.py:793
-msgid "Enter name for the new folder:"
-msgstr ""
-
-#: src/views/sftp_view.py:795
-msgid "Folder name"
-msgstr ""
-
-#: src/views/sftp_view.py:805
-#, python-brace-format
-msgid "Creating file {name}..."
-msgstr ""
-
-#: src/views/sftp_view.py:812
-#, python-brace-format
-msgid "Created file {name}"
-msgstr ""
-
-#: src/views/sftp_view.py:822
-msgid "Enter name for the new file:"
-msgstr ""
-
-#: src/views/sftp_view.py:824
-msgid "File name"
-msgstr ""
-
-#: src/views/sftp_view.py:922
-msgid "Ensuring Rclone FUSE3 mount..."
-msgstr ""
-
-#: src/views/sftp_view.py:941
-#, python-brace-format
-msgid "Mount failed, using GVFS fallback. (Error: {err}...)"
-msgstr ""
-
-#: src/views/sftp_view.py:954
-#, python-brace-format
-msgid "Copied {name} to clipboard"
-msgstr ""
-
-#: src/views/sftp_view.py:973
-#, python-brace-format
-msgid "Renaming to {name}..."
-msgstr ""
-
-#: src/views/sftp_view.py:978
-#, python-brace-format
-msgid "Renamed to {name}"
-msgstr ""
-
-#: src/views/sftp_view.py:981
-#, python-brace-format
-msgid "Rename failed: {e}"
-msgstr ""
-
-#: src/views/sftp_view.py:987
-msgid "Rename Item"
-msgstr ""
-
-#: src/views/sftp_view.py:988
-#, python-brace-format
-msgid "Enter new name for {name}:"
-msgstr ""
-
-#: src/views/sftp_view.py:990
-msgid "New name"
-msgstr ""
-
-#: src/views/sftp_view.py:1005
-msgid "Ensuring mount for editing..."
-msgstr ""
-
-#: src/views/sftp_view.py:1026 src/views/sftp_view.py:1125
-#, python-brace-format
-msgid "Fallback failed: {e}"
-msgstr ""
-
-#: src/views/sftp_view.py:1054 src/views/sftp_view.py:1065
-#: src/views/sftp_view.py:1143 src/views/sftp_view.py:1155
-#, python-brace-format
-msgid "Download failed: {e}"
-msgstr ""
-
-#: src/views/sftp_view.py:1085 src/views/sftp_view.py:1181
-#, python-brace-format
-msgid "Opened {name} with {app}"
-msgstr ""
-
-#: src/views/sftp_view.py:1090
-#, python-brace-format
-msgid "Opening {name}..."
-msgstr ""
-
-#: src/views/sftp_view.py:1093
-#, python-brace-format
-msgid "Failed to open: {e}"
-msgstr ""
-
-#: src/views/sftp_view.py:1107
-msgid "Ensuring mount for Open With..."
-msgstr ""
-
-#: src/views/sftp_view.py:1183
-#, python-brace-format
-msgid "Launch failed: {e}"
-msgstr ""
-
-#: src/views/sftp_view.py:1334
-msgid "File Updated Locally"
-msgstr ""
-
-#: src/views/sftp_view.py:1335
-#, python-brace-format
-msgid ""
-"The file '{name}' has been modified and saved.\n"
-"Update the remote copy on the server?"
-msgstr ""
-
-#: src/views/sftp_view.py:1336
-msgid "Update Remote"
-msgstr ""
-
-#: src/views/sftp_view.py:1362
-#, python-brace-format
-msgid "Synchronizing {name}..."
-msgstr ""
-
-#: src/views/sftp_view.py:1368
-#, python-brace-format
-msgid "Synchronized {name}"
-msgstr ""
-
-#: src/views/sftp_view.py:1373
-#, python-brace-format
-msgid "Sync error: {e}"
-msgstr ""
-
-#: src/views/sftp_view.py:1392
-#, python-brace-format
-msgid "Deleting {name}..."
-msgstr ""
-
-#: src/views/sftp_view.py:1403
-#, python-brace-format
-msgid "Deleted {name}"
-msgstr ""
-
-#: src/views/sftp_view.py:1406
-#, python-brace-format
-msgid "Delete failed: {e}"
-msgstr ""
-
-#: src/views/sftp_view.py:1412
-msgid "Delete Item"
-msgstr ""
-
-#: src/views/sftp_view.py:1413
-#, python-brace-format
-msgid ""
-"Are you sure you want to delete '{name}'?\n"
-"This action cannot be undone."
-msgstr ""
-
-#: src/views/sftp_view.py:1430
-#, python-brace-format
-msgid "Download Directory: {name}"
-msgstr ""
-
-#: src/views/sftp_view.py:1433
-#, python-brace-format
-msgid "Download File: {name}"
-msgstr ""
-
-#: src/views/sftp_view.py:1457
-#, python-brace-format
-msgid "Downloading {name}..."
-msgstr ""
-
-#: src/views/sftp_view.py:1462
-#, python-brace-format
-msgid "Downloaded {name} to local system"
-msgstr ""
-
-#: src/views/sftp_view.py:1516
-msgid "Source connection not found in database."
-msgstr ""
-
-#: src/views/sftp_view.py:1522
-msgid "Source SFTP session must be active to perform transfer."
-msgstr ""
-
-#: src/views/sftp_view.py:1531
-#, python-brace-format
-msgid "Starting cross-server transfer from {hostname}..."
-msgstr ""
-
-#: src/views/sftp_view.py:1540
-#, python-brace-format
-msgid "Transferring: {percent}%"
-msgstr ""
-
-#: src/views/sftp_view.py:1549
-msgid "Cross-server transfer complete"
-msgstr ""
-
-#: src/views/sftp_view.py:1551
-#, python-brace-format
-msgid "Transfer failed: {err}"
-msgstr ""
-
-#: src/views/sftp_view.py:1567
-#, python-brace-format
-msgid "Uploading {count} items..."
-msgstr ""
-
-#: src/views/sftp_view.py:1572
-msgid "Uploaded successfully"
-msgstr ""
-
-#: src/views/sftp_view.py:1592
-#, python-brace-format
-msgid "{count} items in {path}"
-msgstr ""
-
-#: src/views/sftp_view.py:1605
-msgid "Auto-sync enabled for this session."
-msgstr ""
-
-#: src/views/sftp_view.py:1607
-msgid "Auto-sync disabled."
-msgstr ""
-
-#: src/views/sftp_view.py:1656
-#, python-brace-format
-msgid "Calculating size for {name}..."
-msgstr ""
-
-#: src/views/sftp_view.py:1667
-#, python-brace-format
-msgid "Size of {name}"
-msgstr ""
-
-#: src/views/sftp_view.py:1667
-#, python-brace-format
-msgid "The directory occupies: {size}"
-msgstr ""
-
-#: src/views/sftp_view.py:1668
-#, python-brace-format
-msgid "Size of {name}: {size}"
-msgstr ""
-
-#: src/views/sftp_view.py:1672
-#, python-brace-format
-msgid "Size calculation failed: {msg}"
-msgstr ""
-
-#: src/views/sftp_view.py:1701
-#, python-brace-format
-msgid "SFTP: {hostname}"
 msgstr ""
 
 #: src/views/connection_list.py:68
@@ -1210,20 +47,948 @@ msgid ""
 "SSH connection"
 msgstr ""
 
-#: src/views/connection_list.py:249
+#: src/views/connection_list.py:263
 msgid "Shell"
 msgstr ""
 
-#: src/views/connection_list.py:250
+#: src/views/connection_list.py:264 src/views/hosts_view.py:807
 msgid "SFTP"
 msgstr ""
 
-#: src/views/connection_list.py:251
+#: src/views/connection_list.py:265
 msgid "Copy Host"
 msgstr ""
 
-#: src/views/connection_list.py:252
+#: src/views/connection_list.py:266 src/views/hosts_view.py:809
 msgid "Clear Host Key"
+msgstr ""
+
+#: src/views/connection_list.py:267 src/views/hosts_view.py:810
+msgid "Edit"
+msgstr ""
+
+#: src/views/dialogs.py:29 src/views/dialogs.py:130 src/views/dialogs.py:194
+#: src/views/dialogs.py:406 src/views/dialogs.py:447 src/views/dialogs.py:581
+#: src/views/keychain_view.py:816 src/views/main_window.py:637
+#: src/views/main_window.py:815 src/views/port_forwarding_view.py:752
+#: src/views/terminal_theme_dialog.py:331
+#: src/views/terminal_theme_dialog.py:367
+#: src/views/terminal_theme_dialog.py:474 src/views/vault_settings_dialog.py:46
+msgid "Cancel"
+msgstr ""
+
+#: src/views/dialogs.py:30 src/views/hosts_view.py:806
+msgid "Connect"
+msgstr ""
+
+#: src/views/dialogs.py:47
+msgid "Remember password"
+msgstr ""
+
+#: src/views/dialogs.py:96
+#, python-brace-format
+msgid "Unknown Host Key ({hostname})"
+msgstr ""
+
+#: src/views/dialogs.py:98
+#, python-brace-format
+msgid ""
+"The authenticity of host '{hostname}' can't be established.\n"
+"\n"
+msgstr ""
+
+#: src/views/dialogs.py:99
+#, python-brace-format
+msgid "Algorithm: {algorithm}\n"
+msgstr ""
+
+#: src/views/dialogs.py:100
+#, python-brace-format
+msgid ""
+"Fingerprint: {fingerprint}\n"
+"\n"
+msgstr ""
+
+#: src/views/dialogs.py:101
+msgid "Are you sure you want to continue connecting?"
+msgstr ""
+
+#: src/views/dialogs.py:104
+msgid "Reject"
+msgstr ""
+
+#: src/views/dialogs.py:105
+msgid "Accept and Connect"
+msgstr ""
+
+#: src/views/dialogs.py:127
+#, python-brace-format
+msgid "Unlock {vault_name}"
+msgstr ""
+
+#: src/views/dialogs.py:128
+#, python-brace-format
+msgid "Please enter your master password to access {vault_name} credentials."
+msgstr ""
+
+#: src/views/dialogs.py:131 src/views/main_window.py:178
+#: src/views/vault_settings_dialog.py:460
+msgid "Unlock"
+msgstr ""
+
+#: src/views/dialogs.py:178 src/views/dialogs.py:202
+msgid "Select SSH Key from Vault"
+msgstr ""
+
+#: src/views/dialogs.py:207 src/views/keychain_view.py:173
+msgid "Search keys…"
+msgstr ""
+
+#: src/views/dialogs.py:231
+msgid "Retrieving data from Vault..."
+msgstr ""
+
+#: src/views/dialogs.py:242
+msgid ""
+"Choose the vault item that contains the SSH private key for this connection."
+msgstr ""
+
+#: src/views/dialogs.py:294
+msgid "Select"
+msgstr ""
+
+#: src/views/dialogs.py:407
+msgid "Confirm"
+msgstr ""
+
+#: src/views/dialogs.py:472
+msgid "OK"
+msgstr ""
+
+#: src/views/dialogs.py:492
+#, python-brace-format
+msgid "Properties: {name}"
+msgstr ""
+
+#: src/views/dialogs.py:492 src/views/dialogs.py:538
+msgid "File"
+msgstr ""
+
+#: src/views/dialogs.py:537 src/views/hosts_view.py:340
+#: src/views/sftp_view.py:234 src/views/sftp_view.py:1107
+msgid "Name"
+msgstr ""
+
+#: src/views/dialogs.py:538 src/views/keychain_view.py:408
+msgid "Type"
+msgstr ""
+
+#: src/views/dialogs.py:538
+msgid "Directory"
+msgstr ""
+
+#: src/views/dialogs.py:539 src/views/sftp_view.py:239
+msgid "Size"
+msgstr ""
+
+#: src/views/dialogs.py:540
+msgid "Last Modified"
+msgstr ""
+
+#: src/views/dialogs.py:541
+msgid "Permissions"
+msgstr ""
+
+#: src/views/dialogs.py:542
+msgid "Owner"
+msgstr ""
+
+#: src/views/dialogs.py:542
+#, python-brace-format
+msgid "UID: {uid} / GID: {gid}"
+msgstr ""
+
+#: src/views/dialogs.py:543
+msgid "Remote Path"
+msgstr ""
+
+#: src/views/dialogs.py:548
+msgid "Close"
+msgstr ""
+
+#: src/views/dialogs.py:569
+#, python-brace-format
+msgid "Open {f}"
+msgstr ""
+
+#: src/views/dialogs.py:585 src/views/sftp_view.py:295
+msgid "Open"
+msgstr ""
+
+#: src/views/dialogs.py:602
+msgid "Search applications…"
+msgstr ""
+
+#: src/views/dialogs.py:674
+msgid "Recommended Apps"
+msgstr ""
+
+#: src/views/dialogs.py:692
+msgid "Host Applications"
+msgstr ""
+
+#: src/views/dialogs.py:705
+msgid "Other Sandbox Apps"
+msgstr ""
+
+#: src/views/hosts_view.py:213 src/views/main_window.py:294
+#: src/views/main_window.py:411 src/views/main_window.py:584
+msgid "Hosts"
+msgstr ""
+
+#: src/views/hosts_view.py:218
+msgid "Search hosts…"
+msgstr ""
+
+#: src/views/hosts_view.py:228
+msgid "New Host"
+msgstr ""
+
+#: src/views/hosts_view.py:272
+msgid "No Hosts Configured"
+msgstr ""
+
+#: src/views/hosts_view.py:276
+msgid "Click 'New Host' to configure your first SSH host connection."
+msgstr ""
+
+#: src/views/hosts_view.py:337
+msgid "Basic"
+msgstr ""
+
+#: src/views/hosts_view.py:343
+msgid "Hostname"
+msgstr ""
+
+#: src/views/hosts_view.py:347
+msgid "Port"
+msgstr ""
+
+#: src/views/hosts_view.py:353
+msgid "Username"
+msgstr ""
+
+#: src/views/hosts_view.py:362
+msgid "Authentication"
+msgstr ""
+
+#: src/views/hosts_view.py:366
+msgid "SSH Key"
+msgstr ""
+
+#: src/views/hosts_view.py:366 src/views/hosts_view.py:393
+#: src/views/sftp_view.py:571
+msgid "Password"
+msgstr ""
+
+#: src/views/hosts_view.py:366
+msgid "Key + Passphrase"
+msgstr ""
+
+#: src/views/hosts_view.py:366
+msgid "SSH Agent"
+msgstr ""
+
+#: src/views/hosts_view.py:366
+msgid "Vault"
+msgstr ""
+
+#: src/views/hosts_view.py:368
+msgid "Method"
+msgstr ""
+
+#: src/views/hosts_view.py:381
+msgid "Local File Path"
+msgstr ""
+
+#: src/views/hosts_view.py:381 src/views/keychain_view.py:168
+#: src/views/main_window.py:413 src/views/main_window.py:586
+msgid "Keychain"
+msgstr ""
+
+#: src/views/hosts_view.py:382
+msgid "Key Source"
+msgstr ""
+
+#: src/views/hosts_view.py:386 src/views/hosts_view.py:568
+msgid "No keys stored"
+msgstr ""
+
+#: src/views/hosts_view.py:387
+msgid "Keychain Key"
+msgstr ""
+
+#: src/views/hosts_view.py:390
+msgid "Key File Path (optional)"
+msgstr ""
+
+#: src/views/hosts_view.py:405
+msgid "SSH Key from Vault"
+msgstr ""
+
+#: src/views/hosts_view.py:410
+msgid "Select vault item storing the private key"
+msgstr ""
+
+#: src/views/hosts_view.py:435
+msgid "Clear vault key selection"
+msgstr ""
+
+#: src/views/hosts_view.py:442
+msgid "Select…"
+msgstr ""
+
+#: src/views/hosts_view.py:443
+msgid "Select SSH key from Vault"
+msgstr ""
+
+#: src/views/hosts_view.py:459 src/views/hosts_view.py:461
+msgid "Notes"
+msgstr ""
+
+#: src/views/hosts_view.py:475 src/views/port_forwarding_view.py:434
+#: src/views/vault_settings_dialog.py:47
+msgid "Save"
+msgstr ""
+
+#: src/views/hosts_view.py:506
+msgid "Not selected"
+msgstr ""
+
+#: src/views/hosts_view.py:516
+msgid "Bitwarden CLI not found. Install it first."
+msgstr ""
+
+#: src/views/hosts_view.py:532
+msgid "Please log in / unlock Bitwarden via Vault Settings first."
+msgstr ""
+
+#: src/views/hosts_view.py:544
+#, python-brace-format
+msgid "Failed to fetch vault items: {fetch_err}"
+msgstr ""
+
+#: src/views/hosts_view.py:575
+msgid "Edit Connection"
+msgstr ""
+
+#: src/views/hosts_view.py:654
+msgid "New Connection"
+msgstr ""
+
+#: src/views/hosts_view.py:736
+msgid "Warning: Local Vault is locked. Password not saved."
+msgstr ""
+
+#: src/views/hosts_view.py:744 src/views/port_forwarding_view.py:743
+#, python-brace-format
+msgid "Updated: {name}"
+msgstr ""
+
+#: src/views/hosts_view.py:744 src/views/port_forwarding_view.py:743
+#, python-brace-format
+msgid "Added: {name}"
+msgstr ""
+
+#: src/views/hosts_view.py:808
+msgid "Copy Address"
+msgstr ""
+
+#: src/views/hosts_view.py:811 src/views/keychain_view.py:539
+#: src/views/keychain_view.py:817 src/views/main_window.py:816
+#: src/views/port_forwarding_view.py:177 src/views/port_forwarding_view.py:753
+msgid "Remove"
+msgstr ""
+
+#: src/views/keychain_view.py:184
+msgid "New Key"
+msgstr ""
+
+#: src/views/keychain_view.py:188
+msgid "Generate Key"
+msgstr ""
+
+#: src/views/keychain_view.py:189 src/views/keychain_view.py:596
+msgid "Import Key"
+msgstr ""
+
+#: src/views/keychain_view.py:243
+msgid "No Keys Stored"
+msgstr ""
+
+#: src/views/keychain_view.py:247
+msgid "Generate or import SSH keys to associate with your hosts."
+msgstr ""
+
+#: src/views/keychain_view.py:317 src/views/keychain_view.py:359
+msgid "Label"
+msgstr ""
+
+#: src/views/keychain_view.py:322
+msgid "Key Type"
+msgstr ""
+
+#: src/views/keychain_view.py:326
+msgid "Passphrase (optional)"
+msgstr ""
+
+#: src/views/keychain_view.py:332
+msgid "Generate & Save"
+msgstr ""
+
+#: src/views/keychain_view.py:363
+msgid "Passphrase (if encrypted)"
+msgstr ""
+
+#: src/views/keychain_view.py:369
+msgid "Import from Key File"
+msgstr ""
+
+#: src/views/keychain_view.py:374
+msgid "Or Paste Private Key PEM:"
+msgstr ""
+
+#: src/views/keychain_view.py:386 src/views/terminal_theme_dialog.py:475
+msgid "Import"
+msgstr ""
+
+#: src/views/keychain_view.py:412
+msgid "Fingerprint"
+msgstr ""
+
+#: src/views/keychain_view.py:419
+msgid "Public Key (OpenSSH format)"
+msgstr ""
+
+#: src/views/keychain_view.py:429
+msgid "Copy Public Key"
+msgstr ""
+
+#: src/views/keychain_view.py:445
+msgid "Private Key"
+msgstr ""
+
+#: src/views/keychain_view.py:454
+msgid "Show/Hide Private Key"
+msgstr ""
+
+#: src/views/keychain_view.py:461
+msgid "Copy Private Key"
+msgstr ""
+
+#: src/views/keychain_view.py:476
+msgid "Remove Key"
+msgstr ""
+
+#: src/views/keychain_view.py:585
+msgid "Generate New Key"
+msgstr ""
+
+#: src/views/keychain_view.py:639 src/views/keychain_view.py:728
+msgid "Label is required."
+msgstr ""
+
+#: src/views/keychain_view.py:681
+#, python-brace-format
+msgid "Generated and saved key '{name}'"
+msgstr ""
+
+#: src/views/keychain_view.py:685 src/views/keychain_view.py:770
+#, python-brace-format
+msgid "Failed to save to vault: {e}"
+msgstr ""
+
+#: src/views/keychain_view.py:688
+#, python-brace-format
+msgid "Generation failed: {msg}"
+msgstr ""
+
+#: src/views/keychain_view.py:704
+msgid "Select Private Key File"
+msgstr ""
+
+#: src/views/keychain_view.py:739
+msgid "Private key PEM is empty."
+msgstr ""
+
+#: src/views/keychain_view.py:766
+#, python-brace-format
+msgid "Imported key '{name}'"
+msgstr ""
+
+#: src/views/keychain_view.py:788
+msgid "Failed to load private key."
+msgstr ""
+
+#: src/views/keychain_view.py:796
+msgid "Public key copied to clipboard."
+msgstr ""
+
+#: src/views/keychain_view.py:804
+msgid "Private key copied to clipboard."
+msgstr ""
+
+#: src/views/keychain_view.py:806
+msgid "Failed to copy private key."
+msgstr ""
+
+#: src/views/keychain_view.py:813
+#, python-brace-format
+msgid "Remove Key '{name}'?"
+msgstr ""
+
+#: src/views/keychain_view.py:814
+msgid "This key pair will be permanently removed from the vault."
+msgstr ""
+
+#: src/views/keychain_view.py:824 src/views/main_window.py:824
+#, python-brace-format
+msgid "Removed: {name}"
+msgstr ""
+
+#: src/views/main_window.py:120
+msgid "Create Secure Vault"
+msgstr ""
+
+#: src/views/main_window.py:125
+msgid ""
+"Choose a master password to protect and encrypt all your connection details "
+"and SSH keys on disk."
+msgstr ""
+
+#: src/views/main_window.py:134 src/views/main_window.py:174
+#: src/views/vault_settings_dialog.py:361
+#: src/views/vault_settings_dialog.py:446
+msgid "Master Password"
+msgstr ""
+
+#: src/views/main_window.py:135
+msgid "Confirm Password"
+msgstr ""
+
+#: src/views/main_window.py:140
+msgid "Create Vault"
+msgstr ""
+
+#: src/views/main_window.py:160
+msgid "Unlock Sentinel"
+msgstr ""
+
+#: src/views/main_window.py:165
+msgid "Enter your Sentinel vault master password to continue."
+msgstr ""
+
+#: src/views/main_window.py:186
+msgid "Forgot your master password?"
+msgstr ""
+
+#: src/views/main_window.py:192
+msgid "Reset & Erase Everything"
+msgstr ""
+
+#: src/views/main_window.py:307
+msgid "Open Local Shell (Ctrl+T)"
+msgstr ""
+
+#: src/views/main_window.py:317
+msgid "Merge all tabs into another window and close"
+msgstr ""
+
+#: src/views/main_window.py:388
+msgid "Collapse Sidebar"
+msgstr ""
+
+#: src/views/main_window.py:412 src/views/main_window.py:585
+msgid "Terminals"
+msgstr ""
+
+#: src/views/main_window.py:414 src/views/main_window.py:587
+#: src/views/port_forwarding_view.py:233 src/views/port_forwarding_view.py:260
+msgid "Port Forwarding"
+msgstr ""
+
+#: src/views/main_window.py:415 src/views/main_window.py:440
+#: src/views/main_window.py:588 src/views/vault_settings_dialog.py:231
+msgid "Vault Settings"
+msgstr ""
+
+#: src/views/main_window.py:439 src/views/terminal_theme_dialog.py:34
+msgid "Terminal Theme"
+msgstr ""
+
+#: src/views/main_window.py:441
+msgid "About Sentinel"
+msgstr ""
+
+#: src/views/main_window.py:442
+msgid "Quit"
+msgstr ""
+
+#: src/views/main_window.py:446
+msgid "Menu"
+msgstr ""
+
+#: src/views/main_window.py:599
+msgid "Please enter a master password."
+msgstr ""
+
+#: src/views/main_window.py:602
+msgid "Passwords do not match."
+msgstr ""
+
+#: src/views/main_window.py:605
+msgid "Password must be at least 8 characters."
+msgstr ""
+
+#: src/views/main_window.py:612
+msgid "Secure Vault initialized."
+msgstr ""
+
+#: src/views/main_window.py:616
+#, python-brace-format
+msgid "Failed to initialize vault: {e}"
+msgstr ""
+
+#: src/views/main_window.py:630
+msgid "Wrong master password."
+msgstr ""
+
+#: src/views/main_window.py:634
+msgid "Reset & Erase Everything?"
+msgstr ""
+
+#: src/views/main_window.py:635
+msgid ""
+"This will permanently erase all connections and SSH keys inside your "
+"Sentinel secure vault. This cannot be undone."
+msgstr ""
+
+#: src/views/main_window.py:638
+msgid "Erase All"
+msgstr ""
+
+#: src/views/main_window.py:646
+msgid "Sentinel erased. Please configure a new master password."
+msgstr ""
+
+#: src/views/main_window.py:690
+#, python-brace-format
+msgid "Connection error: {e}"
+msgstr ""
+
+#: src/views/main_window.py:759
+msgid "Untitled"
+msgstr ""
+
+#: src/views/main_window.py:812
+#, python-brace-format
+msgid "Remove \"{name}\"?"
+msgstr ""
+
+#: src/views/main_window.py:813
+msgid "This connection will be permanently removed."
+msgstr ""
+
+#: src/views/main_window.py:840
+#, python-brace-format
+msgid "Cleared host key and OS info for {hostname}"
+msgstr ""
+
+#: src/views/main_window.py:842
+#, python-brace-format
+msgid "Cleared OS info for {hostname}"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:93
+msgid "Local"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:94
+msgid "Remote"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:95
+msgid "Dynamic"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:113
+msgid "(remote)"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:115
+#, python-brace-format
+msgid "SOCKS5 on {bind_str}"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:137
+#, python-brace-format
+msgid "Error: {err_msg}"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:139
+msgid "Connecting or disconnected"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:265
+msgid "Search rules…"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:275
+msgid "New Rule"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:319
+msgid "No Forwarding Rules"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:323
+msgid "Click 'New Rule' to configure port forwarding rules."
+msgstr ""
+
+#: src/views/port_forwarding_view.py:387
+msgid "SSH Connection"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:391
+msgid "Local Forwarding (-L)"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:391
+msgid "Remote Forwarding (-R)"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:391
+msgid "Dynamic Forwarding (-D SOCKS5)"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:393
+msgid "Forward Type"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:403
+msgid "Bind Address (Default: localhost)"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:407
+msgid "Bind Port"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:411
+msgid "Remote Host"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:415
+msgid "Remote Port"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:419
+msgid "Automatically connect on app launch"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:442 src/views/port_forwarding_view.py:749
+msgid "Remove Rule"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:480
+msgid "No SSH connections available"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:487
+msgid "Edit Port Forwarding"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:504
+msgid "New Port Forwarding"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:573
+msgid "Unknown Connection"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:601
+msgid "Please add an SSH connection in the left sidebar first"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:609
+msgid "Bind port cannot be empty"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:616
+msgid "Bind port must be an integer between 1 and 65535"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:621
+msgid "Non-root users are not allowed to bind privileged ports below 1024"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:634
+msgid "Remote host cannot be empty"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:639
+msgid "Remote port cannot be empty"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:646
+msgid "Remote port must be an integer between 1 and 65535"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:680
+#, python-brace-format
+msgid "Local port {bind_port} is already in use, please choose another port"
+msgstr ""
+
+#: src/views/port_forwarding_view.py:750
+msgid "Are you sure you want to remove this port forwarding rule?"
+msgstr ""
+
+#: src/views/sftp_view.py:188
+msgid "Parent directory"
+msgstr ""
+
+#: src/views/sftp_view.py:195
+msgid "Refresh"
+msgstr ""
+
+#: src/views/sftp_view.py:201
+msgid "New…"
+msgstr ""
+
+#: src/views/sftp_view.py:203 src/views/sftp_view.py:1105
+msgid "New File"
+msgstr ""
+
+#: src/views/sftp_view.py:204 src/views/sftp_view.py:1105
+msgid "New Folder"
+msgstr ""
+
+#: src/views/sftp_view.py:209
+msgid "Remote path"
+msgstr ""
+
+#: src/views/sftp_view.py:216
+msgid "Show Hidden Files"
+msgstr ""
+
+#: src/views/sftp_view.py:217
+msgid "Auto-sync on Save"
+msgstr ""
+
+#: src/views/sftp_view.py:243
+msgid "Modified"
+msgstr ""
+
+#: src/views/sftp_view.py:286 src/views/sftp_view.py:586
+msgid "Connecting…"
+msgstr ""
+
+#: src/views/sftp_view.py:296
+msgid "Open With…"
+msgstr ""
+
+#: src/views/sftp_view.py:298 src/views/sftp_view.py:1133
+msgid "Rename"
+msgstr ""
+
+#: src/views/sftp_view.py:299 src/views/sftp_view.py:1157
+#: src/views/terminal_theme_dialog.py:368
+msgid "Delete"
+msgstr ""
+
+#: src/views/sftp_view.py:302
+msgid "Upload Changes"
+msgstr ""
+
+#: src/views/sftp_view.py:303
+msgid "Download…"
+msgstr ""
+
+#: src/views/sftp_view.py:476
+#, python-brace-format
+msgid "Downloading for drag: {f}…"
+msgstr ""
+
+#: src/views/sftp_view.py:480
+#, python-brace-format
+msgid "{n} items"
+msgstr ""
+
+#: src/views/sftp_view.py:579
+msgid "Key Passphrase"
+msgstr ""
+
+#: src/views/sftp_view.py:595
+msgid "Connection failed"
+msgstr ""
+
+#: src/views/sftp_view.py:617 src/views/vault_settings_dialog.py:478
+msgid "Loading…"
+msgstr ""
+
+#: src/views/sftp_view.py:645
+msgid "items"
+msgstr ""
+
+#: src/views/sftp_view.py:714
+msgid "Opening for edit…"
+msgstr ""
+
+#: src/views/sftp_view.py:743
+msgid "Ready"
+msgstr ""
+
+#: src/views/sftp_view.py:1054
+msgid "File Changed"
+msgstr ""
+
+#: src/views/sftp_view.py:1056
+msgid "Sync"
+msgstr ""
+
+#: src/views/sftp_view.py:1072
+msgid "Syncing…"
+msgstr ""
+
+#: src/views/sftp_view.py:1107
+msgid "Name:"
+msgstr ""
+
+#: src/views/sftp_view.py:1113
+msgid "Creating…"
+msgstr ""
+
+#: src/views/sftp_view.py:1133
+msgid "New name"
+msgstr ""
+
+#: src/views/sftp_view.py:1140
+msgid "Renaming…"
+msgstr ""
+
+#: src/views/sftp_view.py:1163
+msgid "Deleting…"
+msgstr ""
+
+#: src/views/sftp_view.py:1211
+msgid "Downloading…"
+msgstr ""
+
+#: src/views/sftp_view.py:1262
+msgid "Transferring from another server…"
+msgstr ""
+
+#: src/views/sftp_view.py:1328
+msgid "Uploading…"
 msgstr ""
 
 #: src/views/terminal_theme_dialog.py:104
@@ -1336,10 +1101,518 @@ msgstr ""
 msgid "Paste the theme code below:"
 msgstr ""
 
-#: src/views/terminal_theme_dialog.py:475
-msgid "Import"
-msgstr ""
-
 #: src/views/terminal_theme_dialog.py:483
 msgid "Imported Theme"
+msgstr ""
+
+#: src/views/terminal_view.py:111 src/views/terminal_view.py:802
+msgid "Local Shell"
+msgstr ""
+
+#: src/views/terminal_view.py:206
+msgid "Find in terminal..."
+msgstr ""
+
+#: src/views/terminal_view.py:210
+msgid "Find next"
+msgstr ""
+
+#: src/views/terminal_view.py:215
+msgid "Find previous"
+msgstr ""
+
+#: src/views/terminal_view.py:268
+#, python-brace-format
+msgid "Connecting to {title}…"
+msgstr ""
+
+#: src/views/terminal_view.py:268
+msgid "Spawning local shell..."
+msgstr ""
+
+#: src/views/terminal_view.py:391
+#, python-brace-format
+msgid "Connected — {title}"
+msgstr ""
+
+#: src/views/terminal_view.py:415
+#, python-brace-format
+msgid "Disconnected: {exc}"
+msgstr ""
+
+#: src/views/terminal_view.py:415
+msgid "Disconnected"
+msgstr ""
+
+#: src/views/terminal_view.py:473
+#, python-brace-format
+msgid "Exited with code {exit_status}"
+msgstr ""
+
+#: src/views/terminal_view.py:499
+#, python-brace-format
+msgid "Exited code {exit_status}"
+msgstr ""
+
+#: src/views/terminal_view.py:534
+msgid "Reconnecting…"
+msgstr ""
+
+#: src/views/terminal_view.py:580
+msgid "Copy"
+msgstr ""
+
+#: src/views/terminal_view.py:581
+msgid "Paste"
+msgstr ""
+
+#: src/views/terminal_view.py:585
+msgid "Find…"
+msgstr ""
+
+#: src/views/terminal_view.py:586
+msgid "Read-only"
+msgstr ""
+
+#: src/views/terminal_view.py:590
+msgid "Select All"
+msgstr ""
+
+#: src/views/terminal_view.py:591
+msgid "Clear"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:37
+msgid "Configuration Sync Settings"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:38
+msgid ""
+"Select or create a Bitwarden Secure Note to store your Sentinel sync profile."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:66
+msgid "Auto-detect Sync Note"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:67
+msgid ""
+"Search for notes with 'sentinel_sync = true' or named 'Sentinel Sync Profile'"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:75
+msgid "Select Existing Note"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:76
+msgid "Choose from your existing Bitwarden Secure Notes"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:84
+msgid "Available Notes"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:94
+msgid "Create New Sync Note"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:95
+msgid "Create a brand-new Note in your Bitwarden vault"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:102
+msgid "Note Name"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:239
+msgid "Bitwarden Integration"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:240
+msgid "Sync your SSH keys and passwords from your Bitwarden cloud vault."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:265
+msgid "Configuration Sync"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:266
+msgid ""
+"Sync connections, groups, and forwarding rules across devices via a "
+"Bitwarden Secure Note."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:271
+msgid "Enable Configuration Sync"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:272
+msgid "Activate Secure Note sync for this vault"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:279
+msgid "Sync Note Item"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:280
+#: src/views/vault_settings_dialog.py:628
+msgid "Not bound"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:291
+msgid "Auto Sync on Changes"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:292
+msgid "Automatically upload changes to Bitwarden note in background"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:299
+msgid "Sync Actions"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:300
+msgid "Manually push local configuration or pull from Bitwarden note"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:306
+msgid "Upload (Push)"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:311
+msgid "Download (Pull)"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:331
+msgid "Checking Vault Status…"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:345
+msgid "https://bitwarden.com (leave blank for default)"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:352
+msgid "Custom Server"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:352
+msgid "For self-hosted Bitwarden / VaultWarden"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:357
+msgid "Email Address"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:367
+msgid "Log In"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:380
+msgid "Your account requires two-step verification."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:390
+#: src/views/vault_settings_dialog.py:966
+msgid "Authenticator App (TOTP)"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:391
+msgid "Email"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:392
+#: src/views/vault_settings_dialog.py:968
+#: src/views/vault_settings_dialog.py:1003
+msgid "YubiKey OTP"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:393
+#: src/views/vault_settings_dialog.py:969
+msgid "Duo"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:394
+msgid "FIDO2 / WebAuthn (hardware key)"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:399
+msgid "Verification Method"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:405
+msgid "Verification Code"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:419
+msgid "Back"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:425
+msgid "Verify & Log In"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:443
+msgid "Account"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:453
+#: src/views/vault_settings_dialog.py:491
+msgid "Log Out"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:478
+msgid "Server"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:481
+msgid "Status"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:481
+#: src/views/vault_settings_dialog.py:582
+msgid "Unlocked ✓"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:486
+msgid "Lock"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:501
+msgid "Folder"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:506
+msgid "Sync Vault"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:506
+msgid "Pull the latest items from the server"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:507
+msgid "Sync Now"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:537
+msgid "Bitwarden CLI not found"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:538
+msgid "Unavailable"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:578
+msgid "Logged In"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:581
+msgid "Official Cloud Server"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:624
+msgid "Auto-detect"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:626
+msgid "Manual"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:683
+#, python-brace-format
+msgid "Bound to auto-detected note: {name}"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:701
+msgid "Created new sync note: Sentinel Sync Profile"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:719
+#, python-brace-format
+msgid "Created new sync note: {name}"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:725
+msgid "No note selected"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:736
+#, python-brace-format
+msgid "Bound to note: {name}"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:743
+#, python-brace-format
+msgid "Failed to configure sync note: {e}"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:814
+#, python-brace-format
+msgid "Auto-detected sync note: {name}"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:816
+msgid "No existing sync note found. Please select or create one."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:834
+#: src/views/vault_settings_dialog.py:865
+msgid "Please configure a sync note first."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:838
+msgid "Uploading configuration to Bitwarden…"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:845
+msgid "Configuration uploaded successfully ✓"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:851
+#, python-brace-format
+msgid "Upload failed: {e}"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:869
+msgid "Downloading configuration from Bitwarden…"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:877
+msgid "Configuration downloaded and merged successfully ✓"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:889
+#, python-brace-format
+msgid "Download failed: {e}"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:905
+#, python-brace-format
+msgid "Failed to load folders: {e}"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:917
+msgid "[All Items]"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:967
+msgid "Email Verification"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:970
+msgid "FIDO2 / WebAuthn"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:994
+msgid ""
+"Open your authenticator app (e.g. Google Authenticator, Aegis, Ente Auth) "
+"and enter the 6-digit code."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:995
+msgid "Check your email inbox for a verification code sent by Bitwarden."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:996
+msgid "Insert your YubiKey and tap it to generate an OTP."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:997
+msgid ""
+"Approve the Duo push notification on your device, or enter the Duo passcode."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:998
+msgid "Touch your hardware security key when it lights up."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1001
+msgid "6-digit TOTP code"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1002
+msgid "Email verification code"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1004
+msgid "Duo passcode (or leave blank for push)"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1005
+msgid "(Not supported in CLI mode — use another method)"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1017
+msgid "FIDO2 / WebAuthn is not supported by the Bitwarden CLI. "
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1018
+msgid "Please use a different 2FA method (e.g. TOTP or Email)."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1027
+msgid "Please provide email and master password."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1077
+#, python-brace-format
+msgid "Login failed: {err}"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1100
+msgid "Please enter your verification code."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1110
+msgid "Login password missing for 2FA"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1133
+#, python-brace-format
+msgid "Verification failed: {err}"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1158
+msgid "Incorrect master password, or unlock failed."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1190
+msgid "Syncing vault…"
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1195
+msgid "Sync completed."
+msgstr ""
+
+#: src/views/vault_settings_dialog.py:1199
+#, python-brace-format
+msgid "Sync failed: {e}"
+msgstr ""
+
+#: src/vault/bitwarden.py:659
+#, python-brace-format
+msgid "No password found in item. Check item ID '{id}'."
+msgstr ""
+
+#: src/utils/themes.py:27
+msgid "Catppuccin Mocha"
+msgstr ""
+
+#: src/utils/themes.py:43
+msgid "Nord"
+msgstr ""
+
+#: src/utils/themes.py:59
+msgid "Solarized Dark"
+msgstr ""
+
+#: src/utils/themes.py:75
+msgid "Dracula"
+msgstr ""
+
+#: src/utils/themes.py:91
+msgid "GNOME Dark"
+msgstr ""
+
+#: src/utils/themes.py:107
+msgid "GNOME Light"
 msgstr ""

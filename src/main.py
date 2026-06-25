@@ -51,6 +51,13 @@ def _setup_language() -> None:
             locale.textdomain(domain)
         except Exception:
             pass
+
+    # Initialize gettext for Python side as well (for system default locale fallback)
+    try:
+        gettext.bindtextdomain(domain, localedir)
+        gettext.textdomain(domain)
+    except Exception:
+        pass
     # The C components (like GLib/Gtk) will automatically pick up the LANGUAGE env var early on
 
 # ALWAYS SETUP LANGUAGE FIRST, BEFORE IMPORTING GTK OR LIBADWAITA

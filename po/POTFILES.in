@@ -1,0 +1,15 @@
+data/io.github.ailing2416.sentinel.desktop.in
+data/io.github.ailing2416.sentinel.metainfo.xml.in
+src/application.py
+src/utils/themes.py
+src/vault/bitwarden.py
+src/views/connection_list.py
+src/views/dialogs.py
+src/views/hosts_view.py
+src/views/keychain_view.py
+src/views/main_window.py
+src/views/port_forwarding_view.py
+src/views/sftp_view.py
+src/views/terminal_theme_dialog.py
+src/views/terminal_view.py
+src/views/vault_settings_dialog.py
