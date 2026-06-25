@@ -103,10 +103,10 @@ class KeyCard(Gtk.FlowBoxChild):
         if len(fp) > 30:
             fp_display = fp[:14] + "…" + fp[-10:]
         fp_lbl = Gtk.Label(label=fp_display)
-        fp_lbl.set_halign(Gtk.Align.START)
+        fp_lbl.set_halign(Gtk.Align.FILL)
+        fp_lbl.set_width_chars(1)
         fp_lbl.add_css_class("fingerprint-label")
         fp_lbl.set_ellipsize(Pango.EllipsizeMode.END)
-        fp_lbl.set_max_width_chars(22)
         body.append(fp_lbl)
 
         outer.append(body)
