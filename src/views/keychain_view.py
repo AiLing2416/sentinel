@@ -106,6 +106,7 @@ class KeyCard(Gtk.FlowBoxChild):
         fp_lbl.set_halign(Gtk.Align.START)
         fp_lbl.add_css_class("fingerprint-label")
         fp_lbl.set_ellipsize(Pango.EllipsizeMode.END)
+        fp_lbl.set_max_width_chars(22)
         body.append(fp_lbl)
 
         outer.append(body)
