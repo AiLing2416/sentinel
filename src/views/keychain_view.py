@@ -221,6 +221,7 @@ class KeychainPage(Gtk.Box):
         self._flow_box = Gtk.FlowBox()
         self._flow_box.set_valign(Gtk.Align.START)
         self._flow_box.set_max_children_per_line(10)
+        self._flow_box.set_homogeneous(True)
         self._flow_box.set_min_children_per_line(1)
         self._flow_box.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self._flow_box.connect("child-activated", self._on_key_selected)
