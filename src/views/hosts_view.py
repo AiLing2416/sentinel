@@ -91,7 +91,7 @@ class HostCard(Gtk.FlowBoxChild):
         outer.add_css_class("host-card-v2")
         outer.add_css_class(self._AUTH_STRIPE.get(auth_val, "auth-stripe-key"))
         outer.set_size_request(210, -1)
-        outer.set_halign(Gtk.Align.START)
+        outer.set_halign(Gtk.Align.FILL)
 
         # Card body
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)

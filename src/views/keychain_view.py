@@ -64,7 +64,7 @@ class KeyCard(Gtk.FlowBoxChild):
             if type_key else "key-stripe-default"
         )
         outer.set_size_request(210, -1)
-        outer.set_halign(Gtk.Align.START)
+        outer.set_halign(Gtk.Align.FILL)
 
         # Card body
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
