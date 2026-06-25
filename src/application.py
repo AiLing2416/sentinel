@@ -304,6 +304,7 @@ class SentinelApplication(Adw.Application):
 
         /* ── FlowBox Cards Hover/Selection fixes ── */
         .host-card {
+            max-width: 210px;
             background: transparent !important;
             background-color: transparent !important;
             background-image: none !important;
@@ -312,6 +313,7 @@ class SentinelApplication(Adw.Application):
             border: none !important;
         }
         .key-card {
+            max-width: 210px;
             background: transparent !important;
             background-color: transparent !important;
             background-image: none !important;
