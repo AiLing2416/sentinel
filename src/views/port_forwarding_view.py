@@ -37,18 +37,19 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
         self.rule = rule
         self._ssh_service = ssh_service
         self._remove_callback = remove_callback
-        
+
         self.set_size_request(210, -1)
+        self.set_halign(Gtk.Align.START)
         self.set_margin_start(5)
         self.set_margin_end(5)
         self.set_margin_top(5)
         self.set_margin_bottom(5)
         self.add_css_class("forward-card")
 
-        # Outer container (vertical, top-stripe styled in CSS)
+        # Outer container – identical structure to HostCard
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         outer.add_css_class("host-card-v2")
-        
+
         _STATUS_STRIPE = {
             "Running":      "forward-stripe-running",
             "Disconnected": "forward-stripe-connecting",
@@ -56,17 +57,16 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
         }
         outer.add_css_class(_STATUS_STRIPE.get(status, "forward-stripe-stopped"))
         outer.set_size_request(210, -1)
-        outer.set_halign(Gtk.Align.START)
+        outer.set_halign(Gtk.Align.FILL)
 
-        # Card body (vertical)
+        # Card body
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
-        body.set_hexpand(True)
         body.set_margin_start(12)
         body.set_margin_end(12)
         body.set_margin_top(10)
         body.set_margin_bottom(10)
 
-        # Row 1: Type icon + Connection Name + Type badge
+        # Row 1: type icon + connection name + type badge
         row1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7)
 
         _TYPE_ICONS = {
@@ -88,7 +88,6 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
         name_lbl.set_ellipsize(Pango.EllipsizeMode.END)
         row1.append(name_lbl)
 
-        # Type badge
         _TYPE_LABELS = {
             ForwardType.LOCAL:   _("Local"),
             ForwardType.REMOTE:  _("Remote"),
@@ -105,82 +104,86 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
         row1.append(badge)
         body.append(row1)
 
-        # Row 2: Detail string (Monospace label)
-        bind_str = f"{rule.bind_address}:{rule.bind_port}"
+        # Row 2: port detail string (fills body width, ellipsizes like fingerprint-label)
         if rule.type == ForwardType.LOCAL:
+            bind_str = f"{rule.bind_address}:{rule.bind_port}"
             detail = f"{bind_str} ➔ {rule.remote_host}:{rule.remote_port}"
         elif rule.type == ForwardType.REMOTE:
-            detail = f"{bind_str} ➔ {rule.remote_host}:{rule.remote_port} " + _("(remote)")
+            bind_str = f"{rule.bind_address}:{rule.bind_port}"
+            detail = f"{bind_str} ➔ {rule.remote_host}:{rule.remote_port}"
         else:
-            detail = _("SOCKS5 on {bind_str}").format(bind_str=bind_str)
+            detail = _("SOCKS5 :{port}").format(port=rule.bind_port)
 
         detail_lbl = Gtk.Label(label=detail)
-        detail_lbl.set_halign(Gtk.Align.START)
+        detail_lbl.set_halign(Gtk.Align.FILL)
+        detail_lbl.set_width_chars(1)
         detail_lbl.add_css_class("fingerprint-label")
         detail_lbl.set_ellipsize(Pango.EllipsizeMode.END)
         body.append(detail_lbl)
 
-        # Row 3: Switch aligned to bottom right
-        row3 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        
-        spacer = Gtk.Box()
-        spacer.set_hexpand(True)
-        row3.append(spacer)
-
-        # Switch to enable/disable
-        self._switch = Gtk.Switch()
-        self._switch.set_valign(Gtk.Align.CENTER)
-        self._switch.set_active(status == "Running")
-        
-        if status == "Error":
-            if error_msg:
-                self._switch.set_tooltip_text(_("Error: {err_msg}").format(err_msg=error_msg))
-        elif status == "Disconnected" and rule.enabled:
-            self._switch.set_tooltip_text(_("Connecting or disconnected"))
-
-        def _on_switch_state_set(switch, state) -> bool:
-            rule.enabled = state
-            db = Database()
-            db.open()
-            try:
-                db.save_forward_rule(rule)
-            finally:
-                db.close()
-
-            if state:
-                async def run_start():
-                    try:
-                        await self._ssh_service.start_forward_rule(rule)
-                    except Exception:
-                        pass
-                self._ssh_service.engine.run_coroutine(run_start())
-            else:
-                async def run_stop():
-                    await self._ssh_service.stop_forward_rule(rule.id)
-                self._ssh_service.engine.run_coroutine(run_stop())
-
-            return False
-
-        self._switch.connect("state-set", _on_switch_state_set)
-        row3.append(self._switch)
-        body.append(row3)
-
         outer.append(body)
         self.set_child(outer)
 
-        # Setup context menu
-        self._setup_context_menu()
+        # Setup context menu (Start / Stop / Remove)
+        self._setup_context_menu(status)
 
-    def _setup_context_menu(self) -> None:
+    def _start_rule(self) -> None:
+        """Enable and start the forwarding rule."""
+        self.rule.enabled = True
+        db = Database()
+        db.open()
+        try:
+            db.save_forward_rule(self.rule)
+        finally:
+            db.close()
+
+        async def _run():
+            try:
+                await self._ssh_service.start_forward_rule(self.rule)
+            except Exception:
+                pass
+        self._ssh_service.engine.run_coroutine(_run())
+
+    def _stop_rule(self) -> None:
+        """Disable and stop the forwarding rule."""
+        self.rule.enabled = False
+        db = Database()
+        db.open()
+        try:
+            db.save_forward_rule(self.rule)
+        finally:
+            db.close()
+
+        async def _run():
+            await self._ssh_service.stop_forward_rule(self.rule.id)
+        self._ssh_service.engine.run_coroutine(_run())
+
+    def _setup_context_menu(self, status: str) -> None:
         popover = Gtk.PopoverMenu()
         menu_model = Gio.Menu()
+
+        is_running = (status == "Running")
+        if is_running:
+            menu_model.append(_("Stop"), "cardrow.stop")
+        else:
+            menu_model.append(_("Start"), "cardrow.start")
         menu_model.append(_("Remove"), "cardrow.remove")
+
         popover.set_menu_model(menu_model)
         popover.set_parent(self)
         popover.set_has_arrow(False)
         popover.set_position(Gtk.PositionType.BOTTOM)
 
         action_group = Gio.SimpleActionGroup()
+
+        c_start = Gio.SimpleAction.new("start", None)
+        c_start.connect("activate", lambda *_: self._start_rule())
+        action_group.add_action(c_start)
+
+        c_stop = Gio.SimpleAction.new("stop", None)
+        c_stop.connect("activate", lambda *_: self._stop_rule())
+        action_group.add_action(c_stop)
+
         c_remove = Gio.SimpleAction.new("remove", None)
         c_remove.connect("activate", lambda *_: self._remove_callback(self.rule))
         action_group.add_action(c_remove)
@@ -196,7 +199,7 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
                 if not self.is_selected():
                     flow_box.unselect_all()
                     flow_box.select_child(self)
-            
+
             rect = Gdk.Rectangle()
             rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
             popover.set_pointing_to(rect)
@@ -295,6 +298,7 @@ class PortForwardingTab(Gtk.Box):
         self._flow_box = Gtk.FlowBox()
         self._flow_box.set_valign(Gtk.Align.START)
         self._flow_box.set_max_children_per_line(10)
+        self._flow_box.set_homogeneous(True)
         self._flow_box.set_min_children_per_line(1)
         self._flow_box.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self._flow_box.connect("child-activated", self._on_card_activated)

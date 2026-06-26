@@ -56,6 +56,8 @@ class SentinelApplication(Adw.Application):
             if accels:
                 self.set_accels_for_action(f"app.{name}", accels)
 
+
+
     def _on_quit(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
         self.quit()
 
@@ -629,6 +631,7 @@ class SentinelApplication(Adw.Application):
 
         /* ── Port Forwarding Rule Card ──────────────────── */
         .forward-card {
+            max-width: 210px;
             background: transparent !important;
             background-color: transparent !important;
             background-image: none !important;
@@ -636,14 +639,14 @@ class SentinelApplication(Adw.Application):
             outline: none !important;
             border: none !important;
         }
-        .forward-card:hover .card {
+        .forward-card:hover .host-card-v2 {
             background-image: linear-gradient(
                 to bottom,
                 alpha(currentColor, 0.04),
                 alpha(currentColor, 0.04)
             ) !important;
         }
-        .forward-card:selected .card {
+        .forward-card:selected .host-card-v2 {
             box-shadow: inset 0 0 0 2px @accent_color !important;
             background-image: linear-gradient(
                 to bottom,
@@ -651,7 +654,7 @@ class SentinelApplication(Adw.Application):
                 alpha(@accent_color, 0.08)
             ) !important;
         }
-        .forward-card:selected:hover .card {
+        .forward-card:selected:hover .host-card-v2 {
             box-shadow: inset 0 0 0 2px @accent_color !important;
             background-image: linear-gradient(
                 to bottom,
