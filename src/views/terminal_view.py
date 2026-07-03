@@ -124,6 +124,9 @@ class TerminalTab(Gtk.Box):
     # ── UI ────────────────────────────────────────────────────
 
     def _build_ui(self) -> None:
+        # Enable CJK character width support
+        os.environ["VTE_CJK_WIDTH"] = "1"
+
         # Terminal widget
         self._terminal = Vte.Terminal()
         self._terminal.set_vexpand(True)
@@ -135,8 +138,8 @@ class TerminalTab(Gtk.Box):
         self._terminal.set_scrollback_lines(10000)
         self._terminal.set_mouse_autohide(True)
 
-        # Font
-        font_desc = Pango.FontDescription.from_string("Monospace 11")
+        # Font (Monospace with CJK fallback for Chinese character display)
+        font_desc = Pango.FontDescription.from_string("Monospace, Noto Sans Mono CJK SC, WenQuanYi Micro Hei Mono 11")
         self._terminal.set_font(font_desc)
         self._terminal.set_cursor_blink_mode(Vte.CursorBlinkMode.ON)
         self._terminal.set_cursor_shape(Vte.CursorShape.BLOCK)
