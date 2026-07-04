@@ -18,21 +18,25 @@ jobs:
       matrix:
         include:
           - arch: amd64
+            flatpak_arch: x86_64
             runner: ubuntu-latest
             manifest: flatpak/io.github.ailing2416.sentinel.yml
             bundle: sentinel-amd64.flatpak
             variant: slim
           - arch: amd64
+            flatpak_arch: x86_64
             runner: ubuntu-latest
             manifest: flatpak/io.github.ailing2416.sentinel-full.yml
             bundle: sentinel-full-amd64.flatpak
             variant: full
           - arch: arm64
+            flatpak_arch: aarch64
             runner: ubuntu-24.04-arm
             manifest: flatpak/io.github.ailing2416.sentinel.yml
             bundle: sentinel-arm64.flatpak
             variant: slim
           - arch: arm64
+            flatpak_arch: aarch64
             runner: ubuntu-24.04-arm
             manifest: flatpak/io.github.ailing2416.sentinel-full.yml
             bundle: sentinel-full-arm64.flatpak
@@ -43,18 +47,19 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Flatpak Builder and GNOME Runtime
+      - name: Install Flatpak and runtimes (user-level)
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y flatpak flatpak-builder
-          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak install -y flathub org.gnome.Platform//50 org.gnome.Sdk//50
+          sudo apt-get install -y flatpak flatpak-builder xvfb
+          flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak --user install -y flathub org.gnome.Platform//50 org.gnome.Sdk//50
 
       - name: Build Sentinel (${{ matrix.variant }}, ${{ matrix.arch }})
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           bundle: ${{ matrix.bundle }}
           manifest-path: ${{ matrix.manifest }}
+          arch: ${{ matrix.flatpak_arch }}
           cache: true
           restore-cache: true
 

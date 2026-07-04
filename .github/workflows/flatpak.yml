@@ -19,25 +19,28 @@ jobs:
       matrix:
         include:
           - arch: amd64
+            flatpak_arch: x86_64
             runner: ubuntu-latest
           - arch: arm64
+            flatpak_arch: aarch64
             runner: ubuntu-24.04-arm
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Flatpak Builder and GNOME Runtime
+      - name: Install Flatpak and runtimes (user-level)
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y flatpak flatpak-builder
-          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak install -y flathub org.gnome.Platform//50 org.gnome.Sdk//50
+          sudo apt-get install -y flatpak flatpak-builder xvfb
+          flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak --user install -y flathub org.gnome.Platform//50 org.gnome.Sdk//50
 
       - name: Build Sentinel (${{ matrix.arch }}, slim)
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           bundle: sentinel-${{ matrix.arch }}.flatpak
           manifest-path: flatpak/io.github.ailing2416.sentinel.yml
+          arch: ${{ matrix.flatpak_arch }}
           cache: true
 
       - name: Upload Bundle
