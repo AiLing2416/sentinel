@@ -138,8 +138,14 @@ class TerminalTab(Gtk.Box):
         self._terminal.set_scrollback_lines(10000)
         self._terminal.set_mouse_autohide(True)
 
-        # Font (Monospace with CJK fallback for Chinese character display)
-        font_desc = Pango.FontDescription.from_string("Monospace, Noto Sans Mono CJK SC, WenQuanYi Micro Hei Mono 11")
+        # Font: use "Monospace 11" and let fontconfig handle CJK fallback automatically.
+        # Note: Pango.FontDescription.from_string() does NOT support comma-separated
+        # font family lists (that is CSS syntax). Specifying multiple families here
+        # causes Pango to misparse the string and pick the wrong font, making Latin
+        # glyphs appear thin and tightly spaced. The correct approach is to rely on
+        # the system fontconfig fallback chain (e.g. /etc/fonts/conf.d or
+        # ~/.config/fontconfig/fonts.conf) to resolve CJK characters.
+        font_desc = Pango.FontDescription.from_string("Monospace 11")
         self._terminal.set_font(font_desc)
         self._terminal.set_cursor_blink_mode(Vte.CursorBlinkMode.ON)
         self._terminal.set_cursor_shape(Vte.CursorShape.BLOCK)
