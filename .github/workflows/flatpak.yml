@@ -28,12 +28,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Flatpak and runtimes (user-level)
+      - name: Install Flatpak and runtimes (system-level)
         run: |
           sudo apt-get update -q
           sudo apt-get install -y flatpak flatpak-builder xvfb
-          flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          flatpak --user install -y flathub org.gnome.Platform//50 org.gnome.Sdk//50
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y --noninteractive flathub \
+            org.gnome.Platform//${{ matrix.flatpak_arch }}/50 \
+            org.gnome.Sdk//${{ matrix.flatpak_arch }}/50
 
       - name: Build Sentinel (${{ matrix.arch }}, slim)
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
