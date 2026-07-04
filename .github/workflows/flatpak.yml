@@ -9,11 +9,10 @@ on:
 
 jobs:
   flatpak-build:
-    name: Build Sentinel (${{ matrix.arch }})
+    name: Build Sentinel (${{ matrix.arch }}, slim)
     runs-on: ${{ matrix.runner }}
-    container:
-      image: bilelmoussaoui/flatpak-github-actions:gnome-47
-      options: --privileged
+    permissions:
+      contents: read
 
     strategy:
       fail-fast: false
@@ -26,6 +25,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Flatpak Builder and GNOME Runtime
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y flatpak flatpak-builder
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y flathub org.gnome.Platform//50 org.gnome.Sdk//50
 
       - name: Build Sentinel (${{ matrix.arch }}, slim)
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
