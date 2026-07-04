@@ -8,30 +8,46 @@ on:
 
 jobs:
   release-build:
-    runs-on: ubuntu-latest
+    name: Build ${{ matrix.variant }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            manifest: flatpak/io.github.ailing2416.sentinel.yml
+            bundle: sentinel-amd64.flatpak
+            variant: slim
+          - arch: amd64
+            runner: ubuntu-latest
+            manifest: flatpak/io.github.ailing2416.sentinel-full.yml
+            bundle: sentinel-full-amd64.flatpak
+            variant: full
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            manifest: flatpak/io.github.ailing2416.sentinel.yml
+            bundle: sentinel-arm64.flatpak
+            variant: slim
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            manifest: flatpak/io.github.ailing2416.sentinel-full.yml
+            bundle: sentinel-full-arm64.flatpak
+            variant: full
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install Flatpak Builder and Runtimes
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y flatpak-builder
-          # Ensure flathub is added system-wide and updated correctly
-          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak update --appstream
-          # Pre-install runtimes to avoid permission issues in the next step
-          sudo flatpak install -y flathub org.gnome.Platform//50 org.gnome.Sdk//50
-
-      - name: Build Sentinel Flatpak
+      - name: Build Sentinel (${{ matrix.variant }}, ${{ matrix.arch }})
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
-          bundle: sentinel.flatpak
-          manifest-path: flatpak/io.github.ailing2416.sentinel.yml
+          bundle: ${{ matrix.bundle }}
+          manifest-path: ${{ matrix.manifest }}
           cache: true
           restore-cache: true
 
@@ -39,7 +55,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: sentinel.flatpak
+          files: ${{ matrix.bundle }}
           tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

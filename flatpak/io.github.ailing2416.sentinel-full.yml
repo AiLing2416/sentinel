@@ -79,6 +79,24 @@ modules:
         commands:
           - echo "Dependencies handled via pip3"
 
+  # Bundle Noto Sans Mono CJK SC fonts so CJK characters display correctly
+  # on systems that do not have CJK monospace fonts installed.
+  - name: noto-fonts-cjk
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 NotoSansMonoCJKsc-Regular.otf /app/share/fonts/noto/NotoSansMonoCJKsc-Regular.otf
+      - install -Dm644 NotoSansMonoCJKsc-Bold.otf    /app/share/fonts/noto/NotoSansMonoCJKsc-Bold.otf
+      - fc-cache /app/share/fonts/noto
+    sources:
+      - type: file
+        url: https://github.com/googlefonts/noto-cjk/raw/main/Sans/Mono/NotoSansMonoCJKsc-Regular.otf
+        sha256: ec04cc376b34887cedbdf84074e2e226ed2761eeabdcb9173fc1dd7bfd153ef7
+        dest-filename: NotoSansMonoCJKsc-Regular.otf
+      - type: file
+        url: https://github.com/googlefonts/noto-cjk/raw/main/Sans/Mono/NotoSansMonoCJKsc-Bold.otf
+        sha256: a452fedfc0619e43e080b7b861ce34cbd3ec4fbcea495bf8c402a5a02a5dcbdc
+        dest-filename: NotoSansMonoCJKsc-Bold.otf
+
   - name: sentinel
     buildsystem: meson
     sources:
