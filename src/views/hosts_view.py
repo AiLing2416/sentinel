@@ -211,10 +211,6 @@ class HostsPage(Gtk.Box):
         actions_bar.set_margin_top(12)
         actions_bar.set_margin_bottom(12)
 
-        title_label = Gtk.Label(label=_("Hosts"))
-        title_label.add_css_class("title-1")
-        actions_bar.append(title_label)
-
         # Search Entry
         self._search_entry = Gtk.SearchEntry(placeholder_text=_("Search hosts…"))
         self._search_entry.set_size_request(240, -1)

@@ -227,12 +227,7 @@ class VaultManagerWindow(Gtk.Box):
 
         self._main_stack.add_named(content_scroll, "content")
 
-        # Title Label
-        title_label = Gtk.Label(label=_("Vault Settings"))
-        title_label.add_css_class("title-1")
-        title_label.set_halign(Gtk.Align.START)
-        title_label.set_margin_bottom(12)
-        content_box.append(title_label)
+
 
         # ── 1. Bitwarden Preferences Group ── (Moved to the top)
         self._bw_group = Adw.PreferencesGroup(
