@@ -765,6 +765,9 @@ class TerminalTabView:
 
         self._root.append(self._tab_view)
 
+        # Setup context menu for tabs
+        self._setup_context_menu()
+
     @property
     def widget(self) -> Gtk.Widget:
         return self._root
@@ -966,3 +969,92 @@ class TerminalTabView:
             child = page.get_child()
             if hasattr(child, "_apply_theme"):
                 child._apply_theme()
+
+    def _setup_context_menu(self) -> None:
+        """Create and bind the context menu and action group to the tab view."""
+        menu = Gio.Menu()
+        menu.append(_("Duplicate"), "tab.duplicate")
+        menu.append(_("Duplicate in a new window"), "tab.duplicate-new-window")
+        self._tab_view.set_menu_model(menu)
+
+        action_group = Gio.SimpleActionGroup()
+
+        duplicate_action = Gio.SimpleAction.new("duplicate", None)
+        duplicate_action.connect("activate", self._on_duplicate_activate)
+        action_group.add_action(duplicate_action)
+
+        duplicate_nw_action = Gio.SimpleAction.new("duplicate-new-window", None)
+        duplicate_nw_action.connect("activate", self._on_duplicate_nw_activate)
+        action_group.add_action(duplicate_nw_action)
+
+        self._tab_view.insert_action_group("tab", action_group)
+        self._tab_actions = action_group
+
+        self._tab_view.connect("setup-menu", self._on_setup_menu)
+        self._context_menu_page = None
+
+    def _on_setup_menu(self, tab_view: Adw.TabView, page: Adw.TabPage | None) -> None:
+        """Callback triggered when the tab context menu is about to be displayed."""
+        if page is None:
+            return
+
+        logger.info(f"Tab context menu triggered for page: {page.get_title()}")
+
+        self._context_menu_page = page
+
+        # Dynamically register the action group onto the root window to ensure Popover can find actions
+        root_window = self._root.get_root()
+        if root_window:
+            root_window.insert_action_group("tab", self._tab_actions)
+
+        child = page.get_child()
+        is_supported = child.__class__.__name__ in ("TerminalTab", "SftpTab")
+
+        dup_act = self._tab_actions.lookup_action("duplicate")
+        if dup_act:
+            dup_act.set_enabled(is_supported)
+
+        dup_nw_act = self._tab_actions.lookup_action("duplicate-new-window")
+        if dup_nw_act:
+            dup_nw_act.set_enabled(is_supported)
+
+    def _on_duplicate_activate(self, action: Gio.SimpleAction, parameter: GLib.Variant | None) -> None:
+        if self._context_menu_page:
+            self._duplicate_page(self._context_menu_page)
+
+    def _on_duplicate_nw_activate(self, action: Gio.SimpleAction, parameter: GLib.Variant | None) -> None:
+        if self._context_menu_page:
+            self._duplicate_page_to_new_window(self._context_menu_page)
+
+    def _duplicate_page(self, page: Adw.TabPage) -> None:
+        child = page.get_child()
+        if child.__class__.__name__ == "TerminalTab":
+            if child.connection:
+                self.open_ssh_tab(child.connection)
+            else:
+                self.open_local_tab()
+        elif child.__class__.__name__ == "SftpTab":
+            conn = getattr(child, "_conn", None) or getattr(child, "_connection", None)
+            if conn:
+                self.open_sftp_tab(conn)
+
+    def _duplicate_page_to_new_window(self, page: Adw.TabPage) -> None:
+        from views.main_window import SentinelWindow
+        app = Gio.Application.get_default()
+        if not app:
+            return
+
+        new_window = SentinelWindow(application=app)
+        new_window.present()
+        new_window._content_stack.set_visible_child_name("terminals")
+
+        child = page.get_child()
+        if child.__class__.__name__ == "TerminalTab":
+            if child.connection:
+                new_window._terminal_tab_view.open_ssh_tab(child.connection)
+            else:
+                new_window._terminal_tab_view.open_local_tab()
+        elif child.__class__.__name__ == "SftpTab":
+            conn = getattr(child, "_conn", None) or getattr(child, "_connection", None)
+            if conn:
+                new_window._terminal_tab_view.open_sftp_tab(conn)

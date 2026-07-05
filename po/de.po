@@ -1956,3 +1956,9 @@ msgstr "GNOME Hell"
 #~ msgid "Please replace a different 2FA method (e.g. TOTP or Email)."
 #~ msgstr ""
 #~ "Bitte verwenden Sie eine andere 2FA-Methode (z. B. TOTP oder E-Mail)."
+
+msgid "Duplicate"
+msgstr "Duplizieren"
+
+msgid "Duplicate in a new window"
+msgstr "In einem neuen Fenster duplizieren"

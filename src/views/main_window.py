@@ -297,6 +297,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         # Utilise native Adw.TabBar for bulletproof tabs
         self._tab_bar = Adw.TabBar()
         self._tab_bar.set_view(self._terminal_tab_view.tab_view)
+        self.insert_action_group("tab", self._terminal_tab_view._tab_actions)
         self._tab_bar.set_autohide(False)
         self._tab_bar.set_expand_tabs(True)
         self._terminal_tab_view.tab_view.connect("create-window", self._create_new_window_for_tab)

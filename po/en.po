@@ -1371,3 +1371,9 @@ msgstr "Imported Theme"
 
 #~ msgid "Please replace a different 2FA method (e.g. TOTP or Email)."
 #~ msgstr "Please replace a different 2FA method (e.g. TOTP or Email)."
+
+msgid "Duplicate"
+msgstr "Duplicate"
+
+msgid "Duplicate in a new window"
+msgstr "Duplicate in a new window"

@@ -1978,3 +1978,9 @@ msgstr "GNOME 浅色"
 
 #~ msgid "Port Forwarding Management"
 #~ msgstr "端口转发管理"
+
+msgid "Duplicate"
+msgstr "复制"
+
+msgid "Duplicate in a new window"
+msgstr "在新窗口中复制"
