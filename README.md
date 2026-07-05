@@ -38,12 +38,11 @@ flatpak run io.github.ailing2416.sentinel
 
 Built with Python 3, PyGObject, and GTK4, following the GNOME Human Interface Guidelines (Adwaita). The project uses the Meson build system and supports Flatpak packaging.
 
-## Release Notes (v0.2.4)
+## Release Notes (v0.3.0)
 
-- **UI Refinement (Zen Mode)**: Redesigned the welcome page for a minimalist, focused experience. Removed cluttered icons and centered all labels for visual balance.
-- **New Terminal Themes**: Added the **GNOME Light** theme, matching the Adwaita light palette for high-contrast environments.
-- **Connection Editor Fixes**: Resolved a persistent issue where "Hostname" was incorrectly labeled as "Username" in English locales.
-- **Terminal Stability**: Optimized PTY resizing logic and local shell environment synchronization. Improved host-shell integration within the Flatpak sandbox.
-- **Process Management**: Fixed `Ctrl+D` behavior to ensure terminal tabs close correctly upon shell exit. Refined connection interruption handling.
-- **Icon Intelligence**: Improved SSH host OS detection and automatic icon refreshing in the sidebar.
-- **Bug Fixes**: Addressed multiple connection duplication issues and refined SFTP mount stability.
+- **SSH Port Forwarding Management**: Complete management of Local, Remote, and Dynamic (SOCKS) port forwarding rules executing on dedicated background SSH channels. Added local port validation, default hostname fallbacks, and a redesigned card grid with a slide-out editor.
+- **Enhanced Bitwarden Sync & Vault Settings**: Redesigned the Vault manager into a single-page Preferences layout. Replaced insecure local password caching with config sync via Bitwarden Secure Notes. Enforced pre-sync (`bw sync`) before data transfer and added an optional deletion sync workflow with a user confirmation dialog. Added payload compression and a usage progress indicator.
+- **Security (Log Redactor)**: Introduced a smart log metadata redactor to automatically mask sensitive credentials, passwords, tokens, and host IPs in application logs.
+- **Terminal CJK Character Support**: Fixed wide-character rendering alignment in VTE under Flatpak by bundling CJK fallback fonts. Corrected thin Latin glyph rendering issues.
+- **UX & UI Layout Polishing**: Added a Tab context menu with *Duplicate Tab* actions and full multi-language support. Aligned host, port-forwarding, and keychain card grids to prevent stretching and layout shifts. Optimized entry rows placeholder font sizes to avoid clipping.
+- **Multi-Arch & CI Pipeline**: Configured native AMD64 and ARM64 Flatpak builds on native runners. Fixed Flatpak permission flags, runtime installation issues, and Vte GObject namespace crashes in CI. Corrected internationalization (i18n) gettext initialization bugs.
