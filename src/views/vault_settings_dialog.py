@@ -316,6 +316,17 @@ class VaultManagerWindow(Gtk.Box):
         self._sync_actions_row.add_suffix(sync_actions_box)
         self._sync_group.add(self._sync_actions_row)
 
+        # Sync Note Usage Row
+        self._sync_usage_row = Adw.ActionRow(
+            title=_("Sync Note Usage"),
+            subtitle=_("0 / 10000 characters used")
+        )
+        self._usage_progress = Gtk.ProgressBar()
+        self._usage_progress.set_valign(Gtk.Align.CENTER)
+        self._usage_progress.set_size_request(150, -1)
+        self._sync_usage_row.add_suffix(self._usage_progress)
+        self._sync_group.add(self._sync_usage_row)
+
         content_box.append(self._sync_group)
 
     def _build_loading_page(self) -> Gtk.Widget:
@@ -627,6 +638,33 @@ class VaultManagerWindow(Gtk.Box):
         else:
             self._sync_note_row.set_subtitle(_("Not bound"))
 
+        # Update sync usage progress row
+        if is_unlocked_bw and sync_enabled:
+            self._sync_usage_row.set_visible(True)
+            try:
+                config = SyncManager.get().serialize_local_config()
+                payload = SyncManager.get().encrypt_data(config)
+                size = len(payload)
+            except Exception as e:
+                logger.error(f"Failed to calculate sync note usage: {e}")
+                size = 0
+            
+            percentage = min(1.0, size / 10000.0)
+            self._usage_progress.set_fraction(percentage)
+            self._sync_usage_row.set_subtitle(
+                _("{size} / 10000 characters used ({percent:.1%})").format(size=size, percent=percentage)
+            )
+            
+            # Apply styling if it gets close to limit
+            self._usage_progress.remove_css_class("error")
+            self._usage_progress.remove_css_class("warning")
+            if size >= 10000:
+                self._usage_progress.add_css_class("error")
+            elif size >= 8000:
+                self._usage_progress.add_css_class("warning")
+        else:
+            self._sync_usage_row.set_visible(False)
+
     def _on_sync_enabled_toggled(self, row: Adw.SwitchRow, _pspec) -> None:
         if getattr(self, "_loading_sync_pref", False):
             return
@@ -645,6 +683,8 @@ class VaultManagerWindow(Gtk.Box):
 
         if active and not item_id:
             self._auto_detect_sync_note()
+        else:
+            self._update_sync_ui("unlocked")
 
     def _on_sync_auto_toggled(self, row: Adw.SwitchRow, _pspec) -> None:
         if getattr(self, "_loading_sync_pref", False):
@@ -842,6 +882,7 @@ class VaultManagerWindow(Gtk.Box):
                 await SyncManager.get().push_sync(item_id)
                 GLib.idle_add(lambda: (
                     self._push_btn.set_sensitive(True),
+                    self._update_sync_ui("unlocked"),
                     self._show_toast(_("Configuration uploaded successfully ✓"))
                 ) and False)
             except Exception as e:
@@ -874,6 +915,7 @@ class VaultManagerWindow(Gtk.Box):
                 
                 def _success():
                     self._pull_btn.set_sensitive(True)
+                    self._update_sync_ui("unlocked")
                     self._show_toast(_("Configuration downloaded and merged successfully ✓"))
                     root = self.get_root()
                     if root and hasattr(root, "_load_connections"):

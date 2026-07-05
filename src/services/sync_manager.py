@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 import json
+import zlib
 import hashlib
 import logging
 import os
@@ -41,9 +42,10 @@ class SyncManager:
     def encrypt_data(self, data: dict) -> str:
         """Compress/serialize and encrypt configuration dict using AES-256-GCM."""
         plaintext = json.dumps(data).encode("utf-8")
+        compressed = zlib.compress(plaintext)
         key = self._get_encryption_key()
         nonce = os.urandom(12)
-        ciphertext = AESGCM(key).encrypt(nonce, plaintext, None)
+        ciphertext = AESGCM(key).encrypt(nonce, compressed, None)
         combined = nonce + ciphertext
         return b64encode(combined).decode("utf-8")
 
@@ -55,7 +57,14 @@ class SyncManager:
         nonce = combined[:12]
         ciphertext = combined[12:]
         key = self._get_encryption_key()
-        plaintext = AESGCM(key).decrypt(nonce, ciphertext, None)
+        decrypted = AESGCM(key).decrypt(nonce, ciphertext, None)
+        
+        try:
+            plaintext = zlib.decompress(decrypted)
+        except zlib.error:
+            # Fallback for legacy uncompressed format
+            plaintext = decrypted
+            
         return json.loads(plaintext.decode("utf-8"))
 
     def serialize_local_config(self) -> dict:
