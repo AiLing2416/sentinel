@@ -74,3 +74,7 @@ class VaultBackend(ABC):
     async def retrieve_connection_configs(self) -> list[dict]:
         """Retrieve all Sentinel connection configs from the vault."""
         ...
+
+    async def sync(self) -> None:
+        """Synchronize local cache with the remote server, if supported by the backend."""
+        pass

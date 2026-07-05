@@ -805,6 +805,19 @@ class BitwardenBackend(VaultBackend):
             logger.debug(f"Failed to get TOTP for {item_id}: {e}")
             return None
 
+    async def sync(self) -> None:
+        """Run 'bw sync' to ensure the local CLI cache is up-to-date with Bitwarden cloud."""
+        if not await self.is_unlocked():
+            raise RuntimeError("Bitwarden vault is locked")
+        try:
+            logger.info("Bitwarden: Performing 'bw sync'...")
+            await self._run_bw(["sync"])
+            self._auto_synced = True
+            logger.info("Bitwarden: 'bw sync' completed successfully.")
+        except Exception as e:
+            logger.error(f"Bitwarden: 'bw sync' failed: {e}")
+            raise
+
     async def store_connection_config(self, config: dict) -> str:
         """Bitwarden sync of configs. Uses the sync note if configured."""
         from services.sync_manager import SyncManager

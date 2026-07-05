@@ -117,6 +117,8 @@ class SyncManager:
         if not vault:
             raise RuntimeError("Bitwarden backend not available")
         
+        await vault.sync()
+        
         config_data = self.serialize_local_config()
         encrypted_payload = self.encrypt_data(config_data)
         
@@ -129,6 +131,8 @@ class SyncManager:
         vault = VaultService.get().get_backend("bitwarden")
         if not vault:
             raise RuntimeError("Bitwarden backend not available")
+        
+        await vault.sync()
         
         # get_sync_note is added to Bitwarden class in bitwarden.py
         encrypted_payload = await vault.get_sync_note(item_id)
