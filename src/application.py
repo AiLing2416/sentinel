@@ -306,70 +306,68 @@ class SentinelApplication(Adw.Application):
 
         /* ── FlowBox Cards Hover/Selection fixes ── */
         .host-card {
-            max-width: 210px;
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
+            background: transparent;
+            background-color: transparent;
+            background-image: none;
+            box-shadow: none;
+            outline: none;
+            border: none;
         }
         .key-card {
-            max-width: 210px;
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
+            background: transparent;
+            background-color: transparent;
+            background-image: none;
+            box-shadow: none;
+            outline: none;
+            border: none;
         }
         .host-card:hover {
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
+            background: transparent;
+            background-color: transparent;
+            background-image: none;
+            box-shadow: none;
+            outline: none;
+            border: none;
         }
         .key-card:hover {
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
+            background: transparent;
+            background-color: transparent;
+            background-image: none;
+            box-shadow: none;
+            outline: none;
+            border: none;
         }
         .host-card:selected {
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
+            background: transparent;
+            background-color: transparent;
+            background-image: none;
+            box-shadow: none;
+            outline: none;
+            border: none;
         }
         .key-card:selected {
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
+            background: transparent;
+            background-color: transparent;
+            background-image: none;
+            box-shadow: none;
+            outline: none;
+            border: none;
         }
         .host-card:focus {
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
+            background: transparent;
+            background-color: transparent;
+            background-image: none;
+            box-shadow: none;
+            outline: none;
+            border: none;
         }
         .key-card:focus {
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
+            background: transparent;
+            background-color: transparent;
+            background-image: none;
+            box-shadow: none;
+            outline: none;
+            border: none;
         }
 
         /* Hover card style */
@@ -379,27 +377,27 @@ class SentinelApplication(Adw.Application):
                 to bottom,
                 alpha(currentColor, 0.04),
                 alpha(currentColor, 0.04)
-            ) !important;
+            );
         }
 
         /* Selected card style */
         .host-card:selected .card,
         .key-card:selected .card {
-            box-shadow: inset 0 0 0 2px @accent_color !important;
+            box-shadow: inset 0 0 0 2px @accent_color;
             background-image: linear-gradient(
                 to bottom,
                 alpha(@accent_color, 0.08),
                 alpha(@accent_color, 0.08)
-            ) !important;
+            );
         }
         .host-card:selected:hover .card,
         .key-card:selected:hover .card {
-            box-shadow: inset 0 0 0 2px @accent_color !important;
+            box-shadow: inset 0 0 0 2px @accent_color;
             background-image: linear-gradient(
                 to bottom,
                 alpha(@accent_color, 0.12),
                 alpha(@accent_color, 0.12)
-            ) !important;
+            );
         }
 
         /* Micro-animation transitions for smooth hover/selection state */
@@ -446,12 +444,12 @@ class SentinelApplication(Adw.Application):
 
         /* ── Collapsed rail: 36x36 circular buttons (sidebar is 52px wide) ── */
         .nav-collapsed-item {
-            padding: 9px !important;
-            margin-left: 8px !important;
-            margin-right: 8px !important;
-            border-radius: 999px !important;
-            min-width: 36px !important;
-            min-height: 36px !important;
+            padding: 9px;
+            margin-left: 8px;
+            margin-right: 8px;
+            border-radius: 999px;
+            min-width: 36px;
+            min-height: 36px;
         }
 
         /* Sidebar header/footer CenterBox */
@@ -631,36 +629,35 @@ class SentinelApplication(Adw.Application):
 
         /* ── Port Forwarding Rule Card ──────────────────── */
         .forward-card {
-            max-width: 210px;
-            background: transparent !important;
-            background-color: transparent !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
+            background: transparent;
+            background-color: transparent;
+            background-image: none;
+            box-shadow: none;
+            outline: none;
+            border: none;
         }
         .forward-card:hover .host-card-v2 {
             background-image: linear-gradient(
                 to bottom,
                 alpha(currentColor, 0.04),
                 alpha(currentColor, 0.04)
-            ) !important;
+            );
         }
         .forward-card:selected .host-card-v2 {
-            box-shadow: inset 0 0 0 2px @accent_color !important;
+            box-shadow: inset 0 0 0 2px @accent_color;
             background-image: linear-gradient(
                 to bottom,
                 alpha(@accent_color, 0.08),
                 alpha(@accent_color, 0.08)
-            ) !important;
+            );
         }
         .forward-card:selected:hover .host-card-v2 {
-            box-shadow: inset 0 0 0 2px @accent_color !important;
+            box-shadow: inset 0 0 0 2px @accent_color;
             background-image: linear-gradient(
                 to bottom,
                 alpha(@accent_color, 0.12),
                 alpha(@accent_color, 0.12)
-            ) !important;
+            );
         }
 
         /* ── Port Forwarding Rule Row ───────────────────── */
@@ -729,9 +726,9 @@ class SentinelApplication(Adw.Application):
         entry text placeholder,
         text placeholder,
         placeholder {
-            font-size: 15px !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            font-size: 15px;
+            margin: 0;
+            padding: 0;
             opacity: 0.55;
         }
         """

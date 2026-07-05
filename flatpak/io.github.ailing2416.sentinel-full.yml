@@ -55,6 +55,7 @@ modules:
   - name: vte
     buildsystem: meson
     config-opts:
+      - --libdir=lib
       - -Dgtk3=false
       - -Dgtk4=true
       - -Dglade=false
