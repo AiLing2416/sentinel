@@ -85,24 +85,51 @@ class SyncManager:
         finally:
             db.close()
 
-    def deserialize_and_merge(self, data: dict) -> None:
+    def deserialize_and_merge(self, data: dict, execute_removals: bool = False) -> None:
         """Merge incoming sync dictionary into the local database (incremental merge)."""
         self._importing = True
         try:
             db = Database(self._db_path)
             db.open()
             try:
-                # 1. Groups
+                # 1. Perform removals first (bottom-up: rules -> connections -> groups)
+                if execute_removals:
+                    # A. Forward Rules
+                    incoming_rule_ids = {r_dict.get("id") for r_dict in data.get("forward_rules", []) if r_dict.get("id")}
+                    local_rules = db.list_forward_rules()
+                    for r in local_rules:
+                        if r.id not in incoming_rule_ids:
+                            logger.info(f"SyncManager: Removing local forward rule {r.id} missing from cloud")
+                            db.delete_forward_rule(r.id)
+
+                    # B. Connections
+                    incoming_conn_ids = {c_dict.get("id") for c_dict in data.get("connections", []) if c_dict.get("id")}
+                    local_conns = db.list_connections()
+                    for c in local_conns:
+                        if c.id not in incoming_conn_ids:
+                            logger.info(f"SyncManager: Removing local connection {c.id} ({c.name}) missing from cloud")
+                            db.delete_connection(c.id)
+
+                    # C. Groups
+                    incoming_group_ids = {g_dict.get("id") for g_dict in data.get("groups", []) if g_dict.get("id")}
+                    local_groups = db.list_groups()
+                    for g in local_groups:
+                        if g.id not in incoming_group_ids:
+                            logger.info(f"SyncManager: Removing local group {g.id} ({g.name}) missing from cloud")
+                            db.delete_group(g.id)
+
+                # 2. Perform saves/updates (top-down: groups -> connections -> rules)
+                # A. Groups
                 for g_dict in data.get("groups", []):
                     group = ConnectionGroup.from_dict(g_dict)
                     db.save_group(group)
                     
-                # 2. Connections
+                # B. Connections
                 for c_dict in data.get("connections", []):
                     conn = Connection.from_dict(c_dict)
                     db.save_connection(conn)
                     
-                # 3. Forward Rules
+                # C. Forward Rules
                 for r_dict in data.get("forward_rules", []):
                     rule = ForwardRule.from_dict(r_dict)
                     db.save_forward_rule(rule)
@@ -110,6 +137,40 @@ class SyncManager:
                 db.close()
         finally:
             self._importing = False
+
+    def calculate_removals(self, data: dict) -> list[str]:
+        """Calculate list of items that exist locally but are missing in the incoming sync data."""
+        db = Database(self._db_path)
+        db.open()
+        try:
+            removals = []
+            
+            # 1. Forward Rules
+            incoming_rule_ids = {r_dict.get("id") for r_dict in data.get("forward_rules", []) if r_dict.get("id")}
+            local_rules = db.list_forward_rules()
+            for r in local_rules:
+                if r.id not in incoming_rule_ids:
+                    conn = db.get_connection(r.connection_id)
+                    conn_name = conn.name if conn else r.connection_id
+                    removals.append(f"Port Forwarding Rule: {r.bind_port} -> {r.remote_host}:{r.remote_port} ({conn_name})")
+            
+            # 2. Connections
+            incoming_conn_ids = {c_dict.get("id") for c_dict in data.get("connections", []) if c_dict.get("id")}
+            local_conns = db.list_connections()
+            for c in local_conns:
+                if c.id not in incoming_conn_ids:
+                    removals.append(f"Connection: {c.name} ({c.hostname})")
+            
+            # 3. Groups
+            incoming_group_ids = {g_dict.get("id") for g_dict in data.get("groups", []) if g_dict.get("id")}
+            local_groups = db.list_groups()
+            for g in local_groups:
+                if g.id not in incoming_group_ids:
+                    removals.append(f"Group: {g.name}")
+                    
+            return removals
+        finally:
+            db.close()
 
     async def push_sync(self, item_id: str) -> None:
         """Push encrypted local configuration to the specified Bitwarden note."""
@@ -126,7 +187,7 @@ class SyncManager:
         await vault.update_sync_note(item_id, encrypted_payload)
         logger.info(f"SyncManager: Successfully pushed config to Bitwarden Note '{item_id}'")
 
-    async def pull_sync(self, item_id: str) -> None:
+    async def pull_sync(self, item_id: str, confirm_cb: Callable[[list[str]], asyncio.Future[bool]] | None = None) -> None:
         """Pull and merge configuration from the specified Bitwarden note."""
         vault = VaultService.get().get_backend("bitwarden")
         if not vault:
@@ -141,7 +202,29 @@ class SyncManager:
             return
         
         config_data = self.decrypt_data(encrypted_payload)
-        self.deserialize_and_merge(config_data)
+        
+        db = Database(self._db_path)
+        db.open()
+        try:
+            remove_missing = db.get_meta("sync_remove_missing", "false") == "true"
+        finally:
+            db.close()
+            
+        execute_removals = False
+        if remove_missing:
+            removals = self.calculate_removals(config_data)
+            if removals:
+                if confirm_cb:
+                    confirmed = await confirm_cb(removals)
+                    if not confirmed:
+                        logger.info("SyncManager: Pull cancelled by user due to removal confirmation.")
+                        return
+                    execute_removals = True
+                else:
+                    logger.warning("SyncManager: Removals detected but no confirm_cb provided. Skipping deletions.")
+                    execute_removals = False
+                    
+        self.deserialize_and_merge(config_data, execute_removals=execute_removals)
         logger.info(f"SyncManager: Successfully pulled and merged config from Bitwarden Note '{item_id}'")
 
     def trigger_auto_sync(self) -> None:

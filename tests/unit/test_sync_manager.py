@@ -157,3 +157,100 @@ class TestSyncManager:
         assert rules[0].id == "rule-1"
         assert rules[0].connection_id == "conn-2"
         assert rules[0].bind_port == 5432
+
+    def test_calculate_removals(self, tmp_path: Path) -> None:
+        db_path = tmp_path / "removals_calc_test.db"
+        db = Database(path=db_path)
+        db.open()
+        
+        group = ConnectionGroup(id="group-to-delete", name="Group A")
+        db.save_group(group)
+        conn = Connection(id="conn-to-delete", name="Conn A", hostname="127.0.0.1", group_id="group-to-delete")
+        db.save_connection(conn)
+        rule = ForwardRule(id="rule-to-delete", connection_id="conn-to-delete", bind_port=9000, remote_host="10.0.0.2", remote_port=80)
+        db.save_forward_rule(rule)
+        db.close()
+        
+        incoming_data = {
+            "version": 1,
+            "groups": [],
+            "connections": [],
+            "forward_rules": []
+        }
+        
+        manager = SyncManager(db_path=db_path)
+        removals = manager.calculate_removals(incoming_data)
+        
+        assert len(removals) == 3
+        assert any("Group A" in r for r in removals)
+        assert any("Conn A" in r for r in removals)
+        assert any("9000" in r for r in removals)
+
+    def test_deserialize_and_merge_with_removals(self, tmp_path: Path) -> None:
+        db_path = tmp_path / "removals_merge_test.db"
+        db = Database(path=db_path)
+        db.open()
+        
+        group = ConnectionGroup(id="g-1", name="Keep Group")
+        db.save_group(group)
+        group_del = ConnectionGroup(id="g-2", name="Delete Group")
+        db.save_group(group_del)
+        
+        conn = Connection(id="c-1", name="Keep Conn", hostname="localhost")
+        db.save_connection(conn)
+        conn_del = Connection(id="c-2", name="Delete Conn", hostname="127.0.0.1")
+        db.save_connection(conn_del)
+        db.close()
+        
+        incoming_data = {
+            "version": 1,
+            "groups": [
+                {"id": "g-1", "name": "Keep Group", "parent_id": None, "sort_order": 0, "color": None}
+            ],
+            "connections": [
+                {
+                    "id": "c-1",
+                    "name": "Keep Conn",
+                    "hostname": "localhost",
+                    "port": 22,
+                    "username": "user",
+                    "auth_method": "password",
+                    "key_path": None,
+                    "vault_item_id": None,
+                    "vault_item_name": None,
+                    "jump_host_id": None,
+                    "group_id": None,
+                    "os_id": None,
+                    "notes": "",
+                    "last_connected": None,
+                    "created_at": "2026-06-23T00:00:00",
+                    "agent_forwarding": 0,
+                    "sort_order": 0
+                }
+            ],
+            "forward_rules": []
+        }
+        
+        manager = SyncManager(db_path=db_path)
+        
+        db.open()
+        db.set_meta("sync_remove_missing", "true")
+        db.close()
+        
+        manager.deserialize_and_merge(incoming_data, execute_removals=False)
+        db.open()
+        assert len(db.list_groups()) == 2
+        assert len(db.list_connections()) == 2
+        db.close()
+        
+        manager.deserialize_and_merge(incoming_data, execute_removals=True)
+        db.open()
+        groups = db.list_groups()
+        conns = db.list_connections()
+        db.close()
+        
+        assert len(groups) == 1
+        assert groups[0].id == "g-1"
+        assert len(conns) == 1
+        assert conns[0].id == "c-1"
+

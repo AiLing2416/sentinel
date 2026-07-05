@@ -289,6 +289,14 @@ class VaultManagerWindow(Gtk.Box):
         self._sync_auto_row.connect("notify::active", self._on_sync_auto_toggled)
         self._sync_group.add(self._sync_auto_row)
 
+        # Remove Missing Switch Row
+        self._sync_remove_row = Adw.SwitchRow(
+            title=_("Sync removals from cloud"),
+            subtitle=_("Remove connections, groups, and rules locally if they were removed on another device")
+        )
+        self._sync_remove_row.connect("notify::active", self._on_sync_remove_toggled)
+        self._sync_group.add(self._sync_remove_row)
+
         # Sync Action Buttons Row
         self._sync_actions_row = Adw.ActionRow(
             title=_("Sync Actions"),
@@ -605,6 +613,7 @@ class VaultManagerWindow(Gtk.Box):
         try:
             sync_enabled = db.get_meta("sync_enabled", "false") == "true"
             sync_auto = db.get_meta("sync_auto", "false") == "true"
+            sync_remove_missing = db.get_meta("sync_remove_missing", "false") == "true"
             sync_item_name = db.get_meta("sync_item_name", "")
             sync_detection = db.get_meta("sync_fields_detection", "true") == "true"
         finally:
@@ -618,11 +627,13 @@ class VaultManagerWindow(Gtk.Box):
         try:
             self._sync_enable_row.set_active(sync_enabled)
             self._sync_auto_row.set_active(sync_auto)
+            self._sync_remove_row.set_active(sync_remove_missing)
         finally:
             self._loading_sync_pref = False
 
         self._sync_note_row.set_sensitive(sync_enabled)
         self._sync_auto_row.set_sensitive(sync_enabled)
+        self._sync_remove_row.set_sensitive(sync_enabled)
         self._sync_actions_row.set_sensitive(sync_enabled)
 
         if sync_item_name:
@@ -674,6 +685,7 @@ class VaultManagerWindow(Gtk.Box):
 
         self._sync_note_row.set_sensitive(active)
         self._sync_auto_row.set_sensitive(active)
+        self._sync_remove_row.set_sensitive(active)
         self._sync_actions_row.set_sensitive(active)
 
         if active and not item_id:
@@ -689,6 +701,17 @@ class VaultManagerWindow(Gtk.Box):
         db.open()
         try:
             db.set_meta("sync_auto", "true" if active else "false")
+        finally:
+            db.close()
+
+    def _on_sync_remove_toggled(self, row: Adw.SwitchRow, _pspec) -> None:
+        if getattr(self, "_loading_sync_pref", False):
+            return
+        active = row.get_active()
+        db = Database()
+        db.open()
+        try:
+            db.set_meta("sync_remove_missing", "true" if active else "false")
         finally:
             db.close()
 
@@ -906,7 +929,13 @@ class VaultManagerWindow(Gtk.Box):
         
         async def _do_pull():
             try:
-                await SyncManager.get().pull_sync(item_id)
+                from services.async_engine import call_ui_async
+                from views.dialogs import confirm_sync_removals
+                
+                async def _confirm_removals(removals: list[str]) -> bool:
+                    return await call_ui_async(confirm_sync_removals, self, removals)
+                
+                await SyncManager.get().pull_sync(item_id, confirm_cb=_confirm_removals)
                 
                 def _success():
                     self._pull_btn.set_sensitive(True)

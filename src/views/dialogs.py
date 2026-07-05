@@ -768,3 +768,37 @@ class AppChooserReplica(Adw.Window):
             self._callback(app_info)
             self.destroy()
 
+
+def confirm_sync_removals(
+    parent: Gtk.Window,
+    removals: list[str],
+    resolve: Callable[[bool], None]
+) -> None:
+    """Prompt the user to confirm the removal of local items during sync."""
+    dialog = Adw.MessageDialog(
+        heading=_("Confirm Sync Removals"),
+        body=_("The cloud configuration does not contain some local items. The following items (and a total of {count} items) will be removed:\n\n{items}").format(
+            count=len(removals),
+            items="\n".join(f"• {item}" for item in removals[:5]) + ("\n• ..." if len(removals) > 5 else "")
+        )
+    )
+    dialog.add_response("cancel", _("Cancel"))
+    dialog.add_response("confirm", _("Remove"))
+    dialog.set_response_appearance("confirm", Adw.ResponseAppearance.DESTRUCTIVE)
+    dialog.set_default_response("cancel")
+    dialog.set_close_response("cancel")
+    dialog.set_modal(True)
+    
+    if parent:
+        real_parent = parent if isinstance(parent, Gtk.Window) else parent.get_root()
+        if isinstance(real_parent, Gtk.Window):
+            dialog.set_transient_for(real_parent)
+
+    def _on_response(d: Adw.MessageDialog, response: str) -> None:
+        resolve(response == "confirm")
+        d.destroy()
+
+    dialog.connect("response", _on_response)
+    dialog.present()
+
+
