@@ -407,7 +407,7 @@ class BitwardenBackend(VaultBackend):
             state = status.get("status")
             unlocked = (state == "unlocked")
             
-            logger.info(f"Bitwarden: Current CLI status is '{state}' (unlocked={unlocked})")
+            logger.info(f"Bitwarden: Current CLI status is {state} (unlocked={unlocked})")
             
             if not unlocked and self._session_token:
                 # Token in memory but CLI says locked — token probably expired.

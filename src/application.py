@@ -5,12 +5,119 @@
 from __future__ import annotations
 
 import gi
+import logging
+import re
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
 import gettext
 from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
+
+class SentinelLogFilter(logging.Filter):
+    """Smart Filter to redact sensitive metadata in Sentinel logs (IPs, emails, domains, names, IDs)."""
+
+    def __init__(self, name: str = ""):
+        super().__init__(name)
+        # 1. IP regular expression (Captures first two octets)
+        self._ip_re = re.compile(r'\b(\d{1,3}\.\d{1,3})\.\d{1,3}\.\d{1,3}\b')
+        
+        # 2. Email regular expression
+        self._email_re = re.compile(r'\b([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,4})\b')
+        
+        # 3. Independent Domain regular expression (Exclude IP addresses, match xxx.yyy.com)
+        self._domain_re = re.compile(r'\b(?:[A-Za-z0-9-]+\.)+([A-Za-z0-9-]+\.[A-Za-z]{2,4})\b')
+        
+        # 4. UUID regular expression (Hide middle parts of 36-char UUIDs)
+        self._uuid_re = re.compile(r'\b([0-9a-fA-F]{4})[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{8}([0-9a-fA-F]{4})\b')
+        
+        # 5. Quoted values (e.g. 'Connection Name' or "Item ID")
+        self._quoted_re = re.compile(r"'(?P<val1>[^']+)'|\"(?P<val2>[^\"]+)\"")
+        
+        # 6. Keyword-based ID detection (e.g. rule rule_12345 or connection conn_abc)
+        self._kw_id_re = re.compile(r'\b(rule|connection|item|folder|vault)\s+([a-zA-Z0-9_-]+)\b', re.IGNORECASE)
+        
+        # 7. Local home paths
+        self._home_path_re = re.compile(r'/home/[^/ ]+/')
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str):
+            record.msg = self._redact(record.msg)
+        if record.args:
+            record.args = tuple(
+                self._redact(arg) if isinstance(arg, str) else arg
+                for arg in record.args
+            )
+        return True
+
+    def _redact(self, text: str) -> str:
+        # Step 1: Redact IP (Show first two octets)
+        text = self._ip_re.sub(r'\1.*.*', text)
+        
+        # Step 2: Redact Emails (Show only domain TLD)
+        def redact_email(match):
+            domain = match.group(2)
+            parts = domain.split('.')
+            tld = parts[-1]
+            if len(parts) >= 2 and parts[-2] in ('co', 'org', 'gov', 'com', 'net', 'edu', 'ac'):
+                tld = f"{parts[-2]}.{tld}"
+            return f"*@*.{tld}"
+        text = self._email_re.sub(redact_email, text)
+        
+        # Step 3: Redact independent domains (Show only TLD)
+        def redact_domain(match):
+            domain = match.group(1)
+            parts = domain.split('.')
+            tld = parts[-1]
+            if len(parts) >= 2 and parts[-2] in ('co', 'org', 'gov', 'com', 'net', 'edu', 'ac'):
+                tld = f"{parts[-2]}.{tld}"
+            return f"***.{tld}"
+        
+        def domain_sub(match):
+            full_match = match.group(0)
+            # Skip python typical package paths to avoid false positives in code loading logs
+            if any(pkg in full_match for pkg in ('gi.repository', 'db.database', 'services.', 'views.', 'models.')):
+                return full_match
+            return redact_domain(match)
+        text = self._domain_re.sub(domain_sub, text)
+
+        # Step 4: Redact UUIDs
+        text = self._uuid_re.sub(r'\1...\2', text)
+        
+        # Step 5: Redact Quoted names/IDs (Hide middle parts)
+        state_words = {
+            'locked', 'unlocked', 'unauthenticated', 'authenticated', 
+            'true', 'false', 'none', 'null', 'active', 'inactive', 'success', 'failed',
+            'connected', 'disconnected', 'connecting', 'error'
+        }
+        def redact_quoted(match):
+            quote = "'" if match.group('val1') is not None else '"'
+            val = match.group('val1') if match.group('val1') is not None else match.group('val2')
+            if val.lower() in state_words:
+                return f"{quote}{val}{quote}"
+            if len(val) > 4:
+                half = max(1, len(val) // 4)
+                return f"{quote}{val[:half]}...{val[-half:]}{quote}"
+            return f"{quote}{val}{quote}"
+        text = self._quoted_re.sub(redact_quoted, text)
+        
+        # Step 6: Redact Keyword-based IDs
+        def redact_kw_id(match):
+            kw = match.group(1)
+            val = match.group(2)
+            # Skip common short words or status codes
+            if len(val) > 4 and val.lower() not in ('started', 'stopped', 'failed', 'active', 'error'):
+                half = max(1, len(val) // 4)
+                return f"{kw} {val[:half]}...{val[-half:]}"
+            return match.group(0)
+        text = self._kw_id_re.sub(redact_kw_id, text)
+        
+        # Step 7: Redact local home paths
+        text = self._home_path_re.sub("/home/[REDACTED_USER]/", text)
+        
+        return text
+
+
 
 _ = gettext.gettext
 
@@ -19,6 +126,11 @@ class SentinelApplication(Adw.Application):
     """Main application class for Sentinel."""
 
     def __init__(self) -> None:
+        # Apply log filter to hide sensitive metadata
+        log_filter = SentinelLogFilter()
+        for handler in logging.root.handlers:
+            handler.addFilter(log_filter)
+
         super().__init__(
             application_id="io.github.ailing2416.sentinel",
             flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
