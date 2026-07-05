@@ -158,7 +158,6 @@ class SentinelApplication(Adw.Application):
             ("quit", self._on_quit, ["<primary>q"]),
             ("about", self._on_about, None),
             ("new-connection", self._on_new_connection, ["<primary>n"]),
-            ("vault_settings", self._on_vault_settings, None),
             ("terminal_theme", self._on_terminal_theme, None),
         ]
         for name, callback, accels in actions:
@@ -178,7 +177,7 @@ class SentinelApplication(Adw.Application):
             application_name=_("Sentinel"),
             application_icon="utilities-terminal",
             developer_name=_("Sentinel Contributors"),
-            version="0.2.5",
+            version="0.3.0",
             developers=[_("Sentinel Contributors")],
             copyright=_("© 2026 Sentinel Contributors"),
             license_type=Gtk.License.GPL_3_0,
@@ -195,10 +194,6 @@ class SentinelApplication(Adw.Application):
             win.show_connection_editor()
 
 
-    def _on_vault_settings(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
-        win = self.props.active_window
-        if win and hasattr(win, "show_vault_settings"):
-            win.show_vault_settings()
 
     def _on_terminal_theme(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
         import logging

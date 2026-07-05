@@ -36,6 +36,18 @@
   </requires>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.3.0" date="2026-07-05">
+      <description>
+        <ul>
+          <li>SSH Port Forwarding: complete management for local, remote, and dynamic forwarding rules running on dedicated background channels</li>
+          <li>Bitwarden config sync: encrypted backup and restoration of connections and keychains using Bitwarden Secure Notes</li>
+          <li>Security: added smart log metadata redactor to automatically mask credentials and host addresses in application logs</li>
+          <li>Tab context menu: added duplicate tab action and multiple layout styling alignments (Host, Keychain, Port Forwarding)</li>
+          <li>CJK support: bundled fallback fonts and enabled wide-character terminal rendering under Flatpak</li>
+          <li>Platform: improved multi-arch ARM64 building compatibility and fixed Vte GObject namespace resolution</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.5" date="2026-03-31">
       <description>
         <ul>

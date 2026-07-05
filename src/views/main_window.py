@@ -438,7 +438,6 @@ class SentinelWindow(Adw.ApplicationWindow):
 
         menu_model = Gio.Menu()
         menu_model.append(_("Terminal Theme"), "app.terminal_theme")
-        menu_model.append(_("Vault Settings"), "app.vault_settings")
         menu_model.append(_("About Sentinel"), "app.about")
         menu_model.append(_("Quit"), "app.quit")
 
