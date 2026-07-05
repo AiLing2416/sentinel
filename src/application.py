@@ -444,12 +444,11 @@ class SentinelApplication(Adw.Application):
 
         /* ── Collapsed rail: 36x36 circular buttons (sidebar is 52px wide) ── */
         .nav-collapsed-item {
-            padding: 9px;
-            margin-left: 8px;
-            margin-right: 8px;
-            border-radius: 999px;
-            min-width: 36px;
-            min-height: 36px;
+            padding: 9px !important;
+            margin: 1px 8px !important;
+            border-radius: 999px !important;
+            min-width: 36px !important;
+            min-height: 36px !important;
         }
 
         /* Sidebar header/footer CenterBox */
