@@ -6,6 +6,13 @@
 
 import os
 import sys
+
+# Unset GTK_IM_MODULE to force native input method protocols (e.g. Wayland text-input-v3 / IBus)
+# inside the Flatpak sandbox. This allows the host's input method daemon (like fcitx5)
+# to render the candidate window using the host configuration and themes.
+os.environ.pop("GTK_IM_MODULE", None)
+os.environ.pop("QT_IM_MODULE", None)
+
 import logging
 
 # Allow running from source tree during development
