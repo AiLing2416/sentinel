@@ -972,10 +972,8 @@ class TerminalTabView:
 
     def _setup_context_menu(self) -> None:
         """Create and bind the context menu and action group to the tab view."""
-        menu = Gio.Menu()
-        menu.append(_("Duplicate"), "tab.duplicate")
-        menu.append(_("Duplicate in a new window"), "tab.duplicate-new-window")
-        self._tab_view.set_menu_model(menu)
+        self._tab_menu = Gio.Menu()
+        self._tab_view.set_menu_model(self._tab_menu)
 
         action_group = Gio.SimpleActionGroup()
 
@@ -986,6 +984,14 @@ class TerminalTabView:
         duplicate_nw_action = Gio.SimpleAction.new("duplicate-new-window", None)
         duplicate_nw_action.connect("activate", self._on_duplicate_nw_activate)
         action_group.add_action(duplicate_nw_action)
+
+        open_sftp_action = Gio.SimpleAction.new("open-sftp", None)
+        open_sftp_action.connect("activate", self._on_open_sftp_activate)
+        action_group.add_action(open_sftp_action)
+
+        open_ssh_action = Gio.SimpleAction.new("open-ssh", None)
+        open_ssh_action.connect("activate", self._on_open_ssh_activate)
+        action_group.add_action(open_ssh_action)
 
         self._tab_view.insert_action_group("tab", action_group)
         self._tab_actions = action_group
@@ -1007,6 +1013,11 @@ class TerminalTabView:
         if root_window:
             root_window.insert_action_group("tab", self._tab_actions)
 
+        # Clear and dynamically rebuild the menu
+        self._tab_menu.remove_all()
+        self._tab_menu.append(_("Duplicate"), "tab.duplicate")
+        self._tab_menu.append(_("Duplicate in a new window"), "tab.duplicate-new-window")
+
         child = page.get_child()
         is_supported = child.__class__.__name__ in ("TerminalTab", "SftpTab")
 
@@ -1018,6 +1029,13 @@ class TerminalTabView:
         if dup_nw_act:
             dup_nw_act.set_enabled(is_supported)
 
+        # Add SFTP or Shell options dynamically based on the current tab type
+        if child.__class__.__name__ == "TerminalTab":
+            if child.connection is not None:
+                self._tab_menu.append(_("SFTP"), "tab.open-sftp")
+        elif child.__class__.__name__ == "SftpTab":
+            self._tab_menu.append(_("Shell"), "tab.open-ssh")
+
     def _on_duplicate_activate(self, action: Gio.SimpleAction, parameter: GLib.Variant | None) -> None:
         if self._context_menu_page:
             self._duplicate_page(self._context_menu_page)
@@ -1025,6 +1043,18 @@ class TerminalTabView:
     def _on_duplicate_nw_activate(self, action: Gio.SimpleAction, parameter: GLib.Variant | None) -> None:
         if self._context_menu_page:
             self._duplicate_page_to_new_window(self._context_menu_page)
+
+    def _on_open_sftp_activate(self, action: Gio.SimpleAction, parameter: GLib.Variant | None) -> None:
+        if self._context_menu_page:
+            child = self._context_menu_page.get_child()
+            if child.__class__.__name__ == "TerminalTab" and child.connection:
+                self.open_sftp_tab(child.connection)
+
+    def _on_open_ssh_activate(self, action: Gio.SimpleAction, parameter: GLib.Variant | None) -> None:
+        if self._context_menu_page:
+            child = self._context_menu_page.get_child()
+            if child.__class__.__name__ == "SftpTab" and child.connection:
+                self.open_ssh_tab(child.connection)
 
     def _duplicate_page(self, page: Adw.TabPage) -> None:
         child = page.get_child()
