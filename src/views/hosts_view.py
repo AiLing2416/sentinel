@@ -57,8 +57,6 @@ class HostCard(Gtk.FlowBoxChild):
     """A card representing a connection in the Hosts grid."""
 
     def do_measure(self, orientation, for_size):
-        if orientation == Gtk.Orientation.HORIZONTAL:
-            return 210, 210, -1, -1
         return Gtk.FlowBoxChild.do_measure(self, orientation, for_size)
 
     # Maps auth method value -> CSS stripe class (top color band)
@@ -83,7 +81,7 @@ class HostCard(Gtk.FlowBoxChild):
         super().__init__()
         self.connection = connection
         self.set_size_request(210, -1)
-        self.set_halign(Gtk.Align.FILL)
+        self.set_halign(Gtk.Align.CENTER)
         self.set_margin_start(5)
         self.set_margin_end(5)
         self.set_margin_top(5)
@@ -92,22 +90,12 @@ class HostCard(Gtk.FlowBoxChild):
 
         auth_val = connection.auth_method.value
 
-        # Wrap in Gtk.Fixed to move card position quietly without trigger layout loops
-        self.fixed_container = Gtk.Fixed()
         self.outer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.outer_box.add_css_class("host-card-v2")
         self.outer_box.add_css_class(self._AUTH_STRIPE.get(auth_val, "auth-stripe-key"))
         self.outer_box.set_size_request(210, -1)
         self.outer_box.set_halign(Gtk.Align.FILL)
-
-        self.fixed_container.put(self.outer_box, 0, 0)
-        self.set_child(self.fixed_container)
-
-        outer = self.outer_box
-        outer.add_css_class("host-card-v2")
-        outer.add_css_class(self._AUTH_STRIPE.get(auth_val, "auth-stripe-key"))
-        outer.set_size_request(210, -1)
-        outer.set_halign(Gtk.Align.FILL)
+        self.set_child(self.outer_box)
 
         # Card body
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
@@ -148,7 +136,7 @@ class HostCard(Gtk.FlowBoxChild):
         host_lbl.set_ellipsize(Pango.EllipsizeMode.END)
         body.append(host_lbl)
 
-        outer.append(body)
+        self.outer_box.append(body)
 
     def _get_os_icon_widget(self, os_id: str | None) -> Gtk.Widget:
         """Helper to create an OS icon widget based on ID."""
@@ -181,65 +169,6 @@ class HostCard(Gtk.FlowBoxChild):
         img = Gtk.Image.new_from_icon_name("network-server-symbolic")
         img.set_pixel_size(16)
         return img
-
-
-class JustifiedFlowBox(Gtk.FlowBox):
-    """A Gtk.FlowBox subclass that dynamically adjusts card alignment to achieve fixed-width justified spacing."""
-
-    def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
-        Gtk.FlowBox.do_size_allocate(self, width, height, baseline)
-        self.adjust_alignment(width)
-
-    def adjust_alignment(self, width: int) -> None:
-        children = []
-        child = self.get_first_child()
-        while child:
-            if isinstance(child, Gtk.FlowBoxChild) and child.get_child():
-                children.append(child)
-            child = child.get_next_sibling()
-
-        if not children:
-            return
-
-        # Ensure FlowBoxChild itself is always FILL aligned with fixed 5px margins.
-        # This keeps the FlowBoxChild's allocation.x pure and stable.
-        for child in children:
-            if child.get_halign() != Gtk.Align.FILL:
-                child.set_halign(Gtk.Align.FILL)
-            if child.get_margin_start() != 5 or child.get_margin_end() != 5:
-                child.set_margin_start(5)
-                child.set_margin_end(5)
-
-        # Collect unique allocated X coordinates and sort them to define physical columns
-        x_coords = [child.get_allocation().x for child in children]
-        unique_x = sorted(list(set(x_coords)))
-        cols = len(unique_x)
-
-        w_cell = children[0].get_allocation().width
-        cw = 210
-
-        if cols <= 1:
-            for child in children:
-                if hasattr(child, "fixed_container") and hasattr(child, "outer_box"):
-                    child.fixed_container.move(child.outer_box, 0, 0)
-            return
-
-        # Calculate pixel-perfect equal spacing
-        # g is the visual gap size between cards
-        g = cols * (w_cell - cw) / (cols - 1)
-
-        for child in children:
-            if not (hasattr(child, "fixed_container") and hasattr(child, "outer_box")):
-                continue
-
-            alloc = child.get_allocation()
-            col_idx = unique_x.index(alloc.x)
-
-            # Compute X offset to position the card inside Gtk.Fixed to achieve uniform gap
-            offset_x = int(round(col_idx * (cw + g) - col_idx * w_cell))
-            child.fixed_container.move(child.outer_box, offset_x, 0)
-
-
 class HostsPage(Gtk.Box):
     """The Hosts page displaying connections in a grid with an Info Panel."""
 
@@ -315,7 +244,7 @@ class HostsPage(Gtk.Box):
         )
 
         # Grid view (FlowBox)
-        self._flow_box = JustifiedFlowBox()
+        self._flow_box = Gtk.FlowBox()
         self._flow_box.set_valign(Gtk.Align.START)
         self._flow_box.set_max_children_per_line(10)
         self._flow_box.set_homogeneous(True)
