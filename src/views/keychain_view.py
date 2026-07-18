@@ -25,21 +25,8 @@ import gettext
 _ = gettext.gettext
 
 
-class CardContainer(Gtk.Box):
-    """A wrapper box that overrides measurement to always request 210px width, ignoring margins."""
-    def do_measure(self, orientation, for_size):
-        if orientation == Gtk.Orientation.HORIZONTAL:
-            return 210, 210, -1, -1
-        return Gtk.Box.do_measure(self, orientation, for_size)
-
-
 class KeyCard(Gtk.FlowBoxChild):
     """A card representing a single SSH key in the Keychain grid."""
-
-    def do_measure(self, orientation, for_size):
-        if orientation == Gtk.Orientation.HORIZONTAL:
-            return 210, 210, -1, -1
-        return Gtk.FlowBoxChild.do_measure(self, orientation, for_size)
 
     # Map key type string prefix -> CSS accent class (top color band)
     _KEY_ACCENT: dict[str, str] = {
@@ -70,8 +57,21 @@ class KeyCard(Gtk.FlowBoxChild):
         # Normalise RSA-2048, RSA-3072 etc. -> "RSA"
         type_key = next((k for k in self._KEY_ACCENT if raw_type.startswith(k)), None)
 
-        # Outer vertical container (top-stripe styled in CSS)
-        outer = CardContainer(orientation=Gtk.Orientation.VERTICAL)
+        # Wrap in Gtk.Fixed to move card position quietly without trigger layout loops
+        self.fixed_container = Gtk.Fixed()
+        self.outer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.outer_box.add_css_class("host-card-v2")
+        self.outer_box.add_css_class(
+            self._KEY_ACCENT.get(type_key, "key-stripe-default")
+            if type_key else "key-stripe-default"
+        )
+        self.outer_box.set_size_request(210, -1)
+        self.outer_box.set_halign(Gtk.Align.FILL)
+
+        self.fixed_container.put(self.outer_box, 0, 0)
+        self.set_child(self.fixed_container)
+
+        outer = self.outer_box
         outer.add_css_class("host-card-v2")
         outer.add_css_class(
             self._KEY_ACCENT.get(type_key, "key-stripe-default")
@@ -124,7 +124,6 @@ class KeyCard(Gtk.FlowBoxChild):
         body.append(fp_lbl)
 
         outer.append(body)
-        self.set_child(outer)
 
 class DetailRow(Gtk.ListBoxRow):
     def __init__(self, title: str) -> None:
@@ -177,7 +176,7 @@ class JustifiedFlowBox(Gtk.FlowBox):
             return
 
         # Ensure FlowBoxChild itself is always FILL aligned with fixed 5px margins.
-        # This keeps the FlowBoxChild's allocation.x pure and stable (never shifted by alignment).
+        # This keeps the FlowBoxChild's allocation.x pure and stable.
         for child in children:
             if child.get_halign() != Gtk.Align.FILL:
                 child.set_halign(Gtk.Align.FILL)
@@ -195,13 +194,8 @@ class JustifiedFlowBox(Gtk.FlowBox):
 
         if cols <= 1:
             for child in children:
-                outer = child.get_child()
-                if outer:
-                    if outer.get_margin_start() != 0 or outer.get_margin_end() != 0:
-                        outer.set_margin_start(0)
-                        outer.set_margin_end(0)
-                    if outer.get_halign() != Gtk.Align.START:
-                        outer.set_halign(Gtk.Align.START)
+                if hasattr(child, "fixed_container") and hasattr(child, "outer_box"):
+                    child.fixed_container.move(child.outer_box, 0, 0)
             return
 
         # Calculate pixel-perfect equal spacing
@@ -209,24 +203,15 @@ class JustifiedFlowBox(Gtk.FlowBox):
         g = cols * (w_cell - cw) / (cols - 1)
 
         for child in children:
-            outer = child.get_child()
-            if not outer:
+            if not (hasattr(child, "fixed_container") and hasattr(child, "outer_box")):
                 continue
-
-            # Ensure halign is FILL on the inner child so margins stretch appropriately
-            if outer.get_halign() != Gtk.Align.FILL:
-                outer.set_halign(Gtk.Align.FILL)
 
             alloc = child.get_allocation()
             col_idx = unique_x.index(alloc.x)
 
-            # Compute margins to offset the card inside FlowBoxChild to achieve uniform gap
-            margin_start = int(round(col_idx * (cw + g) - col_idx * w_cell))
-            margin_end = w_cell - cw - margin_start
-
-            if outer.get_margin_start() != margin_start or outer.get_margin_end() != margin_end:
-                outer.set_margin_start(margin_start)
-                outer.set_margin_end(margin_end)
+            # Compute X offset to position the card inside Gtk.Fixed to achieve uniform gap
+            offset_x = int(round(col_idx * (cw + g) - col_idx * w_cell))
+            child.fixed_container.move(child.outer_box, offset_x, 0)
 
 
 class KeychainPage(Gtk.Box):
