@@ -163,8 +163,11 @@ class JustifiedFlowBox(Gtk.FlowBox):
         if not children:
             return
 
-        # Fix margins to default 5px to prevent homogeneous cell width calculation bloat
+        # Ensure FlowBoxChild itself is always FILL aligned with fixed 5px margins.
+        # This keeps the FlowBoxChild's allocation.x pure and stable (never shifted by alignment).
         for child in children:
+            if child.get_halign() != Gtk.Align.FILL:
+                child.set_halign(Gtk.Align.FILL)
             if child.get_margin_start() != 5 or child.get_margin_end() != 5:
                 child.set_margin_start(5)
                 child.set_margin_end(5)
@@ -176,11 +179,16 @@ class JustifiedFlowBox(Gtk.FlowBox):
 
         if cols <= 1:
             for child in children:
-                if child.get_halign() != Gtk.Align.START:
-                    child.set_halign(Gtk.Align.START)
+                outer = child.get_child()
+                if outer and outer.get_halign() != Gtk.Align.START:
+                    outer.set_halign(Gtk.Align.START)
             return
 
         for child in children:
+            outer = child.get_child()
+            if not outer:
+                continue
+
             alloc = child.get_allocation()
             col_idx = unique_x.index(alloc.x)
 
@@ -191,9 +199,9 @@ class JustifiedFlowBox(Gtk.FlowBox):
             else:
                 target_align = Gtk.Align.CENTER
 
-            # Dampen updates to prevent infinite loop of size-allocate signals
-            if child.get_halign() != target_align:
-                child.set_halign(target_align)
+            # Apply alignment ONLY to the inner child (outer box) to isolate it from FlowBoxChild allocation
+            if outer.get_halign() != target_align:
+                outer.set_halign(target_align)
 
 
 class KeychainPage(Gtk.Box):
