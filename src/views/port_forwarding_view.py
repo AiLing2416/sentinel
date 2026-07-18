@@ -210,13 +210,13 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
 
 
 class JustifiedFlowBox(Gtk.FlowBox):
-    """A Gtk.FlowBox subclass that dynamically adjusts card margins to achieve fixed-width justified spacing."""
+    """A Gtk.FlowBox subclass that dynamically adjusts card alignment to achieve fixed-width justified spacing."""
 
     def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
         Gtk.FlowBox.do_size_allocate(self, width, height, baseline)
-        self.adjust_margins(width)
+        self.adjust_alignment(width)
 
-    def adjust_margins(self, width: int) -> None:
+    def adjust_alignment(self, width: int) -> None:
         children = []
         child = self.get_first_child()
         while child:
@@ -227,32 +227,37 @@ class JustifiedFlowBox(Gtk.FlowBox):
         if not children:
             return
 
-        w_cell = children[0].get_allocation().width
-        if w_cell < 210:
-            w_cell = 220
+        # Fix margins to default 5px to prevent homogeneous cell width calculation bloat
+        for child in children:
+            if child.get_margin_start() != 5 or child.get_margin_end() != 5:
+                child.set_margin_start(5)
+                child.set_margin_end(5)
 
-        # Dynamically calculate the maximum columns in a row
-        cols = max(1, min(10, width // w_cell))
+        # Collect unique allocated X coordinates and sort them to define physical columns
+        x_coords = [child.get_allocation().x for child in children]
+        unique_x = sorted(list(set(x_coords)))
+        cols = len(unique_x)
+
         if cols <= 1:
             for child in children:
-                if child.get_margin_start() != 5 or child.get_margin_end() != 5:
-                    child.set_margin_start(5)
-                    child.set_margin_end(5)
+                if child.get_halign() != Gtk.Align.START:
+                    child.set_halign(Gtk.Align.START)
             return
 
-        cw = 210
-        min_m = 5
+        for child in children:
+            alloc = child.get_allocation()
+            col_idx = unique_x.index(alloc.x)
 
-        for idx, child in enumerate(children):
-            col_idx = idx % cols
-            delta = max(0, w_cell - cw - 2 * min_m)
-            margin_start = min_m + int(round((col_idx / (cols - 1)) * delta))
-            margin_end = w_cell - cw - margin_start
+            if col_idx == 0:
+                target_align = Gtk.Align.START
+            elif col_idx == cols - 1:
+                target_align = Gtk.Align.END
+            else:
+                target_align = Gtk.Align.CENTER
 
             # Dampen updates to prevent infinite loop of size-allocate signals
-            if child.get_margin_start() != margin_start or child.get_margin_end() != margin_end:
-                child.set_margin_start(margin_start)
-                child.set_margin_end(margin_end)
+            if child.get_halign() != target_align:
+                child.set_halign(target_align)
 
 
 class PortForwardingTab(Gtk.Box):
