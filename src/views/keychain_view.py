@@ -145,6 +145,52 @@ class DetailRow(Gtk.ListBoxRow):
 
 
 
+class JustifiedFlowBox(Gtk.FlowBox):
+    """A Gtk.FlowBox subclass that dynamically adjusts card margins to achieve fixed-width justified spacing."""
+
+    def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
+        super().do_size_allocate(width, height, baseline)
+        self.adjust_margins(width)
+
+    def adjust_margins(self, width: int) -> None:
+        children = []
+        child = self.get_first_child()
+        while child:
+            if isinstance(child, Gtk.FlowBoxChild) and child.get_child():
+                children.append(child)
+            child = child.get_next_sibling()
+
+        if not children:
+            return
+
+        w_cell = children[0].get_allocation().width
+        if w_cell < 210:
+            w_cell = 220
+
+        # Dynamically calculate the maximum columns in a row
+        cols = max(1, min(10, width // w_cell))
+        if cols <= 1:
+            for child in children:
+                if child.get_margin_start() != 5 or child.get_margin_end() != 5:
+                    child.set_margin_start(5)
+                    child.set_margin_end(5)
+            return
+
+        cw = 210
+        min_m = 5
+
+        for idx, child in enumerate(children):
+            col_idx = idx % cols
+            delta = max(0, w_cell - cw - 2 * min_m)
+            margin_start = min_m + int(round((col_idx / (cols - 1)) * delta))
+            margin_end = w_cell - cw - margin_start
+
+            # Dampen updates to prevent infinite loop of size-allocate signals
+            if child.get_margin_start() != margin_start or child.get_margin_end() != margin_end:
+                child.set_margin_start(margin_start)
+                child.set_margin_end(margin_end)
+
+
 class KeychainPage(Gtk.Box):
     """The Keychain Page widget containing the key grid and management forms."""
 
@@ -214,7 +260,7 @@ class KeychainPage(Gtk.Box):
         )
 
         # Grid view (FlowBox)
-        self._flow_box = Gtk.FlowBox()
+        self._flow_box = JustifiedFlowBox()
         self._flow_box.set_valign(Gtk.Align.START)
         self._flow_box.set_max_children_per_line(10)
         self._flow_box.set_homogeneous(True)
@@ -222,7 +268,6 @@ class KeychainPage(Gtk.Box):
         self._flow_box.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self._flow_box.connect("child-activated", self._on_key_selected)
         self._flow_box.connect("selected-children-changed", self._on_selection_changed)
-        self._flow_box.connect("size-allocate", self._on_flow_box_size_allocate)
 
         scroll.set_child(self._flow_box)
         self._left_stack.add_named(scroll, "grid")
@@ -840,42 +885,3 @@ class KeychainPage(Gtk.Box):
             self._parent._show_toast(msg)
         else:
             logger.info(f"Toast: {msg}")
-
-    def _on_flow_box_size_allocate(self, flow_box: Gtk.FlowBox, width: int, height: int, baseline: int) -> None:
-        """Dynamically adjust card horizontal margins to achieve fixed-width justified spacing."""
-        children = []
-        child = flow_box.get_first_child()
-        while child:
-            if isinstance(child, Gtk.FlowBoxChild) and child.get_child():
-                children.append(child)
-            child = child.get_next_sibling()
-
-        if not children:
-            return
-
-        w_cell = children[0].get_allocation().width
-        if w_cell < 210:
-            w_cell = 220
-
-        # Dynamically calculate the maximum columns in a row
-        cols = max(1, min(10, width // w_cell))
-        if cols <= 1:
-            for child in children:
-                if child.get_margin_start() != 5 or child.get_margin_end() != 5:
-                    child.set_margin_start(5)
-                    child.set_margin_end(5)
-            return
-
-        cw = 210
-        min_m = 5
-
-        for idx, child in enumerate(children):
-            col_idx = idx % cols
-            delta = max(0, w_cell - cw - 2 * min_m)
-            margin_start = min_m + int(round((col_idx / (cols - 1)) * delta))
-            margin_end = w_cell - cw - margin_start
-
-            # Dampen updates to prevent infinite loop of size-allocate signals
-            if child.get_margin_start() != margin_start or child.get_margin_end() != margin_end:
-                child.set_margin_start(margin_start)
-                child.set_margin_end(margin_end)
