@@ -28,6 +28,11 @@ _ = gettext.gettext
 class KeyCard(Gtk.FlowBoxChild):
     """A card representing a single SSH key in the Keychain grid."""
 
+    def do_measure(self, orientation, for_size):
+        if orientation == Gtk.Orientation.HORIZONTAL:
+            return 210, 210, -1, -1
+        return Gtk.FlowBoxChild.do_measure(self, orientation, for_size)
+
     # Map key type string prefix -> CSS accent class (top color band)
     _KEY_ACCENT: dict[str, str] = {
         "ED25519": "key-stripe-ed25519",
@@ -177,31 +182,43 @@ class JustifiedFlowBox(Gtk.FlowBox):
         unique_x = sorted(list(set(x_coords)))
         cols = len(unique_x)
 
+        w_cell = children[0].get_allocation().width
+        cw = 210
+
         if cols <= 1:
             for child in children:
                 outer = child.get_child()
-                if outer and outer.get_halign() != Gtk.Align.START:
-                    outer.set_halign(Gtk.Align.START)
+                if outer:
+                    if outer.get_margin_start() != 0 or outer.get_margin_end() != 0:
+                        outer.set_margin_start(0)
+                        outer.set_margin_end(0)
+                    if outer.get_halign() != Gtk.Align.START:
+                        outer.set_halign(Gtk.Align.START)
             return
+
+        # Calculate pixel-perfect equal spacing
+        # g is the visual gap size between cards
+        g = cols * (w_cell - cw) / (cols - 1)
 
         for child in children:
             outer = child.get_child()
             if not outer:
                 continue
 
+            # Ensure halign is FILL on the inner child so margins stretch appropriately
+            if outer.get_halign() != Gtk.Align.FILL:
+                outer.set_halign(Gtk.Align.FILL)
+
             alloc = child.get_allocation()
             col_idx = unique_x.index(alloc.x)
 
-            if col_idx == 0:
-                target_align = Gtk.Align.START
-            elif col_idx == cols - 1:
-                target_align = Gtk.Align.END
-            else:
-                target_align = Gtk.Align.CENTER
+            # Compute margins to offset the card inside FlowBoxChild to achieve uniform gap
+            margin_start = int(round(col_idx * (cw + g) - col_idx * w_cell))
+            margin_end = w_cell - cw - margin_start
 
-            # Apply alignment ONLY to the inner child (outer box) to isolate it from FlowBoxChild allocation
-            if outer.get_halign() != target_align:
-                outer.set_halign(target_align)
+            if outer.get_margin_start() != margin_start or outer.get_margin_end() != margin_end:
+                outer.set_margin_start(margin_start)
+                outer.set_margin_end(margin_end)
 
 
 class KeychainPage(Gtk.Box):
