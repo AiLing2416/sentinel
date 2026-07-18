@@ -149,7 +149,7 @@ class JustifiedFlowBox(Gtk.FlowBox):
     """A Gtk.FlowBox subclass that dynamically adjusts card margins to achieve fixed-width justified spacing."""
 
     def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
-        super().do_size_allocate(width, height, baseline)
+        Gtk.FlowBox.do_size_allocate(self, width, height, baseline)
         self.adjust_margins(width)
 
     def adjust_margins(self, width: int) -> None:
