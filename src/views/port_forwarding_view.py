@@ -24,6 +24,11 @@ _ = gettext.gettext
 class ForwardRuleCard(Gtk.FlowBoxChild):
     """A card representing a port forwarding rule in the grid."""
 
+    def do_measure(self, orientation, for_size):
+        if orientation == Gtk.Orientation.HORIZONTAL:
+            return 210, 210, -1, -1
+        return Gtk.FlowBoxChild.do_measure(self, orientation, for_size)
+
     def __init__(
         self,
         rule: ForwardRule,

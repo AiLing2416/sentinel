@@ -28,6 +28,11 @@ _ = gettext.gettext
 class KeyCard(Gtk.FlowBoxChild):
     """A card representing a single SSH key in the Keychain grid."""
 
+    def do_measure(self, orientation, for_size):
+        if orientation == Gtk.Orientation.HORIZONTAL:
+            return 210, 210, -1, -1
+        return Gtk.FlowBoxChild.do_measure(self, orientation, for_size)
+
     # Map key type string prefix -> CSS accent class (top color band)
     _KEY_ACCENT: dict[str, str] = {
         "ED25519": "key-stripe-ed25519",

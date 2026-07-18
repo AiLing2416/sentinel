@@ -56,6 +56,11 @@ class DetailRow(Gtk.ListBoxRow):
 class HostCard(Gtk.FlowBoxChild):
     """A card representing a connection in the Hosts grid."""
 
+    def do_measure(self, orientation, for_size):
+        if orientation == Gtk.Orientation.HORIZONTAL:
+            return 210, 210, -1, -1
+        return Gtk.FlowBoxChild.do_measure(self, orientation, for_size)
+
     # Maps auth method value -> CSS stripe class (top color band)
     _AUTH_STRIPE: dict[str, str] = {
         "key":            "auth-stripe-key",
@@ -248,6 +253,8 @@ class HostsPage(Gtk.Box):
         clear_host_key_callback: Callable[[Connection], None],
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL)
+        import os
+        logger.warning(f"[SENTINEL DEBUG] Loaded hosts_view.py from: {os.path.abspath(__file__)}")
         self._parent = parent_window
         self._connect_cb = connect_callback
         self._edit_cb = edit_callback
