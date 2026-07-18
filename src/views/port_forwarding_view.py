@@ -21,6 +21,14 @@ import gettext
 _ = gettext.gettext
 
 
+class CardContainer(Gtk.Box):
+    """A wrapper box that overrides measurement to always request 210px width, ignoring margins."""
+    def do_measure(self, orientation, for_size):
+        if orientation == Gtk.Orientation.HORIZONTAL:
+            return 210, 210, -1, -1
+        return Gtk.Box.do_measure(self, orientation, for_size)
+
+
 class ForwardRuleCard(Gtk.FlowBoxChild):
     """A card representing a port forwarding rule in the grid."""
 
@@ -52,7 +60,7 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
         self.add_css_class("forward-card")
 
         # Outer container – identical structure to HostCard
-        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        outer = CardContainer(orientation=Gtk.Orientation.VERTICAL)
         outer.add_css_class("host-card-v2")
 
         _STATUS_STRIPE = {

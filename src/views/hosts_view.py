@@ -53,6 +53,14 @@ class DetailRow(Gtk.ListBoxRow):
 
 
 
+class CardContainer(Gtk.Box):
+    """A wrapper box that overrides measurement to always request 210px width, ignoring margins."""
+    def do_measure(self, orientation, for_size):
+        if orientation == Gtk.Orientation.HORIZONTAL:
+            return 210, 210, -1, -1
+        return Gtk.Box.do_measure(self, orientation, for_size)
+
+
 class HostCard(Gtk.FlowBoxChild):
     """A card representing a connection in the Hosts grid."""
 
@@ -93,7 +101,7 @@ class HostCard(Gtk.FlowBoxChild):
         auth_val = connection.auth_method.value
 
         # Outer container with new card styling
-        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        outer = CardContainer(orientation=Gtk.Orientation.VERTICAL)
         outer.add_css_class("host-card-v2")
         outer.add_css_class(self._AUTH_STRIPE.get(auth_val, "auth-stripe-key"))
         outer.set_size_request(210, -1)

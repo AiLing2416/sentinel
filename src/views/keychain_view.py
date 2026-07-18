@@ -25,6 +25,14 @@ import gettext
 _ = gettext.gettext
 
 
+class CardContainer(Gtk.Box):
+    """A wrapper box that overrides measurement to always request 210px width, ignoring margins."""
+    def do_measure(self, orientation, for_size):
+        if orientation == Gtk.Orientation.HORIZONTAL:
+            return 210, 210, -1, -1
+        return Gtk.Box.do_measure(self, orientation, for_size)
+
+
 class KeyCard(Gtk.FlowBoxChild):
     """A card representing a single SSH key in the Keychain grid."""
 
@@ -63,7 +71,7 @@ class KeyCard(Gtk.FlowBoxChild):
         type_key = next((k for k in self._KEY_ACCENT if raw_type.startswith(k)), None)
 
         # Outer vertical container (top-stripe styled in CSS)
-        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        outer = CardContainer(orientation=Gtk.Orientation.VERTICAL)
         outer.add_css_class("host-card-v2")
         outer.add_css_class(
             self._KEY_ACCENT.get(type_key, "key-stripe-default")
