@@ -542,7 +542,7 @@ class KeychainPage(Gtk.Box):
         is_bw = backend is not None and backend.name == "Bitwarden"
         
         if is_bw:
-            menu_model.append(_("Upload to Bitwarden"), "cardrow.upload_to_bw")
+            menu_model.append(_("Upload"), "cardrow.upload_to_bw")
             
         popover.set_menu_model(menu_model)
         popover.set_parent(card)
