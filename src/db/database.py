@@ -250,7 +250,7 @@ class Database:
         return conns
 
     def delete_connection(self, conn_id: str) -> bool:
-        """Delete a connection by ID. Returns True if deleted."""
+        """Remove a connection by ID. Returns True if removed."""
         if self._path != _default_db_path():
             cur = self._db.execute("DELETE FROM connections WHERE id = ?", (conn_id,))
             self._db.commit()
@@ -370,7 +370,7 @@ class Database:
         return rules
 
     def delete_forward_rule(self, rule_id: str) -> bool:
-        """Delete a forward rule by ID. Returns True if deleted."""
+        """Remove a forward rule by ID. Returns True if removed."""
         if self._path != _default_db_path():
             cur = self._db.execute("DELETE FROM forward_rules WHERE id = ?", (rule_id,))
             self._db.commit()
@@ -433,7 +433,7 @@ class Database:
         return groups
 
     def delete_group(self, group_id: str) -> bool:
-        """Delete a group. Connections in this group will have group_id set to NULL."""
+        """Remove a group. Connections in this group will have group_id set to NULL."""
         if self._path != _default_db_path():
             cur = self._db.execute("DELETE FROM groups WHERE id = ?", (group_id,))
             self._db.commit()

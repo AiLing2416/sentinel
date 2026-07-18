@@ -149,7 +149,7 @@ class SftpService:
             await self._sftp.rename(old_path, new_path)
 
     async def remove(self, path: str, is_dir: bool) -> None:
-        """Delete a remote file or directory (non-recursive for directories)."""
+        """Remove a remote file or directory (non-recursive for directories)."""
         async with self._ctrl_lock:
             if is_dir:
                 await self._sftp.rmdir(path)

@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import logging
 import os
 import subprocess
 from typing import Callable
@@ -11,6 +12,7 @@ import gettext
 from gi.repository import Adw, Gtk, GLib, Gdk, Gio
 from utils.secure import SecureBytes
 
+logger = logging.getLogger(__name__)
 _ = gettext.gettext
 
 
@@ -648,23 +650,28 @@ class AppChooserReplica(Adw.Window):
                 "print(json.dumps(apps))"
             ]
             
-            GLib.idle_add(lambda: print("Sentinel: Scanning host-side applications via Gio..."))
+            logger.info("Sentinel: Scanning host-side applications via Gio...")
             proc = subprocess.Popen(host_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out, err = proc.communicate()
+            try:
+                out, err = proc.communicate(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                out, err = proc.communicate()
+                logger.error("Sentinel: Host-scan timed out after 10 seconds.")
             
             if err:
                 err_msg = err.decode()
-                GLib.idle_add(lambda: print(f"Sentinel: Host-scan diagnostic: {err_msg}"))
+                logger.warning(f"Sentinel: Host-scan diagnostic: {err_msg}")
                 
             if out:
                 host_apps = json.loads(out.decode())
                 n = len(host_apps)
-                GLib.idle_add(lambda: print(f"Sentinel: Discovered {n} host applications."))
+                logger.info(f"Sentinel: Discovered {n} host applications.")
             else:
-                GLib.idle_add(lambda: print("Sentinel: Host-scan returned no applications."))
+                logger.info("Sentinel: Host-scan returned no applications.")
         except Exception as e:
             err_str = str(e)
-            GLib.idle_add(lambda: print(f"Sentinel: Host-scan system error: {err_str}"))
+            logger.error(f"Sentinel: Host-scan system error: {err_str}")
 
         # Deduplicate and sort: Recommended first
         seen_names = set()

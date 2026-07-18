@@ -628,7 +628,7 @@ class BitwardenBackend(VaultBackend):
                         vm = VaultManager.get()
                         if vm.is_unlocked:
                             vm.cache_password(item_id=item_id, label="Bitwarden Cached", password=sb)
-                    except: pass
+                    except Exception: pass
                     
                     return sb
             except Exception as direct_err:
@@ -667,7 +667,7 @@ class BitwardenBackend(VaultBackend):
                 vm = VaultManager.get()
                 if vm.is_unlocked:
                     vm.cache_password(item_id=item_id, label=item.get("name", item_id), password=sb)
-            except: pass
+            except Exception: pass
 
             return sb
         except Exception as e:

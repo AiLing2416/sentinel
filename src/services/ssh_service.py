@@ -152,19 +152,19 @@ class SSHService:
                     
                 def write(self, data: bytes):
                     try: os.write(self.master_fd, data)
-                    except: pass
+                    except OSError: pass
                     
                 def resize(self, columns: int, rows: int):
                     try:
                         s = struct.pack('HHHH', rows, columns, 0, 0)
                         fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, s)
-                    except: pass
+                    except OSError: pass
                     
                 def close(self):
                     try:
                         self.process.terminate()
                         os.close(self.master_fd)
-                    except: pass
+                    except OSError: pass
 
             bridge = LocalBridge(process, master_fd)
             asyncio.create_task(pty_reader())

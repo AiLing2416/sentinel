@@ -670,7 +670,7 @@ class TerminalTab(Gtk.Box):
             self._terminal.search_set_regex(regex, 0)
             self._terminal.search_set_wrap_around(True)
             self._on_search_next()
-        except:
+        except Exception:
             pass
 
     def _on_search_next(self) -> None:
@@ -720,7 +720,7 @@ class TerminalTab(Gtk.Box):
             try:
                 os.close(self._slave_fd)
                 self._slave_fd = 0
-            except: pass
+            except OSError: pass
 
         if self._bg_task and not self._bg_task.done():
             self._bg_task.cancel()

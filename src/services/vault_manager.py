@@ -238,7 +238,7 @@ class VaultManager:
         return self._vault.get_password(item_id)
 
     def delete_cached_password(self, item_id: str) -> None:
-        """Delete cached password."""
+        """Remove cached password."""
         if self._vault.is_unlocked:
             self._vault.delete_item(f"pwd:{item_id}")
 
@@ -373,7 +373,7 @@ class VaultManager:
         return self._vault.list_items(item_type)
 
     def delete_item(self, item_id: str) -> None:
-        """Delete a specific cached item."""
+        """Remove a specific cached item."""
         if self._vault.is_unlocked:
             self._vault.delete_item(item_id)
 

@@ -54,7 +54,7 @@ class TerminalThemeWindow(Adw.Window):
         data = self._db.get_meta("custom_terminal_themes", "[]")
         try:
             return json.loads(data)
-        except:
+        except Exception:
             return []
 
     def _save_custom_themes(self) -> None:
@@ -149,7 +149,7 @@ class TerminalThemeWindow(Adw.Window):
         self._preset_handler_id = self._theme_row.connect("notify::selected", self._on_theme_selection_changed)
         mgmt_group.add(self._theme_row)
         
-        # Theme specific actions (Rename, Delete, Share)
+        # Theme specific actions (Rename, Remove, Share)
         actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6, halign=Gtk.Align.END)
         actions_box.set_margin_top(6)
         
@@ -158,11 +158,11 @@ class TerminalThemeWindow(Adw.Window):
         self._rename_btn.add_css_class("flat")
         self._rename_btn.connect("clicked", lambda _: self._on_rename_theme())
         
-        self._delete_btn = Gtk.Button(icon_name="user-trash-symbolic")
-        self._delete_btn.set_tooltip_text(_("Delete Theme"))
-        self._delete_btn.add_css_class("flat")
-        self._delete_btn.add_css_class("destructive-action")
-        self._delete_btn.connect("clicked", lambda _: self._on_delete_theme())
+        self._remove_btn = Gtk.Button(icon_name="user-trash-symbolic")
+        self._remove_btn.set_tooltip_text(_("Remove Theme"))
+        self._remove_btn.add_css_class("flat")
+        self._remove_btn.add_css_class("destructive-action")
+        self._remove_btn.connect("clicked", lambda _: self._on_remove_theme())
         
         self._export_btn = Gtk.Button(label=_("Copy Code"), icon_name="edit-copy-symbolic")
         self._export_btn.set_tooltip_text(_("Copy sharing code to clipboard"))
@@ -170,12 +170,12 @@ class TerminalThemeWindow(Adw.Window):
         self._export_btn.connect("clicked", lambda _: self._on_export_code())
         
         actions_box.append(self._rename_btn)
-        actions_box.append(self._delete_btn)
+        actions_box.append(self._remove_btn)
         actions_box.append(self._export_btn)
         
         # Add actions row
         self._mgmt_actions_row = Adw.ActionRow(title=_("Active Theme Settings"), 
-                                              subtitle=_("Rename or delete your custom theme"))
+                                               subtitle=_("Rename or remove your custom theme"))
         self._mgmt_actions_row.add_suffix(actions_box)
         mgmt_group.add(self._mgmt_actions_row)
         
@@ -267,7 +267,7 @@ class TerminalThemeWindow(Adw.Window):
     def _update_action_states(self) -> None:
         is_custom = not self._current_theme.get("is_preset", False)
         self._rename_btn.set_sensitive(is_custom)
-        self._delete_btn.set_sensitive(is_custom)
+        self._remove_btn.set_sensitive(is_custom)
 
     def _create_color_row(self, title: str, key: str) -> Adw.ActionRow:
         row = Adw.ActionRow(title=title)
@@ -358,18 +358,18 @@ class TerminalThemeWindow(Adw.Window):
         dialog.present()
         GLib.idle_add(_on_focus_grabbed)
 
-    def _on_delete_theme(self) -> None:
+    def _on_remove_theme(self) -> None:
         dialog = Adw.AlertDialog(
-            heading=_("Delete Theme?"),
-            body=_("Are you sure you want to delete '{name}'?").format(name=self._current_theme["name"])
+            heading=_("Remove Theme?"),
+            body=_("Are you sure you want to remove '{name}'?").format(name=self._current_theme["name"])
         )
         dialog.set_transient_for(self)
         dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("delete", _("Delete"))
-        dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.add_response("remove", _("Remove"))
+        dialog.set_response_appearance("remove", Adw.ResponseAppearance.DESTRUCTIVE)
         
         def _on_response(d, response):
-            if response == "delete":
+            if response == "remove":
                 # Remove from custom list
                 idx_to_remove = -1
                 for i, t in enumerate(self._custom_themes):

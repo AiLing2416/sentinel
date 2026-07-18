@@ -52,11 +52,14 @@ htmlcov/
 # Flatpak
 .flatpak-builder/
 build-dir/
+build-flatpak/
 repo/
 
 # Project specific
 test_*.py
 test_*.sh
+scan-demo.py
+demos/
 generate_icons.py
 apply_manual_icon.py
 Sentinel.svg
@@ -66,4 +69,4 @@ Sentinel.svg
 
 # Generated
 messages.mo
-sentinel.flatpak
+*.flatpak

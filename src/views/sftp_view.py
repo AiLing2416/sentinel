@@ -296,7 +296,7 @@ class SftpTab(Gtk.Box):
         m.append(_("Open With…"),   "sftp.open-with")
         edit_sec = Gio.Menu()
         edit_sec.append(_("Rename"), "sftp.rename")
-        edit_sec.append(_("Delete"), "sftp.delete")
+        edit_sec.append(_("Remove"), "sftp.remove")
         m.append_section(None, edit_sec)
         xfer_sec = Gio.Menu()
         xfer_sec.append(_("Upload Changes"), "sftp.sync-back")
@@ -309,7 +309,7 @@ class SftpTab(Gtk.Box):
             ("open",       lambda *_: self._open_selected(use_chooser=False)),
             ("open-with",  lambda *_: self._open_selected(use_chooser=True)),
             ("rename",     lambda *_: self._rename_selected()),
-            ("delete",     lambda *_: self._delete_selected()),
+            ("remove",     lambda *_: self._remove_selected()),
             ("download",   lambda *_: self._download_selected()),
             ("sync-back",  lambda *_: self._sync_selected()),
             ("new-file",   lambda *_: self._new_entry(is_folder=False)),
@@ -451,7 +451,7 @@ class SftpTab(Gtk.Box):
         except Exception as exc:
             logger.error("DND Download failed: %s", exc)
             try: os.remove(tmp_path)
-            except: pass
+            except OSError: pass
         finally:
             self._dnd_downloads.discard(remote_path)
             GLib.idle_add(lambda: self._update_dnd_ui(False))
@@ -694,7 +694,7 @@ class SftpTab(Gtk.Box):
                     can_sync = True
                     break
 
-        for name in ("open", "open-with", "rename", "delete", "download", "sync-back"):
+        for name in ("open", "open-with", "rename", "remove", "download", "sync-back"):
             act = self._ag.lookup_action(name)
             if act:
                 if name == "sync-back":
@@ -763,7 +763,7 @@ class SftpTab(Gtk.Box):
                             guessed_type, uncertainty = Gio.content_type_guess(path, chunk)
                             if not uncertainty:
                                 content_type = guessed_type
-                except:
+                except Exception:
                     pass
             
             # 3. Text fallback for extensionless files (very common for development files like 'print', 'README')
@@ -818,7 +818,7 @@ class SftpTab(Gtk.Box):
             if content_type in ("application/x-zerosize", "application/octet-stream"):
                 guessed, _ = Gio.content_type_guess(local_path, None)
                 if guessed: content_type = guessed
-        except: pass
+        except Exception: pass
 
         if not self._is_flatpak:
             # Native: just use standard portal
@@ -885,7 +885,7 @@ class SftpTab(Gtk.Box):
                     self._do_call_portal_v3("", local_path, ask, content_type)
                 finally:
                     try: os.close(fd)
-                    except: pass
+                    except OSError: pass
 
             conn.call_with_unix_fd_list(
                 "org.freedesktop.portal.Documents",
@@ -936,7 +936,7 @@ class SftpTab(Gtk.Box):
                     logger.error("SFTP: Portal OpenFile failed: %s", e)
                 finally:
                     try: os.close(fd)
-                    except: pass
+                    except OSError: pass
 
             conn.call_with_unix_fd_list(
                 "org.freedesktop.portal.Desktop",
@@ -955,7 +955,7 @@ class SftpTab(Gtk.Box):
             logger.error("SFTP: Portal setup failed: %s", exc)
             if fd >= 0:
                 try: os.close(fd)
-                except: pass
+                except OSError: pass
             self._fallback_open(local_path)
 
     def _fallback_open(self, local_path: str) -> None:
@@ -1146,27 +1146,27 @@ class SftpTab(Gtk.Box):
             logger.error("rename failed: %s", msg)
             GLib.idle_add(lambda: self._set_loading(False, msg))
 
-    # ── Delete ──────────────────────────────────────────────────────
+    # ── Remove ──────────────────────────────────────────────────────
 
-    def _delete_selected(self) -> None:
+    def _remove_selected(self) -> None:
         item = self._get_selected()
         if item is None:
             return
         from views.dialogs import prompt_confirmation
         prompt_confirmation(
-            self.get_root(), _("Delete"), item.name, _("Delete"), True,
-            lambda yes: self._run_async(self._do_delete(item)) if yes else None,
+            self.get_root(), _("Remove"), item.name, _("Remove"), True,
+            lambda yes: self._run_async(self._do_remove(item)) if yes else None,
         )
 
-    async def _do_delete(self, item: SftpFile) -> None:
+    async def _do_remove(self, item: SftpFile) -> None:
         path = os.path.join(self._current_path, item.name)
-        GLib.idle_add(lambda: self._set_loading(True, _("Deleting…")))
+        GLib.idle_add(lambda: self._set_loading(True, _("Removing…")))
         try:
             await self._backend.remove(path, item.is_dir)
             GLib.idle_add(lambda: self._load_path(self._current_path))
         except Exception as exc:
             msg = str(exc)
-            logger.error("delete failed: %s", msg)
+            logger.error("remove failed: %s", msg)
             GLib.idle_add(lambda: self._set_loading(False, msg))
 
     # ── Download ────────────────────────────────────────────────────
@@ -1310,7 +1310,7 @@ class SftpTab(Gtk.Box):
             
             # Clean up relay
             try: os.remove(local_relay)
-            except: pass
+            except OSError: pass
             
             GLib.idle_add(lambda: self._load_path(self._current_path))
         except Exception as exc:
@@ -1372,7 +1372,7 @@ class SftpTab(Gtk.Box):
                 finally:
                     # In async callback, ensure we close the captured fd
                     try: os.close(fd or -1)
-                    except: pass
+                    except OSError: pass
 
             conn.call_with_unix_fd_list(
                 "org.freedesktop.portal.Documents", "/org/freedesktop/portal/documents",
@@ -1415,7 +1415,7 @@ class SftpTab(Gtk.Box):
                     logger.error("Portal fallback failed: %s", ex)
                 finally:
                     try: os.close(fd)
-                    except: pass
+                    except OSError: pass
 
             conn.call_with_unix_fd_list(
                 "org.freedesktop.portal.Documents", "/org/freedesktop/portal/documents",
@@ -1423,4 +1423,4 @@ class SftpTab(Gtk.Box):
                 GLib.Variant("(hbb)", (0, True, False)),
                 None, Gio.DBusCallFlags.NONE, -1, fd_list, None, _on_doc_added
             )
-        except: pass
+        except Exception: pass

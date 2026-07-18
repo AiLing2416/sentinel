@@ -513,7 +513,7 @@ class SecureVault:
             return None, None
 
     def delete_item(self, item_id: str) -> None:
-        """Delete a stored item by ID."""
+        """Remove a stored item by ID."""
         assert self._conn is not None
         self._conn.execute("DELETE FROM vault_items WHERE id = ?", (item_id,))
         self._conn.commit()
@@ -628,12 +628,12 @@ class SecureVault:
         return conns
 
     def delete_connection(self, conn_id: str) -> None:
-        """Delete a connection and its associated port forwarding rules."""
+        """Remove a connection and its associated port forwarding rules."""
         assert self._conn is not None
         self.delete_item(conn_id)
         self.delete_item(f"pwd:{conn_id}")
         
-        # Delete rules for this connection
+        # Remove rules for this connection
         rules = self.list_forward_rules()
         for r in rules:
             if r.connection_id == conn_id:
@@ -689,7 +689,7 @@ class SecureVault:
         return groups
 
     def delete_group(self, group_id: str) -> None:
-        """Delete a group and clear group_id references in connections."""
+        """Remove a group and clear group_id references in connections."""
         assert self._conn is not None
         self.delete_item(group_id)
         
@@ -852,14 +852,14 @@ class SecureVault:
         return keys
 
     def clear_all(self) -> None:
-        """Delete all vault items (but keep the master key envelope)."""
+        """Remove all vault items (but keep the master key envelope)."""
         assert self._conn is not None
         self._conn.execute("DELETE FROM vault_items")
         self._conn.commit()
         logger.warning("SecureVault: All items cleared.")
 
     def destroy(self) -> None:
-        """DANGER: Delete all vault data including the master key. Cannot be undone."""
+        """DANGER: Remove all vault data including the master key. Cannot be undone."""
         assert self._conn is not None
         self._conn.execute("DELETE FROM vault_items")
         self._conn.execute("DELETE FROM vault_meta")
