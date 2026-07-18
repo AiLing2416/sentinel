@@ -46,7 +46,7 @@ class KeyCard(Gtk.FlowBoxChild):
         super().__init__()
         self.key_data = key_data
         self.set_size_request(210, -1)
-        self.set_halign(Gtk.Align.START)
+        self.set_halign(Gtk.Align.FILL)
         self.set_margin_start(5)
         self.set_margin_end(5)
         self.set_margin_top(5)
