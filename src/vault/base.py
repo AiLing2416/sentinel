@@ -78,3 +78,13 @@ class VaultBackend(ABC):
     async def sync(self) -> None:
         """Synchronize local cache with the remote server, if supported by the backend."""
         pass
+
+    async def upload_ssh_key(
+        self, label: str, private_key: str, public_key: str | None = None, passphrase: str | None = None
+    ) -> str:
+        """Upload or update an SSH Key in the vault.
+        
+        Only supported by backends that integrate with cloud vault (e.g. Bitwarden).
+        """
+        raise NotImplementedError("This backend does not support uploading SSH keys.")
+

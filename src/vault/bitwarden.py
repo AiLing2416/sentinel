@@ -937,7 +937,87 @@ class BitwardenBackend(VaultBackend):
             logger.error(f"Failed to get sync note '{item_id}': {e}")
             raise
 
+    async def upload_ssh_key(
+        self, label: str, private_key: str, public_key: str | None = None, passphrase: str | None = None
+    ) -> str:
+        """Upload or update an SSH Key in Bitwarden with matching label."""
+        if not await self.is_unlocked():
+            raise RuntimeError(_("Bitwarden vault is locked"))
+
+        # 1. Reconstruct public key if missing
+        fingerprint = None
+        if not public_key or not public_key.strip():
+            try:
+                from utils.ssh_key_utils import extract_public_key_from_private
+                public_key, fingerprint, _ = extract_public_key_from_private(private_key, passphrase)
+            except Exception as e:
+                logger.error(f"Bitwarden: Failed to generate public key from private key: {e}")
+
+        if public_key and not fingerprint:
+            try:
+                from utils.ssh_key_utils import calculate_fingerprint
+                fingerprint = calculate_fingerprint(public_key)
+            except Exception:
+                pass
+
+        # 2. Search for existing item with type=5 and same name
+        existing_item_id = None
+        try:
+            items_raw = await self._run_bw(["list", "items", "--search", label])
+            items = json.loads(items_raw)
+            for item in items:
+                if item.get("type") == 5 and item.get("name") == label:
+                    existing_item_id = item.get("id")
+                    break
+        except Exception as e:
+            logger.warning(f"Bitwarden: Error searching for existing SSH key: {e}")
+
+        # 3. Create or Edit
+        if existing_item_id:
+            # Edit existing
+            logger.info(f"Bitwarden: Found existing SSH Key '{label}' (ID: {existing_item_id}), updating...")
+            res = await self._run_bw(["get", "item", existing_item_id])
+            item_data = json.loads(res)
+            
+            if "sshKey" not in item_data or not isinstance(item_data["sshKey"], dict):
+                item_data["sshKey"] = {}
+                
+            item_data["sshKey"]["privateKey"] = private_key
+            if public_key:
+                item_data["sshKey"]["publicKey"] = public_key
+            if passphrase is not None:
+                item_data["sshKey"]["passphrase"] = passphrase
+            if fingerprint:
+                item_data["sshKey"]["keyFingerprint"] = fingerprint
+                
+            encoded = await self._run_bw(["encode"], input_str=json.dumps(item_data))
+            await self._run_bw(["edit", "item", existing_item_id], input_str=encoded)
+            return existing_item_id
+        else:
+            # Create new
+            logger.info(f"Bitwarden: Creating new SSH Key '{label}'...")
+            item_data = {
+                "organizationId": None,
+                "folderId": None,
+                "type": 5,
+                "name": label,
+                "notes": None,
+                "favorite": False,
+                "fields": [],
+                "sshKey": {
+                    "privateKey": private_key,
+                    "publicKey": public_key or "",
+                    "passphrase": passphrase or "",
+                    "keyFingerprint": fingerprint or ""
+                }
+            }
+            encoded = await self._run_bw(["encode"], input_str=json.dumps(item_data))
+            res = await self._run_bw(["create", "item"], input_str=encoded)
+            created = json.loads(res)
+            return created["id"]
+
     # ── Helpers ─────────────────────────────────────────────────
+
 
     def _try_load_cached_session(self) -> None:
         """Try to restore a saved Bitwarden session from the local SecureVault."""

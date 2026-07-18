@@ -536,6 +536,14 @@ class KeychainPage(Gtk.Box):
         popover = Gtk.PopoverMenu()
         menu_model = Gio.Menu()
         menu_model.append(_("Remove"), "cardrow.remove")
+        
+        from services.vault_service import VaultService
+        backend = VaultService.get().active_backend
+        is_bw = backend is not None and backend.name == "Bitwarden"
+        
+        if is_bw:
+            menu_model.append(_("Upload to Bitwarden"), "cardrow.upload_to_bw")
+            
         popover.set_menu_model(menu_model)
         popover.set_parent(card)
         popover.set_has_arrow(False)
@@ -547,7 +555,13 @@ class KeychainPage(Gtk.Box):
         c_remove.connect("activate", lambda *_: self._remove_key(card.key_data))
         action_group.add_action(c_remove)
 
+        if is_bw:
+            c_upload = Gio.SimpleAction.new("upload_to_bw", None)
+            c_upload.connect("activate", lambda *_: self._upload_to_bw(card.key_data))
+            action_group.add_action(c_upload)
+
         card.insert_action_group("cardrow", action_group)
+
 
         gesture = Gtk.GestureClick.new()
         gesture.set_button(Gdk.BUTTON_SECONDARY)
@@ -831,6 +845,64 @@ class KeychainPage(Gtk.Box):
     def _on_delete_clicked(self, _btn: Gtk.Button) -> None:
         if self._selected_key:
             self._remove_key(self._selected_key)
+
+    def _upload_to_bw(self, key_data: dict) -> None:
+        from services.vault_service import VaultService
+        from services.vault_manager import VaultManager
+        from services.ssh_service import SSHService
+        from gi.repository import GLib
+
+        k_id = key_data["id"]
+        k_label = key_data["label"]
+
+        # 1. Fetch decrypted key from vault
+        vm = VaultManager.get()
+        k_data = vm.get_global_key(k_id)
+        if not k_data or not k_data.get("private_key"):
+            self._show_toast(_("Failed to load key data from local vault."))
+            return
+
+        priv_sb = k_data["private_key"]
+        pub_key = k_data.get("public_key")
+        passphrase_sb = k_data.get("passphrase")
+
+        priv_str = priv_sb.unsafe_get_str()
+        pass_str = passphrase_sb.unsafe_get_str() if passphrase_sb else None
+
+        # 2. Get active backend
+        backend = VaultService.get().active_backend
+        if not backend or backend.name != "Bitwarden":
+            self._show_toast(_("Bitwarden is not the active vault backend."))
+            return
+
+        # Show initial toast
+        self._show_toast(_("Uploading '{name}' to Bitwarden...").format(name=k_label))
+
+        async def _upload_task():
+            try:
+                # We need to call upload_ssh_key on BitwardenBackend
+                await backend.upload_ssh_key(
+                    label=k_label,
+                    private_key=priv_str,
+                    public_key=pub_key,
+                    passphrase=pass_str
+                )
+                
+                # Success callback
+                def _on_success():
+                    self._show_toast(_("Successfully uploaded '{name}' to Bitwarden.").format(name=k_label))
+                    return False
+                GLib.idle_add(_on_success)
+            except Exception as e:
+                # Error callback
+                def _on_error():
+                    self._show_toast(_("Failed to upload to Bitwarden: {err}").format(err=str(e)))
+                    return False
+                GLib.idle_add(_on_error)
+
+        # Run on the background thread
+        SSHService().engine.run_coroutine(_upload_task())
+
 
     # ── Toast / Overlay ───────────────────────────────────────
 
