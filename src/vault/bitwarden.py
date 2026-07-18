@@ -960,6 +960,17 @@ class BitwardenBackend(VaultBackend):
             except Exception:
                 pass
 
+        # Retrieve configured folder ID from DB metadata
+        folder_id = None
+        try:
+            from db.database import Database
+            db = Database()
+            db.open()
+            folder_id = db.get_meta("vault_folder_id")
+            db.close()
+        except Exception as e:
+            logger.warning(f"Bitwarden: Failed to retrieve vault_folder_id: {e}")
+
         # 2. Search for existing item with type=5 and same name
         existing_item_id = None
         try:
@@ -989,6 +1000,8 @@ class BitwardenBackend(VaultBackend):
                 item_data["sshKey"]["passphrase"] = passphrase
             if fingerprint:
                 item_data["sshKey"]["keyFingerprint"] = fingerprint
+            if folder_id:
+                item_data["folderId"] = folder_id
                 
             encoded = await self._run_bw(["encode"], input_str=json.dumps(item_data))
             await self._run_bw(["edit", "item", existing_item_id], input_str=encoded)
@@ -998,7 +1011,7 @@ class BitwardenBackend(VaultBackend):
             logger.info(f"Bitwarden: Creating new SSH Key '{label}'...")
             item_data = {
                 "organizationId": None,
-                "folderId": None,
+                "folderId": folder_id,
                 "type": 5,
                 "name": label,
                 "notes": None,
@@ -1015,6 +1028,7 @@ class BitwardenBackend(VaultBackend):
             res = await self._run_bw(["create", "item"], input_str=encoded)
             created = json.loads(res)
             return created["id"]
+
 
     # ── Helpers ─────────────────────────────────────────────────
 
