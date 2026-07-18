@@ -1377,3 +1377,19 @@ msgstr "Duplicate"
 
 msgid "Duplicate in a new window"
 msgstr "Duplicate in a new window"
+
+msgid "Upload"
+msgstr "Upload"
+
+#, python-brace-format
+msgid "Uploading '{name}' to Bitwarden..."
+msgstr "Uploading '{name}' to Bitwarden..."
+
+#, python-brace-format
+msgid "Successfully uploaded '{name}' to Bitwarden."
+msgstr "Successfully uploaded '{name}' to Bitwarden."
+
+#, python-brace-format
+msgid "Failed to upload to Bitwarden: {err}"
+msgstr "Failed to upload to Bitwarden: {err}"
+

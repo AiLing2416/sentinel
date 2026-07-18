@@ -1984,3 +1984,18 @@ msgstr "复制"
 
 msgid "Duplicate in a new window"
 msgstr "在新窗口中复制"
+
+msgid "Upload"
+msgstr "上传"
+
+#, python-brace-format
+msgid "Uploading '{name}' to Bitwarden..."
+msgstr "正在上传 '{name}' 到 Bitwarden..."
+
+#, python-brace-format
+msgid "Successfully uploaded '{name}' to Bitwarden."
+msgstr "成功上传 '{name}' 到 Bitwarden。"
+
+#, python-brace-format
+msgid "Failed to upload to Bitwarden: {err}"
+msgstr "上传到 Bitwarden 失败: {err}"

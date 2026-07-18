@@ -1962,3 +1962,18 @@ msgstr "Duplizieren"
 
 msgid "Duplicate in a new window"
 msgstr "In einem neuen Fenster duplizieren"
+
+msgid "Upload"
+msgstr "Hochladen"
+
+#, python-brace-format
+msgid "Uploading '{name}' to Bitwarden..."
+msgstr "‘{name}’ wird auf Bitwarden hochgeladen..."
+
+#, python-brace-format
+msgid "Successfully uploaded '{name}' to Bitwarden."
+msgstr "‘{name}’ erfolgreich auf Bitwarden hochgeladen."
+
+#, python-brace-format
+msgid "Failed to upload to Bitwarden: {err}"
+msgstr "Fehler beim Hochladen auf Bitwarden: {err}"
