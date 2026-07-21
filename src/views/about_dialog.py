@@ -20,7 +20,7 @@ from services.updater import UpdaterService
 _ = gettext.gettext
 logger = logging.getLogger(__name__)
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 
 class SentinelAboutDialog(Adw.Window):
     """Custom About window styled like Adw.AboutDialog with check-update features."""

@@ -38,6 +38,11 @@ flatpak run io.github.ailing2416.sentinel
 
 Built with Python 3, PyGObject, and GTK4, following the GNOME Human Interface Guidelines (Adwaita). The project uses the Meson build system and supports Flatpak packaging.
 
+## Release Notes (v0.3.1)
+
+- **License Addition**: Added the official GPL-3.0 license file to the project root directory.
+- **Version Bump**: Updated the application version to v0.3.1 across the project configuration files.
+
 ## Release Notes (v0.3.0)
 
 - **SSH Port Forwarding Management**: Complete management of Local, Remote, and Dynamic (SOCKS) port forwarding rules executing on dedicated background SSH channels. Added local port validation, default hostname fallbacks, and a redesigned card grid with a slide-out editor.
