@@ -1990,3 +1990,68 @@ msgstr "成功上傳 '{name}' 到 Bitwarden。"
 #, python-brace-format
 msgid "Failed to upload to Bitwarden: {err}"
 msgstr "上傳到 Bitwarden 失敗: {err}"
+
+msgid "Updates"
+msgstr "更新"
+
+msgid "Update Mode"
+msgstr "更新模式"
+
+msgid "Choose update action"
+msgstr "選擇更新操作"
+
+msgid "Check Only"
+msgstr "僅檢查"
+
+msgid "Check and Install"
+msgstr "檢查並安裝"
+
+msgid "Check GitHub Releases for updates"
+msgstr "在 GitHub Releases 上檢查更新"
+
+msgid "Check Now"
+msgstr "立即檢查"
+
+msgid "Checking for updates..."
+msgstr "正在檢查更新..."
+
+msgid "You are running the latest version."
+msgstr "您目前執行的是最新版本。"
+
+#, python-brace-format
+msgid "Beta version (latest release: {v})"
+msgstr "測試版/開發版（最新發布版: {v}）"
+
+#, python-brace-format
+msgid "New version {v} available!"
+msgstr "檢測到新版本 {v}！"
+
+msgid "Error: Not a Flatpak environment."
+msgstr "錯誤：非 Flatpak 環境，無法安裝。"
+
+msgid "Error: System Flatpak detected. Only user Flatpak supports auto-update."
+msgstr "錯誤：檢測到系統級 Flatpak，僅支持用戶態安裝更新。"
+
+msgid "Error: No matching package found."
+msgstr "錯誤：未找到匹配的安裝包。"
+
+#, python-brace-format
+msgid "Downloading version {v}..."
+msgstr "正在下載版本 {v}..."
+
+msgid "Installing..."
+msgstr "正在安裝..."
+
+msgid "Install complete! Please restart Sentinel."
+msgstr "安裝完成！請重啟 Sentinel。"
+
+#, python-brace-format
+msgid "Installation failed: {err}"
+msgstr "安裝失敗：{err}"
+
+msgid "Failed to connect to GitHub."
+msgstr "無法連接到 GitHub。"
+
+#, python-brace-format
+msgid "Check failed: {err}"
+msgstr "檢查失敗：{err}"

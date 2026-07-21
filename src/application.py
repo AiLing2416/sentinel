@@ -181,18 +181,9 @@ class SentinelApplication(Adw.Application):
         self.quit()
 
     def _on_about(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
-        about = Adw.AboutDialog(
-            application_name=_("Sentinel"),
-            application_icon="utilities-terminal",
-            developer_name=_("Sentinel Contributors"),
-            version="0.3.0",
-            developers=[_("Sentinel Contributors")],
-            copyright=_("© 2026 Sentinel Contributors"),
-            license_type=Gtk.License.GPL_3_0,
-            comments=_("A secure GNOME SSH connection manager\nwith password manager integration."),
-            website="https://github.com/AiLing2416/sentinel",
-        )
-        about.present(self.props.active_window)
+        from views.about_dialog import SentinelAboutDialog
+        about = SentinelAboutDialog(self.props.active_window)
+        about.present()
 
     def _on_new_connection(
         self, _action: Gio.SimpleAction, _param: GLib.Variant | None
