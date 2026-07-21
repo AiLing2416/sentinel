@@ -383,10 +383,6 @@ class SSHService:
                             continue
                         else: raise asyncio.CancelledError("Host key verification rejected")
                     raise e
-                finally:
-                    _p = kwargs.get("password")
-                    if isinstance(_p, bytearray):
-                        for i in range(len(_p)): _p[i] = 0
 
         except asyncio.CancelledError:
             if "on_cancelled" in ui_callbacks: call_ui_sync(ui_callbacks["on_cancelled"])
@@ -395,6 +391,11 @@ class SSHService:
             err_msg = f"Authentication failed: {e}" if isinstance(e, asyncssh.PermissionDenied) else f"Connection failed: {e}"
             call_ui_sync(ui_callbacks["on_error"], err_msg)
             return None
+        finally:
+            if "kwargs" in locals():
+                _p = kwargs.get("password")
+                if isinstance(_p, bytearray):
+                    for i in range(len(_p)): _p[i] = 0
 
     async def connect_and_start_session(
         self,
