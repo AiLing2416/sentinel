@@ -541,7 +541,9 @@ class TerminalTab(Gtk.Box):
                 terminal.disconnect(self._reconnect_sid)
                 self._reconnect_sid = 0
             self._status_label.set_label(_("Reconnecting…"))
-            self._terminal.reset(True, True)
+            # Reset terminal state (exit alternate screen, show cursor, reset formatting) without clearing screen/history
+            self._terminal.feed(b"\033[?1049l\033[?25h\033[0m")
+            self._terminal.feed(f"\r\n\033[1;32m[{_('Reconnecting…')}]\033[0m\r\n".encode("utf-8"))
             if self.is_remote:
                 self._connect_remote()
             else:
@@ -726,7 +728,7 @@ class TerminalTab(Gtk.Box):
             self._bg_task.cancel()
             
         if self._child_pid is not None:
-            import signal, os
+            import signal
             try:
                 os.kill(self._child_pid, signal.SIGHUP)
             except ProcessLookupError:
