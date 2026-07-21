@@ -764,10 +764,18 @@ class BitwardenBackend(VaultBackend):
 
             # Build the material object
             pem = key_data.encode() if isinstance(key_data, str) else key_data
+            k_type = "unknown"
+            try:
+                from utils.ssh_key_utils import extract_public_key_from_private
+                _, _, extracted_type = extract_public_key_from_private(pem.decode("utf-8"), passphrase)
+                k_type = extracted_type
+            except Exception:
+                pass
+
             material = SSHKeyMaterial(
                 private_key_pem=SecureBytes(pem),
                 passphrase=SecureBytes(passphrase.encode()) if passphrase else None,
-                key_type="unknown"
+                key_type=k_type
             )
             # Update in-memory cache
             self._set_cached_credential(item_id, "ssh-key", material)

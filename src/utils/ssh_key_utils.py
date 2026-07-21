@@ -7,7 +7,7 @@ from __future__ import annotations
 import base64
 import hashlib
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed25519, rsa
 
 
 def generate_key_pair(
@@ -104,6 +104,10 @@ def extract_public_key_from_private(
         key_type = "ED25519"
     elif isinstance(private_key, rsa.RSAPrivateKey):
         key_type = f"RSA-{private_key.key_size}"
+    elif isinstance(private_key, ec.EllipticCurvePrivateKey):
+        key_type = f"ECDSA-{private_key.curve.key_size}"
+    elif isinstance(private_key, dsa.DSAPrivateKey):
+        key_type = f"DSA-{private_key.key_size}"
     else:
         key_type = "UNKNOWN"
         
