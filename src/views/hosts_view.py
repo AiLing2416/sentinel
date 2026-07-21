@@ -631,14 +631,8 @@ class HostsPage(Gtk.Box):
                                     def _idle_update():
                                         if self._editing_conn and self._editing_conn.vault_item_id == item_id:
                                             self._update_vault_label(item_id, name)
-                                            # Update connection model and save back so it is persisted
+                                            # Update connection model in memory so it is persisted when user clicks Save
                                             self._editing_conn.vault_item_name = name
-                                            try:
-                                                self._db.open()
-                                                self._db.save_connection(self._editing_conn)
-                                                self._db.close()
-                                            except Exception:
-                                                pass
                                         return False
                                     GLib.idle_add(_idle_update)
                             except Exception as e:
