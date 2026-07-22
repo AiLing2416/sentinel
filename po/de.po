@@ -1977,3 +1977,44 @@ msgstr "‘{name}’ erfolgreich auf Bitwarden hochgeladen."
 #, python-brace-format
 msgid "Failed to upload to Bitwarden: {err}"
 msgstr "Fehler beim Hochladen auf Bitwarden: {err}"
+msgid "Transfer Tasks"
+msgstr "Übertragungsaufgaben"
+
+msgid "Clear finished tasks"
+msgstr "Erledigte Aufgaben löschen"
+
+msgid "No active tasks"
+msgstr "Keine aktiven Aufgaben"
+
+msgid "Tasks"
+msgstr "Aufgaben"
+
+msgid "Starting…"
+msgstr "Starten…"
+
+msgid "Cancel task"
+msgstr "Aufgabe abbrechen"
+
+msgid "Completed"
+msgstr "Abgeschlossen"
+
+msgid "Cancelled"
+msgstr "Abgebrochen"
+
+msgid "Failed"
+msgstr "Fehlgeschlagen"
+
+msgid "Failed: {msg}"
+msgstr "Fehlgeschlagen: {msg}"
+
+msgid "Downloaded {display_name}"
+msgstr "{display_name} heruntergeladen"
+
+msgid "Download cancelled"
+msgstr "Download abgebrochen"
+
+msgid "Upload cancelled"
+msgstr "Upload abgebrochen"
+
+msgid "Transfer cancelled"
+msgstr "Übertragung abgebrochen"

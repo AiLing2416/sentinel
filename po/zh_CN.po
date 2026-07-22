@@ -988,7 +988,7 @@ msgstr "正在下载…"
 
 #: src/views/sftp_view.py:1262
 msgid "Transferring from another server…"
-msgstr "正在从其他服务器传输…"
+msgstr "正在从另一台服务器传输…"
 
 #: src/views/sftp_view.py:1328
 msgid "Uploading…"
@@ -2064,3 +2064,44 @@ msgstr "无法连接到 GitHub。"
 #, python-brace-format
 msgid "Check failed: {err}"
 msgstr "检查失败：{err}"
+msgid "Transfer Tasks"
+msgstr "传输任务"
+
+msgid "Clear finished tasks"
+msgstr "清除已完成任务"
+
+msgid "No active tasks"
+msgstr "暂无传输任务"
+
+msgid "Tasks"
+msgstr "任务"
+
+msgid "Starting…"
+msgstr "正在准备…"
+
+msgid "Cancel task"
+msgstr "取消任务"
+
+msgid "Completed"
+msgstr "已完成"
+
+msgid "Cancelled"
+msgstr "已取消"
+
+msgid "Failed"
+msgstr "失败"
+
+msgid "Failed: {msg}"
+msgstr "失败: {msg}"
+
+msgid "Downloaded {display_name}"
+msgstr "已下载 {display_name}"
+
+msgid "Download cancelled"
+msgstr "已取消下载"
+
+msgid "Upload cancelled"
+msgstr "已取消上传"
+
+msgid "Transfer cancelled"
+msgstr "已取消传输"

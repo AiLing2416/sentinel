@@ -4,11 +4,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import gettext
 import json
 import logging
 import os
 import shutil
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable, Optional, Sequence
@@ -105,6 +107,27 @@ class EditSession:
     timer_id:    int = 0                # GSourse ID for debouncing
 
 
+@dataclass
+class SftpTask:
+    """Tracks a single file transfer (download, upload, relay) task."""
+    task_id: str
+    name: str
+    direction: str                     # "download", "upload", "relay"
+    transferred_bytes: int = 0
+    total_bytes: int = 0
+    status: str = "running"            # "running", "completed", "cancelled", "failed"
+    error_message: str = ""
+    last_update_time: float = 0.0
+    last_transferred_bytes: int = 0
+    current_speed: float = 0.0
+    future: Optional[Any] = field(default=None, repr=False)
+    row_widget: Optional[Gtk.Widget] = field(default=None, repr=False)
+    progress_bar: Optional[Gtk.ProgressBar] = field(default=None, repr=False)
+    status_label: Optional[Gtk.Label] = field(default=None, repr=False)
+    speed_label: Optional[Gtk.Label] = field(default=None, repr=False)
+    action_btn: Optional[Gtk.Button] = field(default=None, repr=False)
+
+
 # ---------------------------------------------------------------------------
 # Main widget
 # ---------------------------------------------------------------------------
@@ -134,6 +157,9 @@ class SftpTab(Gtk.Box):
         self._edit_sessions: dict[str, EditSession] = {}   # keyed by local_path
         self._show_hidden  = False
         self._auto_sync    = True # Default to True for better UX
+
+        self._tasks: dict[str, SftpTask] = {}
+        self._task_counter: int = 0
 
         self._store = Gio.ListStore.new(SftpFile)
         self._build_ui()
@@ -209,6 +235,9 @@ class SftpTab(Gtk.Box):
         self._path_entry.set_placeholder_text(_("Remote path"))
         self._path_entry.connect("activate", lambda e: self._load_path(e.get_text()))
         tb.append(self._path_entry)
+
+        # ── Tasks button (Right of address bar) ──
+        self._build_tasks_ui(tb)
 
         # View options
         view_btn = Gtk.MenuButton(icon_name="view-more-symbolic")
@@ -432,13 +461,16 @@ class SftpTab(Gtk.Box):
     async def _do_dnd_download(self, remote_path: str, tmp_path: str, final_path: str) -> None:
         self._dnd_downloads.add(remote_path)
         filename = os.path.basename(final_path)
+        task = self._register_task(filename, "download")
+        task.future = asyncio.current_task()
         
         # Set UI to downloading state
         GLib.idle_add(lambda: self._update_dnd_ui(True, filename))
         
         try:
+            cb = lambda cur, tot, name="": self._on_task_progress(task.task_id, cur, tot, name)
             # Download to .tmp
-            await self._backend.download(remote_path, tmp_path)
+            await self._backend.download(remote_path, tmp_path, progress_cb=cb)
             
             # Atomic rename if final doesn't exist
             if not os.path.exists(final_path):
@@ -448,10 +480,18 @@ class SftpTab(Gtk.Box):
                 os.remove(tmp_path)
                 
             logger.info("DND Download complete: %s", final_path)
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "completed"))
+        except asyncio.CancelledError:
+            logger.info("DND Download cancelled: %s", final_path)
+            try: os.remove(tmp_path)
+            except OSError: pass
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "cancelled"))
+            raise
         except Exception as exc:
             logger.error("DND Download failed: %s", exc)
             try: os.remove(tmp_path)
             except OSError: pass
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "failed", str(exc)))
         finally:
             self._dnd_downloads.discard(remote_path)
             GLib.idle_add(lambda: self._update_dnd_ui(False))
@@ -519,8 +559,293 @@ class SftpTab(Gtk.Box):
 
     # ── Async helper ────────────────────────────────────────────────
 
-    def _run_async(self, coro) -> None:
-        self._ssh.engine.run_coroutine(coro)
+    def _run_async(self, coro) -> Any:
+        return self._ssh.engine.run_coroutine(coro)
+
+    # ── Tasks UI & Management ────────────────────────────────────────
+
+    def _build_tasks_ui(self, tb: Gtk.Box) -> None:
+        self._tasks_popover = Gtk.Popover()
+        self._tasks_popover.set_position(Gtk.PositionType.BOTTOM)
+
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        main_box.set_margin_start(12)
+        main_box.set_margin_end(12)
+        main_box.set_margin_top(4)
+        main_box.set_margin_bottom(8)
+        main_box.set_size_request(340, -1)
+
+        # Header
+        hdr = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        title = Gtk.Label(label=_("Transfer Tasks"), xalign=0, hexpand=True)
+        title.add_css_class("heading")
+        hdr.append(title)
+
+        clear_btn = Gtk.Button(icon_name="user-trash-symbolic")
+        clear_btn.set_tooltip_text(_("Clear finished tasks"))
+        clear_btn.add_css_class("flat")
+        clear_btn.connect("clicked", lambda _: self._clear_finished_tasks())
+        hdr.append(clear_btn)
+        main_box.append(hdr)
+
+        sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        main_box.append(sep)
+
+        # Content container
+        self._tasks_scrolled = Gtk.ScrolledWindow()
+        self._tasks_scrolled.set_propagate_natural_height(True)
+        self._tasks_scrolled.set_max_content_height(280)
+
+        self._tasks_list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self._tasks_scrolled.set_child(self._tasks_list_box)
+        main_box.append(self._tasks_scrolled)
+
+        # Empty state (Text only, centered)
+        self._tasks_empty_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self._tasks_empty_box.set_margin_top(16)
+        self._tasks_empty_box.set_margin_bottom(16)
+        self._tasks_empty_box.set_halign(Gtk.Align.CENTER)
+        self._tasks_empty_box.set_valign(Gtk.Align.CENTER)
+        empty_lbl = Gtk.Label(label=_("No active tasks"))
+        empty_lbl.add_css_class("dim-label")
+        self._tasks_empty_box.append(empty_lbl)
+        main_box.append(self._tasks_empty_box)
+
+        self._tasks_popover.set_child(main_box)
+
+        # Tasks MenuButton right next to path entry
+        self._tasks_btn = Gtk.MenuButton()
+        self._tasks_btn.add_css_class("flat")
+        self._tasks_btn.set_popover(self._tasks_popover)
+        self._tasks_btn.set_tooltip_text(_("Tasks"))
+
+        self._tasks_icon = Gtk.Image.new_from_icon_name("folder-remote-symbolic")
+        self._tasks_btn.set_child(self._tasks_icon)
+        tb.append(self._tasks_btn)
+
+        # Set initial empty state
+        self._update_tasks_empty_state()
+
+    @staticmethod
+    def _format_bytes(num_bytes: int) -> str:
+        s = float(num_bytes)
+        for unit in ("B", "KB", "MB", "GB", "TB"):
+            if s < 1024:
+                return f"{int(s)} {unit}" if unit == "B" else f"{s:.1f} {unit}"
+            s /= 1024
+        return f"{s:.1f} PB"
+
+    def _register_task(self, name: str, direction: str, total_bytes: int = 0) -> SftpTask:
+        self._task_counter += 1
+        task_id = f"task-{self._task_counter}"
+        task = SftpTask(
+            task_id=task_id,
+            name=name,
+            direction=direction,
+            total_bytes=total_bytes,
+        )
+        self._tasks[task_id] = task
+        GLib.idle_add(lambda: self._add_task_row_ui(task))
+        return task
+
+    def _add_task_row_ui(self, task: SftpTask) -> None:
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        row.add_css_class("task-row")
+
+        # Direction Icon (Unidirectional go-up-symbolic for upload, go-down-symbolic for download/relay)
+        if task.direction == "upload":
+            icon_name = "go-up-symbolic"
+        else:
+            icon_name = "go-down-symbolic"
+
+        icon = Gtk.Image.new_from_icon_name(icon_name)
+        icon.set_valign(Gtk.Align.START)
+        icon.set_margin_top(4)
+        row.append(icon)
+
+        # Main vertical content Box
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        vbox.set_hexpand(True)
+
+        # Line 1: Title (Filename) & Action Button [✕]
+        top_line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        name_lbl = Gtk.Label(label=task.name, xalign=0, ellipsize=Pango.EllipsizeMode.END, hexpand=True)
+        name_lbl.add_css_class("heading")
+        top_line.append(name_lbl)
+
+        act_btn = Gtk.Button(icon_name="process-stop-symbolic")
+        act_btn.set_tooltip_text(_("Cancel task"))
+        act_btn.add_css_class("flat")
+        act_btn.add_css_class("circular")
+        act_btn.set_valign(Gtk.Align.START)
+        act_btn.connect("clicked", lambda _, tid=task.task_id: self._on_task_action_clicked(tid))
+        top_line.append(act_btn)
+        task.action_btn = act_btn
+
+        vbox.append(top_line)
+
+        # Line 2: Size Info (Left) & Speed Info (Right)
+        meta_line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        size_lbl = Gtk.Label(label=_("Starting…"), xalign=0, hexpand=True)
+        size_lbl.add_css_class("dim-label")
+        size_lbl.add_css_class("caption")
+        meta_line.append(size_lbl)
+        task.status_label = size_lbl
+
+        speed_lbl = Gtk.Label(label="", xalign=1)
+        speed_lbl.add_css_class("dim-label")
+        speed_lbl.add_css_class("caption")
+        meta_line.append(speed_lbl)
+        task.speed_label = speed_lbl
+
+        vbox.append(meta_line)
+
+        # Line 3: Progress Bar
+        pbar = Gtk.ProgressBar()
+        pbar.set_fraction(0.0)
+        vbox.append(pbar)
+        task.progress_bar = pbar
+
+        row.append(vbox)
+
+        task.row_widget = row
+        self._tasks_list_box.append(row)
+        self._update_tasks_empty_state()
+
+    def _on_task_progress(self, task_id: str, cur: int, total: int, filename: str = "") -> None:
+        task = self._tasks.get(task_id)
+        if not task or task.status != "running":
+            return
+
+        now = time.time()
+        if task.last_update_time == 0.0:
+            task.last_update_time = now
+            task.last_transferred_bytes = cur
+        else:
+            dt = now - task.last_update_time
+            if dt >= 0.4:
+                dbytes = cur - task.last_transferred_bytes
+                if dbytes >= 0:
+                    task.current_speed = dbytes / dt
+                task.last_update_time = now
+                task.last_transferred_bytes = cur
+
+        task.transferred_bytes = cur
+        if total > 0:
+            task.total_bytes = total
+        GLib.idle_add(lambda: self._update_task_row_ui(task_id))
+
+    def _update_task_row_ui(self, task_id: str) -> None:
+        task = self._tasks.get(task_id)
+        if not task or not task.row_widget:
+            return
+
+        if task.status == "running":
+            if task.total_bytes > 0:
+                frac = min(1.0, max(0.0, task.transferred_bytes / task.total_bytes))
+                if task.progress_bar:
+                    task.progress_bar.set_fraction(frac)
+                cur_str = self._format_bytes(task.transferred_bytes)
+                tot_str = self._format_bytes(task.total_bytes)
+                text = f"{cur_str} / {tot_str}"
+            else:
+                if task.progress_bar:
+                    task.progress_bar.pulse()
+                text = self._format_bytes(task.transferred_bytes)
+
+            if task.status_label:
+                task.status_label.set_label(text)
+
+            if task.speed_label:
+                if task.current_speed > 0:
+                    spd_str = f"{self._format_bytes(int(task.current_speed))}/s"
+                    task.speed_label.set_label(spd_str)
+                else:
+                    task.speed_label.set_label("")
+        elif task.status == "completed":
+            if task.progress_bar:
+                task.progress_bar.set_fraction(1.0)
+            if task.status_label:
+                task.status_label.set_label(_("Completed"))
+            if task.speed_label:
+                task.speed_label.set_label("")
+            if task.action_btn:
+                task.action_btn.set_icon_name("window-close-symbolic")
+                task.action_btn.set_tooltip_text(_("Remove"))
+        elif task.status == "cancelled":
+            if task.status_label:
+                task.status_label.set_label(_("Cancelled"))
+            if task.speed_label:
+                task.speed_label.set_label("")
+            if task.action_btn:
+                task.action_btn.set_icon_name("window-close-symbolic")
+                task.action_btn.set_tooltip_text(_("Remove"))
+        elif task.status == "failed":
+            if task.status_label:
+                err = task.error_message or _("Failed")
+                task.status_label.set_label(_("Failed: {msg}").format(msg=err))
+            if task.speed_label:
+                task.speed_label.set_label("")
+            if task.action_btn:
+                task.action_btn.set_icon_name("window-close-symbolic")
+                task.action_btn.set_tooltip_text(_("Remove"))
+
+    def _on_task_finished(self, task_id: str, status: str, error_msg: str = "") -> None:
+        task = self._tasks.get(task_id)
+        if not task:
+            return
+        task.status = status
+        task.error_message = error_msg
+        self._update_task_row_ui(task_id)
+        self._update_tasks_empty_state()
+
+    def _on_task_action_clicked(self, task_id: str) -> None:
+        task = self._tasks.get(task_id)
+        if not task:
+            return
+        if task.status == "running":
+            self._cancel_task(task_id)
+        else:
+            self._remove_task_row(task_id)
+
+    def _cancel_task(self, task_id: str) -> None:
+        task = self._tasks.get(task_id)
+        if not task or task.status != "running":
+            return
+        logger.info("Cancelling task %s (%s)", task.task_id, task.name)
+        task.status = "cancelled"
+        if task.future and not task.future.done():
+            if hasattr(task.future, "cancel"):
+                self._ssh.engine.loop.call_soon_threadsafe(task.future.cancel)
+        self._update_task_row_ui(task_id)
+        self._update_tasks_empty_state()
+
+    def _remove_task_row(self, task_id: str) -> None:
+        task = self._tasks.pop(task_id, None)
+        if task and task.row_widget:
+            self._tasks_list_box.remove(task.row_widget)
+        self._update_tasks_empty_state()
+
+    def _clear_finished_tasks(self) -> None:
+        finished_ids = [
+            tid for tid, t in list(self._tasks.items())
+            if t.status in ("completed", "cancelled", "failed")
+        ]
+        for tid in finished_ids:
+            self._remove_task_row(tid)
+
+    def _update_tasks_empty_state(self) -> None:
+        active_count = sum(1 for t in self._tasks.values() if t.status == "running")
+        total_count = len(self._tasks)
+
+        self._tasks_empty_box.set_visible(total_count == 0)
+        self._tasks_scrolled.set_visible(total_count > 0)
+        self._tasks_list_box.set_visible(total_count > 0)
+
+        if active_count > 0:
+            self._tasks_icon.add_css_class("task-icon-accent")
+        else:
+            self._tasks_icon.remove_css_class("task-icon-accent")
 
     # ── Loading state ────────────────────────────────────────────────
 
@@ -1208,13 +1533,23 @@ class SftpTab(Gtk.Box):
     async def _do_download(
         self, remote_path: str, local_path: str, display_name: str
     ) -> None:
+        task = self._register_task(display_name, "download")
+        task.future = asyncio.current_task()
         GLib.idle_add(lambda: self._set_loading(True, _("Downloading…")))
         try:
-            await self._backend.download(remote_path, local_path)
+            cb = lambda cur, tot, name="": self._on_task_progress(task.task_id, cur, tot, name)
+            await self._backend.download(remote_path, local_path, progress_cb=cb)
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "completed"))
             GLib.idle_add(lambda: self._set_loading(False, _(f"Downloaded {display_name}")))
+        except asyncio.CancelledError:
+            logger.info("Download cancelled: %s", display_name)
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "cancelled"))
+            GLib.idle_add(lambda: self._set_loading(False, _("Download cancelled")))
+            raise
         except Exception as exc:
             msg = str(exc)
             logger.error("download failed: %s", msg)
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "failed", msg))
             GLib.idle_add(lambda: self._set_loading(False, msg))
 
     # ── Drag-and-drop upload ─────────────────────────────────────────
@@ -1244,8 +1579,6 @@ class SftpTab(Gtk.Box):
                 filename       = data.get("filename")
                 
                 if source_conn_id == self._conn.id:
-                    # Same server, maybe move? For now just ignore or copy locally
-                    # but logic is more complex for server-side copy.
                     return False
                 
                 self._run_async(self._do_remote_to_remote(source_conn_id, remote_path, filename))
@@ -1258,23 +1591,19 @@ class SftpTab(Gtk.Box):
 
     async def _do_remote_to_remote(self, source_conn_id: str, source_path: str, filename: str) -> None:
         """Transfer file from another server to this server using local relay."""
+        task = self._register_task(filename, "relay")
+        task.future = asyncio.current_task()
         GLib.idle_add(lambda: self._update_dnd_ui(True, filename))
         GLib.idle_add(lambda: self._set_loading(True, _("Transferring from another server…")))
         
         try:
-            # 1. Find existing service or create temporary
             from views.terminal_view import TerminalTabView
-            # We try to find the TabView from the widget tree
-            # This is safer than the app.get_active_window hack
             tab_view = None
             parent = self.get_parent()
             while parent:
-                # In our app, SftpTab is a child of the TabView's widget
-                # Or we can check if the parent has the find_sftp_service method
                 if hasattr(parent, "find_sftp_service"):
                     tab_view = parent
                     break
-                # If not, maybe it's in the main window
                 if parent.__class__.__name__ == "MainWindow" and hasattr(parent, "_terminal_tab_view"):
                     tab_view = parent._terminal_tab_view
                     break
@@ -1285,7 +1614,6 @@ class SftpTab(Gtk.Box):
                 source_svc = tab_view.find_sftp_service(source_conn_id)
             
             if not source_svc:
-                # Fallback: Create a temporary service if the tab was closed
                 db = Database()
                 db.open()
                 source_conn = db.get_connection(source_conn_id)
@@ -1294,44 +1622,63 @@ class SftpTab(Gtk.Box):
                     raise Exception("Source connection not found")
                 
                 source_svc = SftpService(source_conn, self._ssh)
-                # This might trigger UI for password if not cached
                 await source_svc.connect({}) 
             
-            # 2. Sequential transfer to avoid 0-byte issues
             relay_dir = os.path.join(GLib.get_user_cache_dir(), "sentinel", "relay")
             os.makedirs(relay_dir, exist_ok=True)
             local_relay = os.path.join(relay_dir, filename)
             
+            cb = lambda cur, tot, name="": self._on_task_progress(task.task_id, cur, tot, name)
+            
             # Download from source
-            await source_svc.download(source_path, local_relay)
+            await source_svc.download(source_path, local_relay, progress_cb=cb)
             
             # Upload to this destination
-            await self._backend.upload([local_relay], self._current_path)
+            await self._backend.upload([local_relay], self._current_path, progress_cb=cb)
             
-            # Clean up relay
             try: os.remove(local_relay)
             except OSError: pass
             
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "completed"))
             GLib.idle_add(lambda: self._load_path(self._current_path))
+        except asyncio.CancelledError:
+            logger.info("Relay transfer cancelled: %s", filename)
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "cancelled"))
+            GLib.idle_add(lambda: self._set_loading(False, _("Transfer cancelled")))
+            raise
         except Exception as exc:
             msg = str(exc)
             logger.error("SFTP Connect failed: %s", msg)
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "failed", msg))
             GLib.idle_add(lambda: self._set_loading(False, msg))
             return
 
-        # Disable rclone mount - fully commented out to prevent fusermount3 errors
-        # self._run_async(self._rclone.mount(self._conn.id, self._conn, self._backend.auth_info))
-        
         GLib.idle_add(lambda: self._load_path(self._current_path))
 
     async def _do_upload(self, local_paths: list[str]) -> None:
+        if not local_paths:
+            return
+        name = os.path.basename(local_paths[0])
+        if len(local_paths) > 1:
+            name += f" (+{len(local_paths) - 1} files)"
+
+        task = self._register_task(name, "upload")
+        task.future = asyncio.current_task()
         GLib.idle_add(lambda: self._set_loading(True, _("Uploading…")))
         try:
-            await self._backend.upload(local_paths, self._current_path)
+            cb = lambda cur, tot, filename="": self._on_task_progress(task.task_id, cur, tot, filename)
+            await self._backend.upload(local_paths, self._current_path, progress_cb=cb)
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "completed"))
             GLib.idle_add(lambda: self._load_path(self._current_path))
+        except asyncio.CancelledError:
+            logger.info("Upload cancelled: %s", name)
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "cancelled"))
+            GLib.idle_add(lambda: self._set_loading(False, _("Upload cancelled")))
+            raise
         except Exception as exc:
             msg = str(exc)
             logger.error("upload failed: %s", msg)
+            GLib.idle_add(lambda: self._on_task_finished(task.task_id, "failed", msg))
             GLib.idle_add(lambda: self._set_loading(False, msg))
 
     # ── Toggle actions ───────────────────────────────────────────────

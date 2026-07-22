@@ -1616,3 +1616,45 @@ msgstr ""
 #: src/utils/themes.py:107
 msgid "GNOME Light"
 msgstr ""
+
+msgid "Transfer Tasks"
+msgstr ""
+
+msgid "Clear finished tasks"
+msgstr ""
+
+msgid "No active tasks"
+msgstr ""
+
+msgid "Tasks"
+msgstr ""
+
+msgid "Starting…"
+msgstr ""
+
+msgid "Cancel task"
+msgstr ""
+
+msgid "Completed"
+msgstr ""
+
+msgid "Cancelled"
+msgstr ""
+
+msgid "Failed"
+msgstr ""
+
+msgid "Failed: {msg}"
+msgstr ""
+
+msgid "Downloaded {display_name}"
+msgstr ""
+
+msgid "Download cancelled"
+msgstr ""
+
+msgid "Upload cancelled"
+msgstr ""
+
+msgid "Transfer cancelled"
+msgstr ""

@@ -1393,3 +1393,57 @@ msgstr "Successfully uploaded '{name}' to Bitwarden."
 msgid "Failed to upload to Bitwarden: {err}"
 msgstr "Failed to upload to Bitwarden: {err}"
 
+
+msgid "Transfer Tasks"
+msgstr "Transfer Tasks"
+
+msgid "Clear finished tasks"
+msgstr "Clear finished tasks"
+
+msgid "No active tasks"
+msgstr "No active tasks"
+
+msgid "Tasks"
+msgstr "Tasks"
+
+msgid "Starting…"
+msgstr "Starting…"
+
+msgid "Cancel task"
+msgstr "Cancel task"
+
+msgid "Completed"
+msgstr "Completed"
+
+msgid "Cancelled"
+msgstr "Cancelled"
+
+msgid "Failed"
+msgstr "Failed"
+
+msgid "Failed: {msg}"
+msgstr "Failed: {msg}"
+
+msgid "Remove"
+msgstr "Remove"
+
+msgid "Downloading…"
+msgstr "Downloading…"
+
+msgid "Downloaded {display_name}"
+msgstr "Downloaded {display_name}"
+
+msgid "Download cancelled"
+msgstr "Download cancelled"
+
+msgid "Uploading…"
+msgstr "Uploading…"
+
+msgid "Upload cancelled"
+msgstr "Upload cancelled"
+
+msgid "Transferring from another server…"
+msgstr "Transferring from another server…"
+
+msgid "Transfer cancelled"
+msgstr "Transfer cancelled"

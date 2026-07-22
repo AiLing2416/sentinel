@@ -228,6 +228,26 @@ class SentinelApplication(Adw.Application):
     @staticmethod
     def _get_css() -> str:
         return """
+        /* ── SFTP Tasks ────────────────────────────── */
+        .tasks-badge {
+            background-color: @accent_bg_color;
+            color: @accent_fg_color;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 1px 6px;
+            min-width: 14px;
+            text-align: center;
+        }
+        .task-icon-accent {
+            color: @accent_color;
+        }
+        .task-row {
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: alpha(@theme_fg_color, 0.04);
+        }
+
         /* ── Connection list ────────────────────────── */
         .connection-list {
             background: transparent;
