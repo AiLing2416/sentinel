@@ -267,7 +267,19 @@ class SentinelApplication(Adw.Application):
 
     @staticmethod
     def _get_css() -> str:
-        return """
+        import os
+        is_kde = "KDE" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+        
+        rad_card = "4px" if is_kde else "12px"
+        rad_card_inner = "3px" if is_kde else "9px"
+        rad_card_lg = "8px" if is_kde else "16px"
+        rad_row = "4px" if is_kde else "10px"
+        rad_row_sm = "4px" if is_kde else "8px"
+        rad_badge = "3px" if is_kde else "5px"
+        rad_badge_sm = "2px" if is_kde else "4px"
+        rad_tab = "4px" if is_kde else "8px"
+        
+        css = """
         /* ── SFTP Tasks ────────────────────────────── */
         .tasks-badge {
             background-color: @accent_bg_color;
@@ -897,3 +909,23 @@ class SentinelApplication(Adw.Application):
             opacity: 0.55;
         }
         """
+        
+        return css.replace(
+            "border-radius: 12px;", f"border-radius: {rad_card};"
+        ).replace(
+            "border-radius: 12px 0 0 12px;", f"border-radius: {rad_card} 0 0 {rad_card};"
+        ).replace(
+            "border-radius: 16px;", f"border-radius: {rad_card_lg};"
+        ).replace(
+            "border-radius: 10px;", f"border-radius: {rad_row};"
+        ).replace(
+            "border-radius: 8px;", f"border-radius: {rad_row_sm};"
+        ).replace(
+            "border-radius: 8px 8px 0 0;", f"border-radius: {rad_tab} {rad_tab} 0 0;"
+        ).replace(
+            "border-radius: 9px 0 0 9px;", f"border-radius: {rad_card_inner} 0 0 {rad_card_inner};"
+        ).replace(
+            "border-radius: 5px;", f"border-radius: {rad_badge};"
+        ).replace(
+            "border-radius: 4px;", f"border-radius: {rad_badge_sm};"
+        )
