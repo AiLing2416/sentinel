@@ -22,6 +22,14 @@ finish-args:
   - --filesystem=/usr/share/fonts:ro
 
 modules:
+  - name: dummy-ldconfig
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/bin
+      - echo '#!/bin/sh' > /app/bin/ldconfig
+      - echo 'exit 0' >> /app/bin/ldconfig
+      - chmod +x /app/bin/ldconfig
+
   - name: rclone
     buildsystem: simple
     build-commands:
