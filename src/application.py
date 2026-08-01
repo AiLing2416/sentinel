@@ -161,7 +161,7 @@ class SentinelApplication(Adw.Application):
         # Force Adwaita icon theme for cross-desktop consistency
         settings = Gtk.Settings.get_default()
         if settings:
-            settings.set_string("gtk-icon-theme-name", "Adwaita")
+            settings.set_property("gtk-icon-theme-name", "Adwaita")
             
         self._init_theme()
         self._load_css()
@@ -652,7 +652,7 @@ class SentinelApplication(Adw.Application):
         .host-card-v2 {
             border-radius: 12px;
             background-color: @card_bg_color;
-            border: 1px solid @card_shade_color;
+            border: 1px solid alpha(currentColor, 0.10);
             transition: box-shadow 150ms ease;
             box-shadow: 0 1px 3px alpha(black, 0.06);
         }
@@ -750,22 +750,22 @@ class SentinelApplication(Adw.Application):
         /* ── Key Card (redesigned) ─────────────────────── */
         /* Left accent stripe for key type */
         .key-accent-ed25519 {
-            background-color: @accent_color;
+            background-color: @blue_4;
             border-radius: 12px 0 0 12px;
             min-width: 4px;
         }
         .key-accent-rsa {
-            background-color: @success_color;
+            background-color: @green_4;
             border-radius: 12px 0 0 12px;
             min-width: 4px;
         }
         .key-accent-ecdsa {
-            background-color: @warning_color;
+            background-color: @purple_4;
             border-radius: 12px 0 0 12px;
             min-width: 4px;
         }
         .key-accent-default {
-            background-color: alpha(@accent_color, 0.5);
+            background-color: @accent_color;
             border-radius: 12px 0 0 12px;
             min-width: 4px;
         }
@@ -779,20 +779,20 @@ class SentinelApplication(Adw.Application):
             letter-spacing: 0.04em;
         }
         .key-type-badge.ed25519 {
-            background-color: alpha(@accent_color, 0.15);
-            color: @accent_color;
+            background-color: alpha(@blue_3, 0.15);
+            color: @blue_4;
         }
         .key-type-badge.rsa {
-            background-color: alpha(@success_color, 0.15);
-            color: @success_color;
+            background-color: alpha(@green_3, 0.15);
+            color: @green_5;
         }
         .key-type-badge.ecdsa {
-            background-color: alpha(@warning_color, 0.15);
-            color: @warning_color;
+            background-color: alpha(@purple_3, 0.15);
+            color: @purple_4;
         }
         .key-type-badge.other {
             background-color: alpha(@accent_color, 0.12);
-            color: alpha(@accent_color, 0.7);
+            color: @accent_color;
         }
 
         /* Fingerprint monospace label */
@@ -873,16 +873,16 @@ class SentinelApplication(Adw.Application):
             font-weight: 700;
         }
         .forward-type-local {
-            background-color: alpha(@accent_color, 0.15);
-            color: @accent_color;
+            background-color: alpha(@blue_3, 0.15);
+            color: @blue_4;
         }
         .forward-type-remote {
-            background-color: alpha(@warning_color, 0.15);
-            color: @warning_color;
+            background-color: alpha(@orange_3, 0.15);
+            color: @orange_4;
         }
         .forward-type-dynamic {
-            background-color: alpha(@success_color, 0.15);
-            color: @success_color;
+            background-color: alpha(@purple_3, 0.15);
+            color: @purple_4;
         }
 
         /* ── Right Detail Panel ────────────────────────── */
