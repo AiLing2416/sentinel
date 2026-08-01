@@ -157,7 +157,28 @@ class SentinelApplication(Adw.Application):
 
     def do_startup(self) -> None:
         Adw.Application.do_startup(self)
+        self._init_theme()
         self._load_css()
+
+    def _init_theme(self) -> None:
+        """Initialize global app color scheme from database."""
+        try:
+            from db.database import Database
+            db = Database()
+            db.open()
+            scheme = db.get_meta("app_color_scheme", "default")
+            db.close()
+
+            style_mgr = Adw.StyleManager.get_default()
+            if scheme == "light":
+                style_mgr.set_color_scheme(Adw.ColorScheme.FORCE_LIGHT)
+            elif scheme == "dark":
+                style_mgr.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
+            else:
+                style_mgr.set_color_scheme(Adw.ColorScheme.DEFAULT)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to initialize color scheme: {e}")
 
     # ── Actions ───────────────────────────────────────────────
     def _setup_actions(self) -> None:
@@ -166,6 +187,7 @@ class SentinelApplication(Adw.Application):
             ("quit", self._on_quit, ["<primary>q"]),
             ("about", self._on_about, None),
             ("new-connection", self._on_new_connection, ["<primary>n"]),
+            ("preferences", self._on_preferences, ["<primary>comma"]),
             ("terminal_theme", self._on_terminal_theme, None),
         ]
         for name, callback, accels in actions:
@@ -192,7 +214,19 @@ class SentinelApplication(Adw.Application):
         if win and hasattr(win, "show_connection_editor"):
             win.show_connection_editor()
 
-
+    def _on_preferences(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            from views.preferences_dialog import PreferencesWindow
+            win = self.props.active_window
+            logger.info("Opening Preferences window...")
+            pref_win = PreferencesWindow(app=self)
+            pref_win.set_transient_for(win)
+            pref_win.set_modal(False)
+            pref_win.present()
+        except Exception as e:
+            logger.error(f"Failed to open Preferences window: {e}", exc_info=True)
 
     def _on_terminal_theme(self, _action: Gio.SimpleAction, _param: GLib.Variant | None) -> None:
         import logging

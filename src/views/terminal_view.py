@@ -30,6 +30,7 @@ from utils.themes import DEFAULT_THEME, ThemeDict
 logger = logging.getLogger(__name__)
 
 _THEME_CACHE: ThemeDict | None = None
+_CONFIG_CACHE: dict[str, Any] | None = None
 
 
 def get_terminal_theme(force_refresh: bool = False) -> ThemeDict:
@@ -58,6 +59,43 @@ def get_terminal_theme(force_refresh: bool = False) -> ThemeDict:
                 pass
 
     return _THEME_CACHE
+
+
+def get_terminal_config(force_refresh: bool = False) -> dict[str, Any]:
+    """Get basic terminal settings from database, with caching."""
+    global _CONFIG_CACHE
+    if _CONFIG_CACHE is None or force_refresh:
+        db = Database()
+        try:
+            db.open()
+            font_family = db.get_meta("terminal_font_family", "Monospace")
+            font_size = db.get_meta("terminal_font_size", "11")
+            scrollback = db.get_meta("terminal_scrollback_lines", "10000")
+            cursor_shape = db.get_meta("terminal_cursor_shape", "block")
+            cursor_blink = db.get_meta("terminal_cursor_blink", "system")
+            _CONFIG_CACHE = {
+                "font_family": font_family if font_family else "Monospace",
+                "font_size": int(font_size) if font_size and font_size.isdigit() else 11,
+                "scrollback_lines": int(scrollback) if scrollback and scrollback.isdigit() else 10000,
+                "cursor_shape": cursor_shape if cursor_shape else "block",
+                "cursor_blink": cursor_blink if cursor_blink else "system",
+            }
+        except Exception as e:
+            logger.error(f"Failed to load terminal config from database: {e}")
+            _CONFIG_CACHE = {
+                "font_family": "Monospace",
+                "font_size": 11,
+                "scrollback_lines": 10000,
+                "cursor_shape": "block",
+                "cursor_blink": "system",
+            }
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    return _CONFIG_CACHE
 
 
 class TerminalTab(Gtk.Box):
@@ -135,21 +173,9 @@ class TerminalTab(Gtk.Box):
         # Terminal appearance
         self._terminal.set_scroll_on_output(True)
         self._terminal.set_scroll_on_keystroke(True)
-        self._terminal.set_scrollback_lines(10000)
         self._terminal.set_mouse_autohide(True)
 
-        # Font: use "Monospace 11" and let fontconfig handle CJK fallback automatically.
-        # Note: Pango.FontDescription.from_string() does NOT support comma-separated
-        # font family lists (that is CSS syntax). Specifying multiple families here
-        # causes Pango to misparse the string and pick the wrong font, making Latin
-        # glyphs appear thin and tightly spaced. The correct approach is to rely on
-        # the system fontconfig fallback chain (e.g. /etc/fonts/conf.d or
-        # ~/.config/fontconfig/fonts.conf) to resolve CJK characters.
-        font_desc = Pango.FontDescription.from_string("Monospace 11")
-        self._terminal.set_font(font_desc)
-        self._terminal.set_cursor_blink_mode(Vte.CursorBlinkMode.ON)
-        self._terminal.set_cursor_shape(Vte.CursorShape.BLOCK)
-        
+        self.apply_terminal_config()
         self._apply_theme()
         self._terminal.set_allow_hyperlink(True)
 
@@ -281,8 +307,29 @@ class TerminalTab(Gtk.Box):
         )
         self._status_label.add_css_class("dim-label")
         self._status_label.add_css_class("caption")
-        self._status_bar.append(self._status_label)
-        self.append(self._status_bar)
+    def apply_terminal_config(self) -> None:
+        """Apply basic terminal settings (font, size, scrollback, cursor)."""
+        cfg = get_terminal_config()
+
+        font_str = f"{cfg['font_family']} {cfg['font_size']}"
+        font_desc = Pango.FontDescription.from_string(font_str)
+        self._terminal.set_font(font_desc)
+
+        self._terminal.set_scrollback_lines(cfg['scrollback_lines'])
+
+        shape_map = {
+            "block": Vte.CursorShape.BLOCK,
+            "ibeam": Vte.CursorShape.IBEAM,
+            "underline": Vte.CursorShape.UNDERLINE,
+        }
+        self._terminal.set_cursor_shape(shape_map.get(cfg['cursor_shape'], Vte.CursorShape.BLOCK))
+
+        blink_map = {
+            "system": Vte.CursorBlinkMode.SYSTEM,
+            "on": Vte.CursorBlinkMode.ON,
+            "off": Vte.CursorBlinkMode.OFF,
+        }
+        self._terminal.set_cursor_blink_mode(blink_map.get(cfg['cursor_blink'], Vte.CursorBlinkMode.SYSTEM))
 
     def _apply_theme(self) -> None:
         theme = get_terminal_theme()
@@ -971,6 +1018,16 @@ class TerminalTabView:
             child = page.get_child()
             if hasattr(child, "_apply_theme"):
                 child._apply_theme()
+
+    def refresh_config(self) -> None:
+        """Refresh basic terminal configuration for all open terminal tabs."""
+        get_terminal_config(force_refresh=True)
+
+        for i in range(self._tab_view.get_n_pages()):
+            page = self._tab_view.get_nth_page(i)
+            child = page.get_child()
+            if hasattr(child, "apply_terminal_config"):
+                child.apply_terminal_config()
 
     def _setup_context_menu(self) -> None:
         """Create and bind the context menu and action group to the tab view."""

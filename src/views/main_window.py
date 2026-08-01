@@ -437,6 +437,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         self._sidebar_bottom_cb.set_hexpand(True)
 
         menu_model = Gio.Menu()
+        menu_model.append(_("Preferences"), "app.preferences")
         menu_model.append(_("Terminal Theme"), "app.terminal_theme")
         menu_model.append(_("About Sentinel"), "app.about")
         menu_model.append(_("Quit"), "app.quit")
@@ -844,6 +845,10 @@ class SentinelWindow(Adw.ApplicationWindow):
     def refresh_terminal_themes(self) -> None:
         if hasattr(self, "_terminal_tab_view"):
             self._terminal_tab_view.refresh_theme()
+
+    def refresh_terminal_config(self) -> None:
+        if hasattr(self, "_terminal_tab_view"):
+            self._terminal_tab_view.refresh_config()
 
     # ── Data ──────────────────────────────────────────────────
 
