@@ -669,7 +669,7 @@ msgstr "Please provide email and master password."
 
 #: src/views/vault_settings_dialog.py:836
 msgid "Login failed: {err}"
-msgstr "Sync failed: {e}"
+msgstr "Login failed: {err}"
 
 #: src/views/vault_settings_dialog.py:863
 msgid "Please enter your verification code."
