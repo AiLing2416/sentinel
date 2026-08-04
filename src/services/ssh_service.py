@@ -222,7 +222,7 @@ class SSHService:
                     pem_ba = bytearray(k_data["private_key"].get_view())
                     pass_ba = bytearray(k_data["passphrase"].get_view()) if k_data["passphrase"] else None
                     try:
-                        private_key = asyncssh.import_private_key(pem_ba, pass_ba)
+                        private_key = asyncssh.import_private_key(bytes(pem_ba), bytes(pass_ba) if pass_ba else None)
                         _loaded_keys.append(private_key)
                         auth_info["private_key_pem"] = k_data["private_key"]
                         if k_data["passphrase"]:
@@ -322,7 +322,7 @@ class SSHService:
                         pem_ba = bytearray(key_material.private_key_pem.get_view())
                         pass_ba = bytearray(key_material.passphrase.get_view()) if key_material.passphrase else None
                         try:
-                            private_key = asyncssh.import_private_key(pem_ba, pass_ba)
+                            private_key = asyncssh.import_private_key(bytes(pem_ba), bytes(pass_ba) if pass_ba else None)
                             kwargs["client_keys"] = [private_key]
                             auth_info["private_key_pem"] = key_material.private_key_pem
                             if key_material.passphrase: auth_info["key_passphrase"] = key_material.passphrase
