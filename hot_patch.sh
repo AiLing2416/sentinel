@@ -1,8 +1,16 @@
 #!/bin/bash
 # Sentinel Automatic Hot-patching Script
 
+# Try user installation first
 FLATPAK_BASE=~/.local/share/flatpak/app/io.github.ailing2416.sentinel/x86_64/master
-DEPLOY=$(ls "$FLATPAK_BASE" | grep -v '^active$' | sort | tail -1)
+if [ ! -d "$FLATPAK_BASE" ]; then
+    # Fallback to system installation
+    FLATPAK_BASE=/var/lib/flatpak/app/io.github.ailing2416.sentinel/x86_64/master
+fi
+DEPLOY="active"
+if [ ! -d "$FLATPAK_BASE/$DEPLOY/files" ]; then
+    DEPLOY=$(ls "$FLATPAK_BASE" | grep -E '^[0-9a-f]{64}$' | sort | tail -1)
+fi
 SITE="$FLATPAK_BASE/$DEPLOY/files/lib/python3.13/site-packages/sentinel"
 
 echo "Updating Sentinel components to: $SITE"

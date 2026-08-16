@@ -24,9 +24,11 @@ finish-args:
 modules:
   - name: dummy-ldconfig
     buildsystem: simple
+    only-arches: [aarch64]
     build-commands:
       - mkdir -p /app/bin
       - echo '#!/bin/sh' > /app/bin/ldconfig
+      - echo 'touch /etc/ld.so.cache' >> /app/bin/ldconfig
       - echo 'exit 0' >> /app/bin/ldconfig
       - chmod +x /app/bin/ldconfig
 

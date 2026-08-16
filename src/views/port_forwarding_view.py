@@ -107,6 +107,8 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
         name_lbl.set_hexpand(True)
         name_lbl.add_css_class("heading")
         name_lbl.set_ellipsize(Pango.EllipsizeMode.END)
+        name_lbl.set_width_chars(1)
+        name_lbl.set_max_width_chars(12)
         row1.append(name_lbl)
 
         _TYPE_LABELS = {
@@ -138,6 +140,7 @@ class ForwardRuleCard(Gtk.FlowBoxChild):
         detail_lbl = Gtk.Label(label=detail)
         detail_lbl.set_halign(Gtk.Align.FILL)
         detail_lbl.set_width_chars(1)
+        detail_lbl.set_max_width_chars(22)
         detail_lbl.add_css_class("fingerprint-label")
         detail_lbl.set_ellipsize(Pango.EllipsizeMode.END)
         body.append(detail_lbl)

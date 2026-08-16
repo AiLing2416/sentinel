@@ -90,6 +90,8 @@ class KeyCard(Gtk.FlowBoxChild):
         name_lbl.set_hexpand(True)
         name_lbl.add_css_class("heading")
         name_lbl.set_ellipsize(Pango.EllipsizeMode.END)
+        name_lbl.set_width_chars(1)
+        name_lbl.set_max_width_chars(12)
         row1.append(name_lbl)
 
         badge = Gtk.Label(label=raw_type)
@@ -109,6 +111,7 @@ class KeyCard(Gtk.FlowBoxChild):
         fp_lbl = Gtk.Label(label=fp_display)
         fp_lbl.set_halign(Gtk.Align.FILL)
         fp_lbl.set_width_chars(1)
+        fp_lbl.set_max_width_chars(22)
         fp_lbl.add_css_class("fingerprint-label")
         fp_lbl.set_ellipsize(Pango.EllipsizeMode.END)
         body.append(fp_lbl)

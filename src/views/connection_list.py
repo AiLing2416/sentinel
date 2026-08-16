@@ -227,6 +227,8 @@ class ConnectionListSidebar:
             label=conn.name,
             xalign=0,
             ellipsize=3,  # PANGO_ELLIPSIZE_END
+            width_chars=1,
+            max_width_chars=18,
         )
         name_label.add_css_class("heading")
         text_box.append(name_label)
@@ -234,7 +236,13 @@ class ConnectionListSidebar:
         host_str = f"{conn.username}@{conn.hostname}" if conn.username else conn.hostname
         if conn.port != 22:
             host_str += f":{conn.port}"
-        host_label = Gtk.Label(label=host_str, xalign=0, ellipsize=3)
+        host_label = Gtk.Label(
+            label=host_str,
+            xalign=0,
+            ellipsize=3,
+            width_chars=1,
+            max_width_chars=22,
+        )
         host_label.add_css_class("host-label")
         text_box.append(host_label)
 

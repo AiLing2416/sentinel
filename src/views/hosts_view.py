@@ -113,6 +113,8 @@ class HostCard(Gtk.FlowBoxChild):
         name_lbl.set_hexpand(True)
         name_lbl.add_css_class("heading")
         name_lbl.set_ellipsize(Pango.EllipsizeMode.END)
+        name_lbl.set_width_chars(1)
+        name_lbl.set_max_width_chars(12)
         row1.append(name_lbl)
 
         badge = Gtk.Label(label=self._AUTH_BADGE.get(auth_val, auth_val))
@@ -134,6 +136,8 @@ class HostCard(Gtk.FlowBoxChild):
         host_lbl.add_css_class("caption")
         host_lbl.add_css_class("dim-label")
         host_lbl.set_ellipsize(Pango.EllipsizeMode.END)
+        host_lbl.set_width_chars(1)
+        host_lbl.set_max_width_chars(22)
         body.append(host_lbl)
 
         self.outer_box.append(body)
@@ -427,6 +431,8 @@ class HostsPage(Gtk.Box):
         self._vault_label.set_halign(Gtk.Align.START)
         self._vault_label.set_hexpand(True)
         self._vault_label.set_ellipsize(Pango.EllipsizeMode.END)
+        self._vault_label.set_width_chars(1)
+        self._vault_label.set_max_width_chars(25)
         self._vault_label.add_css_class("caption")
         self._vault_label.add_css_class("dim-label")
         vault_control_box.append(self._vault_label)
