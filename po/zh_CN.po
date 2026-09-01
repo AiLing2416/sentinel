@@ -2105,3 +2105,25 @@ msgstr "已取消上传"
 
 msgid "Transfer cancelled"
 msgstr "已取消传输"
+
+msgid "OSC 52 Clipboard Integration"
+msgstr "OSC 52 剪贴板集成"
+
+msgid "Allow terminal programs (tmux, nvim) to set desktop clipboard"
+msgstr "允许终端程序 (tmux, nvim) 设置桌面剪贴板"
+
+msgid "Terminal Hyperlinks (OSC 8)"
+msgstr "终端超链接 (OSC 8)"
+
+msgid "Enable clickable links and URLs in terminal (Ctrl+Click to open)"
+msgstr "启用终端中可点击的链接与 URL (Ctrl+点击打开)"
+
+msgid "Open Link"
+msgstr "打开链接"
+
+msgid "Copy Link Address"
+msgstr "复制链接地址"
+
+msgid "Link: {uri} (Ctrl+Click to open)"
+msgstr "链接: {uri} (Ctrl+点击打开)"
+

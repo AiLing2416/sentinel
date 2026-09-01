@@ -2018,3 +2018,25 @@ msgstr "Upload abgebrochen"
 
 msgid "Transfer cancelled"
 msgstr "Übertragung abgebrochen"
+
+msgid "OSC 52 Clipboard Integration"
+msgstr "OSC 52-Zwischenablagenintegration"
+
+msgid "Allow terminal programs (tmux, nvim) to set desktop clipboard"
+msgstr "Terminalprogrammen (tmux, nvim) erlauben, die Desktop-Zwischenablage zu setzen"
+
+msgid "Terminal Hyperlinks (OSC 8)"
+msgstr "Terminal-Hyperlinks (OSC 8)"
+
+msgid "Enable clickable links and URLs in terminal (Ctrl+Click to open)"
+msgstr "Klickbare Links und URLs im Terminal aktivieren (Strg+Klick zum Öffnen)"
+
+msgid "Open Link"
+msgstr "Link öffnen"
+
+msgid "Copy Link Address"
+msgstr "Link-Adresse kopieren"
+
+msgid "Link: {uri} (Ctrl+Click to open)"
+msgstr "Link: {uri} (Strg+Klick zum Öffnen)"
+

@@ -26,6 +26,7 @@ from services.ssh_service import SSHService
 import json
 from db.database import Database
 from utils.themes import DEFAULT_THEME, ThemeDict
+from utils.osc_parser import Osc52Parser
 
 logger = logging.getLogger(__name__)
 
@@ -73,12 +74,16 @@ def get_terminal_config(force_refresh: bool = False) -> dict[str, Any]:
             scrollback = db.get_meta("terminal_scrollback_lines", "10000")
             cursor_shape = db.get_meta("terminal_cursor_shape", "block")
             cursor_blink = db.get_meta("terminal_cursor_blink", "system")
+            enable_osc52 = db.get_meta("terminal_enable_osc52", "true") == "true"
+            enable_hyperlinks = db.get_meta("terminal_enable_hyperlinks", "true") == "true"
             _CONFIG_CACHE = {
                 "font_family": font_family if font_family else "Monospace",
                 "font_size": int(font_size) if font_size and font_size.isdigit() else 11,
                 "scrollback_lines": int(scrollback) if scrollback and scrollback.isdigit() else 10000,
                 "cursor_shape": cursor_shape if cursor_shape else "block",
                 "cursor_blink": cursor_blink if cursor_blink else "system",
+                "enable_osc52": enable_osc52,
+                "enable_hyperlinks": enable_hyperlinks,
             }
         except Exception as e:
             logger.error(f"Failed to load terminal config from database: {e}")
@@ -88,6 +93,8 @@ def get_terminal_config(force_refresh: bool = False) -> dict[str, Any]:
                 "scrollback_lines": 10000,
                 "cursor_shape": "block",
                 "cursor_blink": "system",
+                "enable_osc52": True,
+                "enable_hyperlinks": True,
             }
         finally:
             try:
@@ -130,7 +137,16 @@ class TerminalTab(Gtk.Box):
         self.is_remote = self._connection is not None
         self._last_scroll_value = 0.0
         self._last_scroll_time = 0.0
-        
+
+        # OSC 52 & Hyperlinks state
+        self._osc52_parser = Osc52Parser(self._on_osc52_clipboard)
+        self._enable_osc52: bool = True
+        self._enable_hyperlinks: bool = True
+        self._hovered_uri: str | None = None
+        self._context_uri: str | None = None
+        self._current_status_text: str = ""
+        self._url_match_tag: int = -1
+
         self._build_ui()
         
         if self.is_remote:
@@ -177,7 +193,31 @@ class TerminalTab(Gtk.Box):
 
         self.apply_terminal_config()
         self._apply_theme()
-        self._terminal.set_allow_hyperlink(True)
+
+        # Register URL regex pattern for auto-detecting web and common URIs
+        try:
+            # PCRE2_MULTILINE = 0x00000400
+            url_pattern = r"(https?|ftp|file|ssh|mailto)://[^\s/$.?#].[^\s]*"
+            url_regex = Vte.Regex.new_for_match(url_pattern, -1, 0x00000400)
+            self._url_match_tag = self._terminal.match_add_regex(url_regex, 0)
+            self._terminal.match_set_cursor_name(self._url_match_tag, "pointer")
+        except Exception as e:
+            logger.warning(f"TerminalTab: Failed to register URL regex in VTE: {e}")
+
+        # Signal connections for hyperlinks
+        self._terminal.connect("hyperlink-hover-uri-changed", self._on_hyperlink_hover_uri_changed)
+
+        # Mouse motion controller to detect hover over links / regex matches
+        motion_ctrl = Gtk.EventControllerMotion.new()
+        motion_ctrl.connect("motion", self._on_mouse_motion)
+        motion_ctrl.connect("leave", self._on_mouse_leave)
+        self._terminal.add_controller(motion_ctrl)
+
+        # Left-click gesture for Ctrl + Click to open hyperlinks
+        left_click_gesture = Gtk.GestureClick.new()
+        left_click_gesture.set_button(1)
+        left_click_gesture.connect("pressed", self._on_left_click)
+        self._terminal.add_controller(left_click_gesture)
 
         # Signals & Event Handling
         # Use a PTY bridge to capture ALL keyboard input (Control keys, Esc, Arrows, Fn keys, etc.)
@@ -299,16 +339,29 @@ class TerminalTab(Gtk.Box):
         self._status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self._status_bar.add_css_class("toolbar")
 
+        initial_status = _("Connecting to {title}…").format(title=self.title) if self.is_remote else _("Spawning local shell...")
+        self._current_status_text = initial_status
         self._status_label = Gtk.Label(
-            label=_("Connecting to {title}…").format(title=self.title) if self.is_remote else _("Spawning local shell..."),
+            label=initial_status,
             xalign=0,
             hexpand=True,
             ellipsize=3,
         )
         self._status_label.add_css_class("dim-label")
         self._status_label.add_css_class("caption")
+
+    def _set_status(self, text: str) -> None:
+        """Update current status text and update label if not hovering a link."""
+        self._current_status_text = text
+        if not self._hovered_uri:
+            self._status_label.set_label(text)
+
+    def _restore_status_label(self) -> None:
+        """Restore the connection/process status text in the status bar."""
+        self._status_label.set_label(self._current_status_text)
+
     def apply_terminal_config(self) -> None:
-        """Apply basic terminal settings (font, size, scrollback, cursor)."""
+        """Apply basic terminal settings (font, size, scrollback, cursor, osc52, hyperlinks)."""
         cfg = get_terminal_config()
 
         font_str = f"{cfg['font_family']} {cfg['font_size']}"
@@ -330,6 +383,10 @@ class TerminalTab(Gtk.Box):
             "off": Vte.CursorBlinkMode.OFF,
         }
         self._terminal.set_cursor_blink_mode(blink_map.get(cfg['cursor_blink'], Vte.CursorBlinkMode.SYSTEM))
+
+        self._enable_osc52 = cfg.get("enable_osc52", True)
+        self._enable_hyperlinks = cfg.get("enable_hyperlinks", True)
+        self._terminal.set_allow_hyperlink(self._enable_hyperlinks)
 
     def _apply_theme(self) -> None:
         theme = get_terminal_theme()
@@ -438,13 +495,140 @@ class TerminalTab(Gtk.Box):
             callbacks,
             self._on_remote_output,
             self._on_remote_exited,
-            status_cb=self._status_label.set_label
+            status_cb=self._set_status
         )
         self._bg_task = self._ssh_service.engine.run_coroutine(coro)
 
+    # ── Hyperlinks & OSC 52 ───────────────────────────────────
+
+    def _get_uri_at_position(self, x: float, y: float) -> str | None:
+        """Find an OSC 8 hyperlink or matched regex URL at coordinates (x, y)."""
+        # 1. Check explicit OSC 8 hyperlink
+        try:
+            uri = self._terminal.check_hyperlink_at(x, y)
+            if uri:
+                return uri
+        except Exception:
+            pass
+
+        # 2. Check regex matched URL
+        try:
+            match_res = self._terminal.check_match_at(x, y)
+            if match_res:
+                match_str = match_res[0] if isinstance(match_res, tuple) else match_res
+                if match_str:
+                    return match_str
+        except Exception:
+            pass
+
+        return None
+
+    def _open_uri(self, uri: str) -> None:
+        """Launch default browser for the given URI."""
+        if not uri:
+            return
+        logger.info(f"TerminalTab: Opening URI: {uri}")
+        try:
+            root = self.get_root()
+            Gtk.show_uri(root, uri, Gdk.CURRENT_TIME)
+        except Exception as e:
+            logger.warning(f"TerminalTab: Gtk.show_uri failed for {uri}: {e}")
+            try:
+                Gio.AppInfo.launch_default_for_uri(uri, None)
+            except Exception as e2:
+                logger.error(f"TerminalTab: Failed to open URI {uri}: {e2}")
+
+    def _copy_link_address(self, uri: str | None) -> None:
+        """Copy the given URI to system clipboard."""
+        if not uri:
+            return
+        try:
+            display = Gdk.Display.get_default()
+            if display:
+                clipboard = display.get_clipboard()
+                if clipboard:
+                    clipboard.set(uri)
+                    logger.info(f"TerminalTab: Link copied to clipboard: {uri}")
+        except Exception as e:
+            logger.error(f"TerminalTab: Failed to copy link address: {e}")
+
+    def _on_hyperlink_hover_uri_changed(self, terminal: Vte.Terminal, uri: str | None, bbox: Any) -> None:
+        """Called when mouse hovers over an OSC 8 hyperlink."""
+        if not self._enable_hyperlinks:
+            return
+        if uri:
+            self._hovered_uri = uri
+            self._status_label.set_label(_("Link: {uri} (Ctrl+Click to open)").format(uri=uri))
+        else:
+            self._hovered_uri = None
+            self._restore_status_label()
+
+    def _on_mouse_motion(self, controller: Gtk.EventControllerMotion, x: float, y: float) -> None:
+        """Track mouse motion to provide instant hover feedback on links."""
+        if not self._enable_hyperlinks:
+            return
+        uri = self._get_uri_at_position(x, y)
+        if uri != self._hovered_uri:
+            self._hovered_uri = uri
+            if uri:
+                self._status_label.set_label(_("Link: {uri} (Ctrl+Click to open)").format(uri=uri))
+            else:
+                self._restore_status_label()
+
+    def _on_mouse_leave(self, controller: Gtk.EventControllerMotion) -> None:
+        """Clear link preview when mouse leaves the terminal widget."""
+        if self._hovered_uri is not None:
+            self._hovered_uri = None
+            self._restore_status_label()
+
+    def _on_left_click(self, gesture: Gtk.GestureClick, n_press: int, x: float, y: float) -> None:
+        """Handle Ctrl+Left Click to open hyperlinks / URLs."""
+        if not self._enable_hyperlinks:
+            return
+        event = gesture.get_current_event()
+        if not event:
+            return
+        modifiers = event.get_modifier_state()
+        if not (modifiers & Gdk.ModifierType.CONTROL_MASK):
+            return
+
+        uri = self._get_uri_at_position(x, y)
+        if uri:
+            self._open_uri(uri)
+
+    def _on_osc52_clipboard(self, target: str, text: str) -> None:
+        """Handle clipboard content from remote/local OSC 52 sequences."""
+        if not self._enable_osc52:
+            return
+
+        def _update_clipboard():
+            try:
+                display = Gdk.Display.get_default()
+                if not display:
+                    return False
+
+                # 'c' or default: update clipboard
+                if "c" in target or not target:
+                    clipboard = display.get_clipboard()
+                    if clipboard:
+                        clipboard.set(text)
+
+                # 'p': update primary clipboard
+                if "p" in target:
+                    primary = display.get_primary_clipboard()
+                    if primary:
+                        primary.set(text)
+
+                logger.debug(f"TerminalTab: OSC 52 updated system clipboard ({len(text)} chars)")
+            except Exception as e:
+                logger.error(f"TerminalTab: Failed to set OSC 52 clipboard: {e}")
+            return False
+
+        GLib.idle_add(_update_clipboard)
+
     def _on_remote_connected(self, bridge: Any) -> None:
         self._session_bridge = bridge
-        self._status_label.set_label(_("Connected — {title}").format(title=self.title))
+        self._set_status(_("Connected — {title}").format(title=self.title))
         
         # Immediate sync if we already have a size
         cols, rows = self._terminal.get_column_count(), self._terminal.get_row_count()
@@ -463,12 +647,12 @@ class TerminalTab(Gtk.Box):
         GLib.timeout_add(250, _delayed_resize)
 
     def _on_remote_error(self, msg: str) -> None:
-        self._status_label.set_label(msg)
+        self._set_status(msg)
         self._print_terminal_error(msg)
         self._show_reconnect_prompt()
         
     def _on_remote_disconnected(self, exc: Exception | None) -> None:
-        self._status_label.set_label(_("Disconnected: {exc}").format(exc=exc) if exc else _("Disconnected"))
+        self._set_status(_("Disconnected: {exc}").format(exc=exc) if exc else _("Disconnected"))
         self._session_bridge = None
         # Only show reconnect if the background task has truly finished
         # This prevents the prompt during host key trust retries
@@ -476,7 +660,12 @@ class TerminalTab(Gtk.Box):
             self._show_reconnect_prompt()
         
     def _on_remote_output(self, data: bytes) -> None:
-        self._terminal.feed(data)
+        if self._enable_osc52:
+            clean_data = self._osc52_parser.feed(data)
+            if clean_data:
+                self._terminal.feed(clean_data)
+        else:
+            self._terminal.feed(data)
         
     def _on_pty_input(self, fd: int, condition: GLib.IOCondition) -> bool:
         """Called when there is data to read from the PTY Slave (user input from VTE)."""
@@ -526,7 +715,7 @@ class TerminalTab(Gtk.Box):
         return False
 
     def _on_remote_exited(self, exit_status: int) -> None:
-        self._status_label.set_label(_("Exited with code {exit_status}").format(exit_status=exit_status))
+        self._set_status(_("Exited with code {exit_status}").format(exit_status=exit_status))
         self._handle_session_exit()
 
     # ── Local Process ──────────────────────────────────────────
@@ -552,7 +741,7 @@ class TerminalTab(Gtk.Box):
 
     def _on_local_child_exited(self, terminal: Vte.Terminal, exit_status: int) -> None:
         self._child_pid = None
-        self._status_label.set_label(_("Exited code {exit_status}").format(exit_status=exit_status >> 8))
+        self._set_status(_("Exited code {exit_status}").format(exit_status=exit_status >> 8))
         self._handle_session_exit()
         
     def _handle_session_exit(self) -> None:
@@ -587,7 +776,7 @@ class TerminalTab(Gtk.Box):
             if self._reconnect_sid:
                 terminal.disconnect(self._reconnect_sid)
                 self._reconnect_sid = 0
-            self._status_label.set_label(_("Reconnecting…"))
+            self._set_status(_("Reconnecting…"))
             # Reset terminal state (exit alternate screen, show cursor, reset formatting) without clearing screen/history
             self._terminal.feed(b"\033[?1049l\033[?25h\033[0m")
             self._terminal.feed(f"\r\n\033[1;32m[{_('Reconnecting…')}]\033[0m\r\n".encode("utf-8"))
@@ -630,35 +819,55 @@ class TerminalTab(Gtk.Box):
             
         self._terminal.set_scroll_on_output(scroll_on_output)
 
-    def _setup_context_menu(self) -> None:
-        """Create a right-click context menu for the terminal."""
+    def _build_context_menu_model(self, link_uri: str | None = None) -> Gio.Menu:
+        """Create a context menu model, optionally inserting link actions at the top."""
         menu = Gio.Menu()
-        
+
+        if link_uri and self._enable_hyperlinks:
+            section_link = Gio.Menu()
+            section_link.append(_("Open Link"), "term.open-link")
+            section_link.append(_("Copy Link Address"), "term.copy-link-address")
+            menu.append_section(None, section_link)
+
         section_edit = Gio.Menu()
         section_edit.append(_("Copy"), "term.copy")
         section_edit.append(_("Paste"), "term.paste")
         menu.append_section(None, section_edit)
-        
+
         section_tools = Gio.Menu()
         section_tools.append(_("Find…"), "term.find")
         section_tools.append(_("Read-only"), "term.read-only")
         menu.append_section(None, section_tools)
-        
+
         section_view = Gio.Menu()
         section_view.append(_("Select All"), "term.select-all")
         section_view.append(_("Clear"), "term.clear")
         menu.append_section(None, section_view)
+
+        return menu
+
+    def _setup_context_menu(self) -> None:
+        """Create a right-click context menu for the terminal."""
+        menu = self._build_context_menu_model()
 
         self._popover = Gtk.PopoverMenu.new_from_model(menu)
         self._popover.set_parent(self._terminal)
         self._popover.set_has_arrow(False)
 
         action_group = Gio.SimpleActionGroup()
-        
+
+        open_link_action = Gio.SimpleAction.new("open-link", None)
+        open_link_action.connect("activate", lambda *_: self._open_uri(self._context_uri) if self._context_uri else None)
+        action_group.add_action(open_link_action)
+
+        copy_link_action = Gio.SimpleAction.new("copy-link-address", None)
+        copy_link_action.connect("activate", lambda *_: self._copy_link_address(self._context_uri) if self._context_uri else None)
+        action_group.add_action(copy_link_action)
+
         copy_action = Gio.SimpleAction.new("copy", None)
         copy_action.connect("activate", lambda *_: self.copy_clipboard())
         action_group.add_action(copy_action)
-        
+
         paste_action = Gio.SimpleAction.new("paste", None)
         paste_action.connect("activate", lambda *_: self.paste_clipboard())
         action_group.add_action(paste_action)
@@ -688,6 +897,10 @@ class TerminalTab(Gtk.Box):
         self._terminal.add_controller(click_gesture)
 
     def _on_right_click(self, gesture: Gtk.GestureClick, n_press: int, x: float, y: float) -> None:
+        self._context_uri = self._get_uri_at_position(x, y) if self._enable_hyperlinks else None
+        menu = self._build_context_menu_model(self._context_uri)
+        self._popover.set_menu_model(menu)
+
         # Move popover to the click location
         rect = Gdk.Rectangle()
         rect.x, rect.y = int(x), int(y)
@@ -748,6 +961,7 @@ class TerminalTab(Gtk.Box):
         return self._terminal.grab_focus()
 
     def terminate(self) -> None:
+        self._osc52_parser.reset()
         if hasattr(self, "_scroll_handler_id") and self._scroll_handler_id:
             try:
                 vadjust = self._terminal.get_vadjustment()

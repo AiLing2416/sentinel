@@ -129,6 +129,26 @@ class PreferencesWindow(Adw.Window):
         )
         term_group.add(self._cursor_blink_row)
 
+        # OSC 52 Clipboard Integration
+        self._osc52_row = Adw.SwitchRow(
+            title=_("OSC 52 Clipboard Integration"),
+            subtitle=_("Allow terminal programs (tmux, nvim) to set desktop clipboard"),
+        )
+        self._osc52_handler = self._osc52_row.connect(
+            "notify::active", self._on_osc52_changed
+        )
+        term_group.add(self._osc52_row)
+
+        # Terminal Hyperlinks (OSC 8)
+        self._hyperlinks_row = Adw.SwitchRow(
+            title=_("Terminal Hyperlinks (OSC 8)"),
+            subtitle=_("Enable clickable links and URLs in terminal (Ctrl+Click to open)"),
+        )
+        self._hyperlinks_handler = self._hyperlinks_row.connect(
+            "notify::active", self._on_hyperlinks_changed
+        )
+        term_group.add(self._hyperlinks_row)
+
         page.add(term_group)
 
         # Wrap in ScrolledWindow
@@ -186,6 +206,14 @@ class PreferencesWindow(Adw.Window):
                 break
         self._cursor_blink_row.set_selected(blink_idx)
 
+        # Load OSC 52
+        saved_osc52 = self._db.get_meta("terminal_enable_osc52", "true") == "true"
+        self._osc52_row.set_active(saved_osc52)
+
+        # Load Hyperlinks
+        saved_hyperlinks = self._db.get_meta("terminal_enable_hyperlinks", "true") == "true"
+        self._hyperlinks_row.set_active(saved_hyperlinks)
+
         self._block_signals(False)
 
     def _block_signals(self, block: bool) -> None:
@@ -196,6 +224,8 @@ class PreferencesWindow(Adw.Window):
             self._scrollback_row.handler_block(self._scrollback_handler)
             self._cursor_shape_row.handler_block(self._cursor_shape_handler)
             self._cursor_blink_row.handler_block(self._cursor_blink_handler)
+            self._osc52_row.handler_block(self._osc52_handler)
+            self._hyperlinks_row.handler_block(self._hyperlinks_handler)
         else:
             self._scheme_row.handler_unblock(self._scheme_handler)
             self._font_row.handler_unblock(self._font_handler)
@@ -203,6 +233,8 @@ class PreferencesWindow(Adw.Window):
             self._scrollback_row.handler_unblock(self._scrollback_handler)
             self._cursor_shape_row.handler_unblock(self._cursor_shape_handler)
             self._cursor_blink_row.handler_unblock(self._cursor_blink_handler)
+            self._osc52_row.handler_unblock(self._osc52_handler)
+            self._hyperlinks_row.handler_unblock(self._hyperlinks_handler)
 
     def _on_scheme_changed(self, *args) -> None:
         idx = self._scheme_row.get_selected()
@@ -249,6 +281,16 @@ class PreferencesWindow(Adw.Window):
             blink_code = CURSOR_BLINKS[idx][1]
             self._db.set_meta("terminal_cursor_blink", blink_code)
             self._notify_terminal_config_changed()
+
+    def _on_osc52_changed(self, *args) -> None:
+        val = "true" if self._osc52_row.get_active() else "false"
+        self._db.set_meta("terminal_enable_osc52", val)
+        self._notify_terminal_config_changed()
+
+    def _on_hyperlinks_changed(self, *args) -> None:
+        val = "true" if self._hyperlinks_row.get_active() else "false"
+        self._db.set_meta("terminal_enable_hyperlinks", val)
+        self._notify_terminal_config_changed()
 
     def _notify_terminal_config_changed(self) -> None:
         app = self.get_application()
