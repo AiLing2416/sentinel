@@ -214,6 +214,15 @@ class SecureVault:
             "INSERT OR REPLACE INTO vault_meta (key, value) VALUES ('master_key_envelope', ?)",
             (json.dumps(envelope),)
         )
+        v_nonce, v_ct = _aes_gcm_encrypt(bytes(master_key), b"SENTINEL_KEY_OK")
+        verify_token = {
+            "nonce": b64encode(v_nonce).decode(),
+            "ciphertext": b64encode(v_ct).decode(),
+        }
+        self._conn.execute(
+            "INSERT OR REPLACE INTO vault_meta (key, value) VALUES ('master_key_verify', ?)",
+            (json.dumps(verify_token),)
+        )
         self._conn.commit()
 
         # Load into memory
@@ -234,10 +243,19 @@ class SecureVault:
         pwd_bytes = password.unsafe_get_bytes() if isinstance(password, SecureBytes) else password.encode()
         master_key = _generate_master_key()  # bytearray — mutable!
         envelope = _encrypt_master_key(bytes(master_key), pwd_bytes)
+        v_nonce, v_ct = _aes_gcm_encrypt(bytes(master_key), b"SENTINEL_KEY_OK")
+        verify_token = {
+            "nonce": b64encode(v_nonce).decode(),
+            "ciphertext": b64encode(v_ct).decode(),
+        }
 
         self._conn.execute(
             "INSERT OR REPLACE INTO vault_meta (key, value) VALUES ('master_key_envelope', ?)",
             (json.dumps(envelope),)
+        )
+        self._conn.execute(
+            "INSERT OR REPLACE INTO vault_meta (key, value) VALUES ('master_key_verify', ?)",
+            (json.dumps(verify_token),)
         )
         self._conn.commit()
 
@@ -264,6 +282,22 @@ class SecureVault:
             return False
 
         self._master_key = bytearray(master_key)
+        # Migrate/create verify token if missing
+        verify_row = self._conn.execute(
+            "SELECT 1 FROM vault_meta WHERE key = 'master_key_verify'"
+        ).fetchone()
+        if not verify_row:
+            v_nonce, v_ct = _aes_gcm_encrypt(bytes(self._master_key), b"SENTINEL_KEY_OK")
+            verify_token = {
+                "nonce": b64encode(v_nonce).decode(),
+                "ciphertext": b64encode(v_ct).decode(),
+            }
+            self._conn.execute(
+                "INSERT OR REPLACE INTO vault_meta (key, value) VALUES ('master_key_verify', ?)",
+                (json.dumps(verify_token),)
+            )
+            self._conn.commit()
+
         logger.info("SecureVault: Unlocked successfully.")
         return True
 
@@ -271,20 +305,39 @@ class SecureVault:
         """Unlock with a raw 32-byte key (stored externally, e.g. from keyring)."""
         if len(raw_key) != 32:
             return False
-        # Verify the key is correct by trying to decrypt any existing item
-        # If no items exist, just load it directly.
+
         self._master_key = bytearray(raw_key)
         if self._conn:
-            row = self._conn.execute("SELECT id, nonce, ciphertext FROM vault_items LIMIT 1").fetchone()
-            if row:
+            # 1. Check against master_key_verify token if present
+            verify_row = self._conn.execute(
+                "SELECT value FROM vault_meta WHERE key = 'master_key_verify'"
+            ).fetchone()
+            if verify_row:
                 try:
-                    nonce = b64decode(row["nonce"])
-                    ct = b64decode(row["ciphertext"])
-                    _aes_gcm_decrypt(bytes(self._master_key), nonce, ct)
+                    v_data = json.loads(verify_row[0])
+                    v_nonce = b64decode(v_data["nonce"])
+                    v_ct = b64decode(v_data["ciphertext"])
+                    plain = _aes_gcm_decrypt(bytes(self._master_key), v_nonce, v_ct)
+                    if plain != b"SENTINEL_KEY_OK":
+                        self.lock()
+                        logger.warning("SecureVault: Raw key verification failed (token mismatch).")
+                        return False
                 except Exception:
                     self.lock()
-                    logger.warning("SecureVault: Raw key verification failed (key mismatch).")
+                    logger.warning("SecureVault: Raw key verification failed (crypto error).")
                     return False
+            else:
+                # 2. Fallback: Verify by trying to decrypt any existing item
+                row = self._conn.execute("SELECT id, nonce, ciphertext FROM vault_items LIMIT 1").fetchone()
+                if row:
+                    try:
+                        nonce = b64decode(row["nonce"])
+                        ct = b64decode(row["ciphertext"])
+                        _aes_gcm_decrypt(bytes(self._master_key), nonce, ct)
+                    except Exception:
+                        self.lock()
+                        logger.warning("SecureVault: Raw key verification failed (key mismatch).")
+                        return False
         logger.info("SecureVault: Unlocked with raw key.")
         return True
 
