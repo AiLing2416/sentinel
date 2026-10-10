@@ -138,6 +138,8 @@ class TerminalTab(Gtk.Box):
         # Output held back while the user is selecting text (VTE clears the
         # selection whenever the underlying content is rewritten)
         self._selecting: bool = False
+        # Output is also held back while the search bar is open
+        self._searching: bool = False
         self._held_output = bytearray()
 
         # OSC 52 & Hyperlinks state
@@ -330,6 +332,12 @@ class TerminalTab(Gtk.Box):
         self._search_bar.connect_entry(self._search_entry)
         self._search_entry.connect("search-changed", self._on_search_changed)
         self._search_entry.connect("activate", lambda *_: self._on_search_next())
+        self._search_bar.connect("notify::search-mode-enabled", self._on_search_mode_changed)
+
+        search_key_ctrl = Gtk.EventControllerKey.new()
+        search_key_ctrl.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        search_key_ctrl.connect("key-pressed", self._on_search_shortcut)
+        self._terminal.add_controller(search_key_ctrl)
 
         self.prepend(self._search_bar)
 
@@ -691,7 +699,30 @@ class TerminalTab(Gtk.Box):
     _MAX_HELD_OUTPUT = 4 * 1024 * 1024
 
     def _output_frozen(self) -> bool:
-        return self._selecting or self._terminal.get_has_selection()
+        return (self._searching or self._selecting
+                or self._terminal.get_has_selection())
+
+    def _on_search_mode_changed(self, search_bar: Gtk.SearchBar, _pspec: Any) -> None:
+        """Pause terminal writes while searching; resume when the bar closes."""
+        self._searching = search_bar.get_search_mode()
+        if self._searching:
+            self._suspend_follow()
+            self._search_entry.grab_focus()
+            return
+        self._terminal.search_set_regex(None, 0)
+        self._terminal.unselect_all()
+        self._flush_held_output()
+        self._terminal.grab_focus()
+
+    def _on_search_shortcut(self, controller: Gtk.EventControllerKey, keyval: int,
+                            keycode: int, state: Gdk.ModifierType) -> bool:
+        """Ctrl+Shift+F opens the in-terminal search bar."""
+        mask = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
+        if keyval in (Gdk.KEY_F, Gdk.KEY_f) and (state & mask) == mask:
+            self._search_bar.set_search_mode(True)
+            self._search_entry.grab_focus()
+            return True
+        return False
 
     def _on_selection_press(self, gesture: Gtk.GestureClick, n_press: int, x: float, y: float) -> None:
         self._selecting = True
