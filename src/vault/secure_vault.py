@@ -655,29 +655,18 @@ class SecureVault:
         )
         self._conn.commit()
 
-    @_synchronized
-    def get_connection(self, conn_id: str) -> Any | None:
-        """Retrieve and decrypt a connection by ID."""
-        assert self._conn is not None
+    def _decrypt_connection_payload(self, conn_id: str, nonce: str, ciphertext: str) -> Any | None:
+        """Internal helper to decrypt a connection record from nonce and ciphertext."""
         from models.connection import Connection, AuthMethod
         import datetime
-        
-        row = self._conn.execute(
-            "SELECT nonce, ciphertext FROM vault_items WHERE id = ? AND item_type = 'connection'",
-            (conn_id,)
-        ).fetchone()
-        if not row:
-            return None
-            
         try:
-            payload = self._decrypt(row["nonce"], row["ciphertext"])
-            # Helper to safely decode values
+            payload = self._decrypt(nonce, ciphertext)
             def val(k: str) -> str:
                 return bytes(payload[k]).decode("utf-8") if k in payload else ""
-                
+
             last_conn_str = val("last_connected")
             last_conn = datetime.datetime.fromisoformat(last_conn_str) if last_conn_str else None
-            
+
             return Connection(
                 id=conn_id,
                 name=val("name"),
@@ -702,16 +691,28 @@ class SecureVault:
             return None
 
     @_synchronized
+    def get_connection(self, conn_id: str) -> Any | None:
+        """Retrieve and decrypt a connection by ID."""
+        assert self._conn is not None
+        row = self._conn.execute(
+            "SELECT nonce, ciphertext FROM vault_items WHERE id = ? AND item_type = 'connection'",
+            (conn_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return self._decrypt_connection_payload(conn_id, row["nonce"], row["ciphertext"])
+
+    @_synchronized
     def list_connections(self) -> list[Any]:
-        """List and decrypt all connections."""
+        """List and decrypt all connections in a single batch query."""
         assert self._conn is not None
         rows = self._conn.execute(
-            "SELECT id FROM vault_items WHERE item_type = 'connection'"
+            "SELECT id, nonce, ciphertext FROM vault_items WHERE item_type = 'connection'"
         ).fetchall()
-        
+
         conns = []
         for r in rows:
-            c = self.get_connection(r["id"])
+            c = self._decrypt_connection_payload(r["id"], r["nonce"], r["ciphertext"])
             if c:
                 conns.append(c)
         return conns
@@ -820,27 +821,17 @@ class SecureVault:
         )
         self._conn.commit()
 
-    @_synchronized
-    def get_forward_rule(self, rule_id: str) -> Any | None:
-        """Retrieve and decrypt a forward rule by ID."""
-        assert self._conn is not None
+    def _decrypt_forward_rule_payload(self, rule_id: str, nonce: str, ciphertext: str) -> Any | None:
+        """Internal helper to decrypt a forward rule record from nonce and ciphertext."""
         from models.forward_rule import ForwardRule, ForwardType
-        
-        row = self._conn.execute(
-            "SELECT nonce, ciphertext FROM vault_items WHERE id = ? AND item_type = 'forward_rule'",
-            (rule_id,)
-        ).fetchone()
-        if not row:
-            return None
-            
         try:
-            payload = self._decrypt(row["nonce"], row["ciphertext"])
+            payload = self._decrypt(nonce, ciphertext)
             def val(k: str) -> str:
                 return bytes(payload[k]).decode("utf-8") if k in payload else ""
-                
+
             rem_port_str = val("remote_port")
             remote_port = int(rem_port_str) if rem_port_str else None
-            
+
             return ForwardRule(
                 id=rule_id,
                 connection_id=val("connection_id"),
@@ -857,16 +848,28 @@ class SecureVault:
             return None
 
     @_synchronized
+    def get_forward_rule(self, rule_id: str) -> Any | None:
+        """Retrieve and decrypt a forward rule by ID."""
+        assert self._conn is not None
+        row = self._conn.execute(
+            "SELECT nonce, ciphertext FROM vault_items WHERE id = ? AND item_type = 'forward_rule'",
+            (rule_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return self._decrypt_forward_rule_payload(rule_id, row["nonce"], row["ciphertext"])
+
+    @_synchronized
     def list_forward_rules(self) -> list[Any]:
-        """List and decrypt all port forwarding rules."""
+        """List and decrypt all port forwarding rules in a single batch query."""
         assert self._conn is not None
         rows = self._conn.execute(
-            "SELECT id FROM vault_items WHERE item_type = 'forward_rule'"
+            "SELECT id, nonce, ciphertext FROM vault_items WHERE item_type = 'forward_rule'"
         ).fetchall()
-        
+
         rules = []
         for r in rows:
-            rule = self.get_forward_rule(r["id"])
+            rule = self._decrypt_forward_rule_payload(r["id"], r["nonce"], r["ciphertext"])
             if rule:
                 rules.append(rule)
         return rules
@@ -903,28 +906,19 @@ class SecureVault:
         )
         self._conn.commit()
 
-    @_synchronized
-    def get_global_key(self, item_id: str) -> dict | None:
-        """Retrieve and decrypt a global SSH key by ID."""
-        assert self._conn is not None
-        row = self._conn.execute(
-            "SELECT label, nonce, ciphertext FROM vault_items WHERE id = ? AND item_type = 'global-key'",
-            (item_id,)
-        ).fetchone()
-        if not row:
-            return None
-            
+    def _decrypt_global_key_payload(self, item_id: str, label: str, nonce: str, ciphertext: str) -> dict | None:
+        """Internal helper to decrypt a global key record from nonce and ciphertext."""
         try:
-            payload = self._decrypt(row["nonce"], row["ciphertext"])
+            payload = self._decrypt(nonce, ciphertext)
             pk_mv = payload.get("private_key")
             pass_mv = payload.get("passphrase")
-            
+
             def val(k: str) -> str:
                 return bytes(payload[k]).decode("utf-8") if k in payload else ""
-                
+
             return {
                 "id": item_id,
-                "label": row["label"],
+                "label": label,
                 "private_key": SecureBytes(pk_mv) if pk_mv else None,
                 "public_key": val("public_key"),
                 "key_type": val("key_type") or "unknown",
@@ -936,16 +930,28 @@ class SecureVault:
             return None
 
     @_synchronized
+    def get_global_key(self, item_id: str) -> dict | None:
+        """Retrieve and decrypt a global SSH key by ID."""
+        assert self._conn is not None
+        row = self._conn.execute(
+            "SELECT label, nonce, ciphertext FROM vault_items WHERE id = ? AND item_type = 'global-key'",
+            (item_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return self._decrypt_global_key_payload(item_id, row["label"], row["nonce"], row["ciphertext"])
+
+    @_synchronized
     def list_global_keys(self) -> list[dict]:
-        """List and decrypt all global SSH keys."""
+        """List and decrypt all global SSH keys in a single batch query."""
         assert self._conn is not None
         rows = self._conn.execute(
-            "SELECT id FROM vault_items WHERE item_type = 'global-key'"
+            "SELECT id, label, nonce, ciphertext FROM vault_items WHERE item_type = 'global-key'"
         ).fetchall()
-        
+
         keys = []
         for r in rows:
-            k = self.get_global_key(r["id"])
+            k = self._decrypt_global_key_payload(r["id"], r["label"], r["nonce"], r["ciphertext"])
             if k:
                 keys.append(k)
         return keys
