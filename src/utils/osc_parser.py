@@ -142,18 +142,21 @@ class Osc52Parser:
             if not target:
                 target = "c"
 
-            # Security: ignore read/query operations ("?")
-            if b64_bytes == b"?" or b64_bytes.startswith(b"?"):
+            # Clean base64 bytes (remove whitespace/newlines if any)
+            b64_clean = b"".join(b64_bytes.split())
+
+            # Security: OSC 52 is write-only. Read/query requests ("?") are
+            # dropped silently and never answered, so remote hosts cannot
+            # read the local clipboard.
+            if b64_clean.startswith(b"?"):
                 logger.debug("OSC 52: Ignored query request for security")
                 return
 
-            # Clean base64 bytes (remove whitespace/newlines if any)
-            b64_clean = b"".join(b64_bytes.split())
             if not b64_clean:
                 # Empty payload: user wants to clear clipboard
                 decoded_text = ""
             else:
-                decoded_bytes = base64.b64decode(b64_clean)
+                decoded_bytes = base64.b64decode(b64_clean, validate=True)
                 decoded_text = decoded_bytes.decode("utf-8", errors="replace")
 
             logger.debug("OSC 52: Received %d chars for target '%s'", len(decoded_text), target)
