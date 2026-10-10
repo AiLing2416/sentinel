@@ -149,6 +149,16 @@ class PreferencesWindow(Adw.Window):
         )
         term_group.add(self._hyperlinks_row)
 
+        # Keyboard input to terminal while the search box is open
+        self._search_keys_row = Adw.SwitchRow(
+            title=_("Send Keys to Terminal While Searching"),
+            subtitle=_("When off, keystrokes are not sent to the terminal while the search box is open"),
+        )
+        self._search_keys_handler = self._search_keys_row.connect(
+            "notify::active", self._on_search_keys_changed
+        )
+        term_group.add(self._search_keys_row)
+
         page.add(term_group)
 
         # Wrap in ScrolledWindow
@@ -214,6 +224,10 @@ class PreferencesWindow(Adw.Window):
         saved_hyperlinks = self._db.get_meta("terminal_enable_hyperlinks", "true") == "true"
         self._hyperlinks_row.set_active(saved_hyperlinks)
 
+        # Load search key forwarding
+        saved_search_keys = self._db.get_meta("terminal_search_forward_keys", "true") == "true"
+        self._search_keys_row.set_active(saved_search_keys)
+
         self._block_signals(False)
 
     def _block_signals(self, block: bool) -> None:
@@ -226,6 +240,7 @@ class PreferencesWindow(Adw.Window):
             self._cursor_blink_row.handler_block(self._cursor_blink_handler)
             self._osc52_row.handler_block(self._osc52_handler)
             self._hyperlinks_row.handler_block(self._hyperlinks_handler)
+            self._search_keys_row.handler_block(self._search_keys_handler)
         else:
             self._scheme_row.handler_unblock(self._scheme_handler)
             self._font_row.handler_unblock(self._font_handler)
@@ -235,6 +250,7 @@ class PreferencesWindow(Adw.Window):
             self._cursor_blink_row.handler_unblock(self._cursor_blink_handler)
             self._osc52_row.handler_unblock(self._osc52_handler)
             self._hyperlinks_row.handler_unblock(self._hyperlinks_handler)
+            self._search_keys_row.handler_unblock(self._search_keys_handler)
 
     def _on_scheme_changed(self, *args) -> None:
         idx = self._scheme_row.get_selected()
@@ -290,6 +306,11 @@ class PreferencesWindow(Adw.Window):
     def _on_hyperlinks_changed(self, *args) -> None:
         val = "true" if self._hyperlinks_row.get_active() else "false"
         self._db.set_meta("terminal_enable_hyperlinks", val)
+        self._notify_terminal_config_changed()
+
+    def _on_search_keys_changed(self, *args) -> None:
+        val = "true" if self._search_keys_row.get_active() else "false"
+        self._db.set_meta("terminal_search_forward_keys", val)
         self._notify_terminal_config_changed()
 
     def _notify_terminal_config_changed(self) -> None:

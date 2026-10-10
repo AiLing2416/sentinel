@@ -76,6 +76,7 @@ def get_terminal_config(force_refresh: bool = False) -> dict[str, Any]:
             cursor_blink = db.get_meta("terminal_cursor_blink", "system")
             enable_osc52 = db.get_meta("terminal_enable_osc52", "true") == "true"
             enable_hyperlinks = db.get_meta("terminal_enable_hyperlinks", "true") == "true"
+            search_forward_keys = db.get_meta("terminal_search_forward_keys", "true") == "true"
             _CONFIG_CACHE = {
                 "font_family": font_family if font_family else "Monospace",
                 "font_size": int(font_size) if font_size and font_size.isdigit() else 11,
@@ -84,6 +85,7 @@ def get_terminal_config(force_refresh: bool = False) -> dict[str, Any]:
                 "cursor_blink": cursor_blink if cursor_blink else "system",
                 "enable_osc52": enable_osc52,
                 "enable_hyperlinks": enable_hyperlinks,
+                "search_forward_keys": search_forward_keys,
             }
         except Exception as e:
             logger.error(f"Failed to load terminal config from database: {e}")
@@ -95,6 +97,7 @@ def get_terminal_config(force_refresh: bool = False) -> dict[str, Any]:
                 "cursor_blink": "system",
                 "enable_osc52": True,
                 "enable_hyperlinks": True,
+                "search_forward_keys": True,
             }
         finally:
             try:
@@ -436,6 +439,7 @@ class TerminalTab(Gtk.Box):
 
         self._enable_osc52 = cfg.get("enable_osc52", True)
         self._enable_hyperlinks = cfg.get("enable_hyperlinks", True)
+        self._search_forward_keys = cfg.get("search_forward_keys", True)
         self._terminal.set_allow_hyperlink(self._enable_hyperlinks)
 
     def _apply_theme(self) -> None:
@@ -790,6 +794,12 @@ class TerminalTab(Gtk.Box):
         if keyval in (Gdk.KEY_F, Gdk.KEY_f) and (state & mask) == mask:
             self._set_search_visible(True)
             return True
+        if self._searching and not self._search_forward_keys:
+            if keyval == Gdk.KEY_Escape:
+                self._set_search_visible(False)
+            elif (state & mask) != mask:
+                # Swallow input so it never reaches the remote shell
+                return True
         return False
 
     def _on_selection_press(self, gesture: Gtk.GestureClick, n_press: int, x: float, y: float) -> None:
