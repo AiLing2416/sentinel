@@ -717,8 +717,14 @@ class TerminalTab(Gtk.Box):
     _MAX_HELD_OUTPUT = 4 * 1024 * 1024
 
     def _output_frozen(self) -> bool:
-        return (self._searching or self._selecting
-                or self._terminal.get_has_selection())
+        if self._selecting:
+            return True
+        if self._searching:
+            # With key forwarding the shell stays interactive: keep writing
+            # (auto-scroll is already suspended). The current search match is
+            # itself a selection, so it must not freeze output either.
+            return not self._search_forward_keys
+        return self._terminal.get_has_selection()
 
     _SEARCH_MARGIN = 12
 
