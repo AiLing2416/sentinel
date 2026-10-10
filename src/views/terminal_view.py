@@ -135,8 +135,10 @@ class TerminalTab(Gtk.Box):
         self._last_eof_time: float = 0
         self._reconnect_sid: int = 0
         self.is_remote = self._connection is not None
-        self._last_scroll_value = 0.0
-        self._last_scroll_time = 0.0
+        # Output held back while the user is selecting text (VTE clears the
+        # selection whenever the underlying content is rewritten)
+        self._selecting: bool = False
+        self._held_output = bytearray()
 
         # OSC 52 & Hyperlinks state
         self._osc52_parser = Osc52Parser(self._on_osc52_clipboard)
@@ -218,6 +220,34 @@ class TerminalTab(Gtk.Box):
         left_click_gesture.set_button(1)
         left_click_gesture.connect("pressed", self._on_left_click)
         self._terminal.add_controller(left_click_gesture)
+
+        # Scroll intent detection (capture phase, never consumes events):
+        # scrolling up or pressing the mouse (start of a selection) suspends
+        # "scroll on output" so incoming output cannot pull the view away.
+        scroll_ctrl = Gtk.EventControllerScroll.new(Gtk.EventControllerScrollFlags.VERTICAL)
+        scroll_ctrl.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        scroll_ctrl.connect("scroll", self._on_user_scroll)
+        self._terminal.add_controller(scroll_ctrl)
+
+        press_gesture = Gtk.GestureClick.new()
+        press_gesture.set_button(1)
+        press_gesture.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        press_gesture.connect("pressed", self._on_selection_press)
+        self._terminal.add_controller(press_gesture)
+
+        # Button release is observed with a legacy controller so it is seen
+        # even when VTE's own drag handling claims the event sequence.
+        release_ctrl = Gtk.EventControllerLegacy.new()
+        release_ctrl.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        release_ctrl.connect("event", self._on_terminal_event)
+        self._terminal.add_controller(release_ctrl)
+
+        key_ctrl = Gtk.EventControllerKey.new()
+        key_ctrl.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        key_ctrl.connect("key-pressed", self._on_key_unfreeze)
+        self._terminal.add_controller(key_ctrl)
+
+        self._terminal.connect("selection-changed", lambda *_: self._flush_held_output())
 
         # Signals & Event Handling
         # Use a PTY bridge to capture ALL keyboard input (Control keys, Esc, Arrows, Fn keys, etc.)
@@ -307,8 +337,6 @@ class TerminalTab(Gtk.Box):
         terminal_container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, vexpand=True, hexpand=True)
         self._terminal.set_hexpand(True)
         self._terminal.set_vexpand(True)
-        # Set a generous scrollback limit (100k lines)
-        self._terminal.set_scrollback_lines(100000)
         
         # GTK4 Hack: Reliable resize detection via DrawingArea in an Overlay
         # (Standard signals like size-allocate are gone or unreliable on VTE in GTK4)
@@ -659,7 +687,59 @@ class TerminalTab(Gtk.Box):
         if self._bg_task and self._bg_task.done():
             self._show_reconnect_prompt()
         
+    # Safety cap so a forgotten selection cannot buffer unbounded output
+    _MAX_HELD_OUTPUT = 4 * 1024 * 1024
+
+    def _output_frozen(self) -> bool:
+        return self._selecting or self._terminal.get_has_selection()
+
+    def _on_selection_press(self, gesture: Gtk.GestureClick, n_press: int, x: float, y: float) -> None:
+        self._selecting = True
+        self._suspend_follow()
+
+    def _on_terminal_event(self, controller: Gtk.EventControllerLegacy, event: Gdk.Event) -> bool:
+        if (event.get_event_type() == Gdk.EventType.BUTTON_RELEASE
+                and event.get_button() == 1):
+            self._selecting = False
+            self._flush_held_output()
+        return False
+
+    def _on_key_unfreeze(self, controller: Gtk.EventControllerKey, keyval: int,
+                         keycode: int, state: Gdk.ModifierType) -> bool:
+        """Typing resumes live output; copy shortcuts and bare modifiers do not."""
+        modifier_keys = {
+            Gdk.KEY_Shift_L, Gdk.KEY_Shift_R, Gdk.KEY_Control_L, Gdk.KEY_Control_R,
+            Gdk.KEY_Alt_L, Gdk.KEY_Alt_R, Gdk.KEY_Super_L, Gdk.KEY_Super_R,
+        }
+        if keyval in modifier_keys or (state & Gdk.ModifierType.CONTROL_MASK
+                                       and state & Gdk.ModifierType.SHIFT_MASK):
+            return False
+        if self._held_output or self._terminal.get_has_selection():
+            self._terminal.unselect_all()
+            self._selecting = False
+            self._flush_held_output()
+        return False
+
+    def _flush_held_output(self) -> None:
+        """Feed buffered output once the user is no longer selecting."""
+        if self._output_frozen() or not self._held_output:
+            return
+        data = bytes(self._held_output)
+        self._held_output.clear()
+        self._feed_output(data)
+
     def _on_remote_output(self, data: bytes) -> None:
+        if self._output_frozen():
+            self._held_output.extend(data)
+            if len(self._held_output) <= self._MAX_HELD_OUTPUT:
+                return
+            self._selecting = False
+            self._terminal.unselect_all()
+            data = bytes(self._held_output)
+            self._held_output.clear()
+        self._feed_output(data)
+
+    def _feed_output(self, data: bytes) -> None:
         if self._enable_osc52:
             clean_data = self._osc52_parser.feed(data)
             if clean_data:
@@ -788,36 +868,27 @@ class TerminalTab(Gtk.Box):
     def _on_title_changed(self, terminal: Vte.Terminal) -> None:
         pass
 
+    def _suspend_follow(self) -> None:
+        """Stop following output (user is scrolling back or selecting text)."""
+        self._terminal.set_scroll_on_output(False)
+
+    def _on_user_scroll(self, controller: Gtk.EventControllerScroll, dx: float, dy: float) -> bool:
+        """Wheel/touchpad scrolling up means the user wants to read history."""
+        if dy < 0:
+            self._suspend_follow()
+        return False
+
     def _on_scroll_value_changed(self, adjustment: Gtk.Adjustment) -> None:
-        val = adjustment.get_value()
-        upper = adjustment.get_upper()
-        page_size = adjustment.get_page_size()
-        distance_to_bottom = upper - page_size - val
-        
-        now = time.time()
-        dt = now - self._last_scroll_time
-        dv = val - self._last_scroll_value
-        
-        scroll_on_output = True
-        
-        # Check if user is scrolled up by more than 1/5 page size
-        if page_size > 0 and distance_to_bottom > (page_size / 5.0):
-            scroll_on_output = False
-            
-        # Check if user scrolled up quickly (dv < 0)
-        if dt > 0 and dv < 0:
-            velocity = dv / dt  # lines per second
-            if velocity < -100.0:  # scrolled up fast
-                scroll_on_output = False
-                
-        self._last_scroll_value = val
-        self._last_scroll_time = now
-        
-        # If the user is at the bottom, follow new output
+        # Only re-enable following once the view is back at the bottom and no
+        # selection is active. Never disable here: programmatic scrolling
+        # (e.g. TUIs redrawing many lines) also triggers this signal.
+        if self._terminal.get_has_selection():
+            return
+        distance_to_bottom = (
+            adjustment.get_upper() - adjustment.get_page_size() - adjustment.get_value()
+        )
         if distance_to_bottom <= 1.0:
-            scroll_on_output = True
-            
-        self._terminal.set_scroll_on_output(scroll_on_output)
+            self._terminal.set_scroll_on_output(True)
 
     def _build_context_menu_model(self, link_uri: str | None = None) -> Gio.Menu:
         """Create a context menu model, optionally inserting link actions at the top."""
@@ -962,6 +1033,8 @@ class TerminalTab(Gtk.Box):
 
     def terminate(self) -> None:
         self._osc52_parser.reset()
+        self._held_output.clear()
+        self._selecting = False
         if hasattr(self, "_scroll_handler_id") and self._scroll_handler_id:
             try:
                 vadjust = self._terminal.get_vadjustment()
