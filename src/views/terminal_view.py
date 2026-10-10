@@ -140,6 +140,7 @@ class TerminalTab(Gtk.Box):
         self._selecting: bool = False
         # Output is also held back while the search bar is open
         self._searching: bool = False
+        self._has_output: bool = False
         self._held_output = bytearray()
 
         # OSC 52 & Hyperlinks state
@@ -827,7 +828,9 @@ class TerminalTab(Gtk.Box):
         self._feed_output(data)
 
     def _on_remote_output(self, data: bytes) -> None:
-        if self._output_frozen():
+        # An empty terminal has nothing to protect; holding the very first
+        # output (login banner/prompt) would look like a hung connection.
+        if self._output_frozen() and self._has_output:
             self._held_output.extend(data)
             if len(self._held_output) <= self._MAX_HELD_OUTPUT:
                 return
@@ -838,6 +841,7 @@ class TerminalTab(Gtk.Box):
         self._feed_output(data)
 
     def _feed_output(self, data: bytes) -> None:
+        self._has_output = True
         if self._enable_osc52:
             clean_data = self._osc52_parser.feed(data)
             if clean_data:
