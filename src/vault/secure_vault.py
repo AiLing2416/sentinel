@@ -23,6 +23,7 @@ import logging
 import os
 import sqlite3
 import struct
+import threading
 from base64 import b64decode, b64encode
 from pathlib import Path
 from typing import Any
@@ -127,6 +128,18 @@ def _default_vault_path() -> Path:
     return vault_dir / "secure_vault.db"
 
 
+# ── Concurrency Helpers ─────────────────────────────────────────
+
+def _synchronized(func):
+    """Decorator to ensure thread safety on SecureVault methods."""
+    from functools import wraps
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return func(self, *args, **kwargs)
+    return wrapper
+
+
 # ── Vault ─────────────────────────────────────────────────────
 
 class SecureVault:
@@ -147,50 +160,57 @@ class SecureVault:
         self._path = path or _default_vault_path()
         self._conn: sqlite3.Connection | None = None
         self._master_key: bytearray | None = None  # In-memory only, zeroed on lock
+        self._lock = threading.RLock()
 
     # ── Lifecycle ─────────────────────────────────────────────
 
     def open(self) -> None:
         """Open the database file and ensure schema exists."""
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self._path), check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
-        self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute("PRAGMA foreign_keys=ON")
-        self._conn.executescript(_SCHEMA)
-        self._conn.commit()
-        logger.info("SecureVault: Opened at %s", self._path)
+        with self._lock:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            self._conn = sqlite3.connect(str(self._path), check_same_thread=False)
+            self._conn.row_factory = sqlite3.Row
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA foreign_keys=ON")
+            self._conn.executescript(_SCHEMA)
+            self._conn.commit()
+            logger.info("SecureVault: Opened at %s", self._path)
 
     def close(self) -> None:
-        self.lock()
-        if self._conn:
-            self._conn.close()
-            self._conn = None
+        with self._lock:
+            self.lock()
+            if self._conn:
+                self._conn.close()
+                self._conn = None
 
     def lock(self) -> None:
         """Zero and discard the in-memory master key."""
-        if self._master_key:
-            for i in range(len(self._master_key)):
-                self._master_key[i] = 0
-            self._master_key = None
-        logger.info("SecureVault: Locked.")
+        with self._lock:
+            if self._master_key:
+                for i in range(len(self._master_key)):
+                    self._master_key[i] = 0
+                self._master_key = None
+            logger.info("SecureVault: Locked.")
 
     @property
     def is_unlocked(self) -> bool:
-        return self._master_key is not None
+        with self._lock:
+            return self._master_key is not None
 
     @property
     def is_initialized(self) -> bool:
         """Return True if a master key has been set up in the DB."""
-        if not self._conn:
-            return False
-        row = self._conn.execute(
-            "SELECT value FROM vault_meta WHERE key = 'master_key_envelope'"
-        ).fetchone()
-        return row is not None
+        with self._lock:
+            if not self._conn:
+                return False
+            row = self._conn.execute(
+                "SELECT value FROM vault_meta WHERE key = 'master_key_envelope'"
+            ).fetchone()
+            return row is not None
 
     # ── Setup & Unlock ────────────────────────────────────────
 
+    @_synchronized
     def initialize_with_random_key(self) -> bytearray:
         """Initialize the vault with a freshly generated random master key.
 
@@ -232,6 +252,7 @@ class SecureVault:
         # Return a copy to the caller
         return bytearray(master_key)
 
+    @_synchronized
     def initialize(self, password: SecureBytes | str) -> None:
         """Initialize the vault with a new master password (legacy path).
         Generates a new master key and encrypts it with the password.
@@ -263,6 +284,7 @@ class SecureVault:
         self._master_key = master_key
         logger.info("SecureVault: Initialized with password-derived master key.")
 
+    @_synchronized
     def unlock(self, password: SecureBytes | str) -> bool:
         """Unlock the vault with the master password. Returns True on success."""
         assert self._conn is not None, "Vault not opened"
@@ -301,6 +323,7 @@ class SecureVault:
         logger.info("SecureVault: Unlocked successfully.")
         return True
 
+    @_synchronized
     def unlock_with_raw_key(self, raw_key: bytes) -> bool:
         """Unlock with a raw 32-byte key (stored externally, e.g. from keyring)."""
         if len(raw_key) != 32:
@@ -341,12 +364,14 @@ class SecureVault:
         logger.info("SecureVault: Unlocked with raw key.")
         return True
 
+    @_synchronized
     def get_raw_master_key(self) -> bytes | None:
         """Return a copy of the raw master key (for storing in keyring)."""
         if not self._master_key:
             return None
         return bytes(self._master_key)
 
+    @_synchronized
     def change_password(self, old_password: SecureBytes | str, new_password: SecureBytes | str) -> bool:
         """Re-encrypt the master key with the new password."""
         if not self.unlock(old_password):
@@ -431,6 +456,7 @@ class SecureVault:
 
     # ── Storage ───────────────────────────────────────────────
 
+    @_synchronized
     def store_ssh_key(
         self,
         item_id: str,
@@ -463,6 +489,7 @@ class SecureVault:
         self._conn.commit()
         logger.debug("SecureVault: Stored SSH key for item '%s'.", item_id)
 
+    @_synchronized
     def get_ssh_key(self, item_id: str) -> SSHKeyMaterial | None:
         """Retrieve and decrypt an SSH key by item ID."""
         assert self._conn is not None
@@ -488,6 +515,7 @@ class SecureVault:
             logger.error("SecureVault: Failed to decrypt SSH key '%s': %s", item_id, e)
             return None
 
+    @_synchronized
     def store_password(
         self,
         item_id: str,
@@ -512,6 +540,7 @@ class SecureVault:
         self._conn.commit()
         logger.debug("SecureVault: Stored password for item '%s'.", item_id)
 
+    @_synchronized
     def get_password(self, item_id: str) -> SecureBytes | None:
         """Retrieve and decrypt a password by item ID."""
         assert self._conn is not None
@@ -529,6 +558,7 @@ class SecureVault:
             logger.error("SecureVault: Failed to decrypt password '%s': %s", item_id, e)
             return None
 
+    @_synchronized
     def store_bitwarden_session(self, email: str, token: str) -> None:
         """Store a Bitwarden session token (encrypted)."""
         assert self._conn is not None
@@ -545,6 +575,7 @@ class SecureVault:
         self._conn.commit()
         logger.debug("SecureVault: Stored Bitwarden session for %s.", email)
 
+    @_synchronized
     def get_bitwarden_session(self) -> tuple[str | None, str | None]:
         """Retrieve the Bitwarden session token. Returns (email, token) or (None, None)."""
         assert self._conn is not None
@@ -565,12 +596,14 @@ class SecureVault:
             logger.error("SecureVault: Failed to decrypt Bitwarden session: %s", e)
             return None, None
 
+    @_synchronized
     def delete_item(self, item_id: str) -> None:
         """Remove a stored item by ID."""
         assert self._conn is not None
         self._conn.execute("DELETE FROM vault_items WHERE id = ?", (item_id,))
         self._conn.commit()
 
+    @_synchronized
     def list_items(
         self, item_type: str | None = None
     ) -> list[dict[str, str]]:
@@ -587,6 +620,7 @@ class SecureVault:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    @_synchronized
     def store_connection(self, conn: Any) -> None:
         """Store a connection configuration (encrypted)."""
         assert self._conn is not None
@@ -621,6 +655,7 @@ class SecureVault:
         )
         self._conn.commit()
 
+    @_synchronized
     def get_connection(self, conn_id: str) -> Any | None:
         """Retrieve and decrypt a connection by ID."""
         assert self._conn is not None
@@ -666,6 +701,7 @@ class SecureVault:
             logger.error("SecureVault: Failed to decrypt connection '%s': %s", conn_id, e)
             return None
 
+    @_synchronized
     def list_connections(self) -> list[Any]:
         """List and decrypt all connections."""
         assert self._conn is not None
@@ -680,6 +716,7 @@ class SecureVault:
                 conns.append(c)
         return conns
 
+    @_synchronized
     def delete_connection(self, conn_id: str) -> None:
         """Remove a connection and its associated port forwarding rules."""
         assert self._conn is not None
@@ -692,6 +729,7 @@ class SecureVault:
             if r.connection_id == conn_id:
                 self.delete_item(r.id)
 
+    @_synchronized
     def store_group(self, group: Any) -> None:
         """Store a connection group (encrypted)."""
         assert self._conn is not None
@@ -714,6 +752,7 @@ class SecureVault:
         )
         self._conn.commit()
 
+    @_synchronized
     def list_groups(self) -> list[Any]:
         """List and decrypt all connection groups."""
         assert self._conn is not None
@@ -741,6 +780,7 @@ class SecureVault:
                 logger.error("SecureVault: Failed to decrypt group '%s': %s", r["id"], e)
         return groups
 
+    @_synchronized
     def delete_group(self, group_id: str) -> None:
         """Remove a group and clear group_id references in connections."""
         assert self._conn is not None
@@ -753,6 +793,7 @@ class SecureVault:
                 c.group_id = None
                 self.store_connection(c)
 
+    @_synchronized
     def store_forward_rule(self, rule: Any) -> None:
         """Store a port forwarding rule (encrypted)."""
         assert self._conn is not None
@@ -779,6 +820,7 @@ class SecureVault:
         )
         self._conn.commit()
 
+    @_synchronized
     def get_forward_rule(self, rule_id: str) -> Any | None:
         """Retrieve and decrypt a forward rule by ID."""
         assert self._conn is not None
@@ -814,6 +856,7 @@ class SecureVault:
             logger.error("SecureVault: Failed to decrypt forward rule '%s': %s", rule_id, e)
             return None
 
+    @_synchronized
     def list_forward_rules(self) -> list[Any]:
         """List and decrypt all port forwarding rules."""
         assert self._conn is not None
@@ -828,6 +871,7 @@ class SecureVault:
                 rules.append(rule)
         return rules
 
+    @_synchronized
     def store_global_key(
         self,
         item_id: str,
@@ -859,6 +903,7 @@ class SecureVault:
         )
         self._conn.commit()
 
+    @_synchronized
     def get_global_key(self, item_id: str) -> dict | None:
         """Retrieve and decrypt a global SSH key by ID."""
         assert self._conn is not None
@@ -890,6 +935,7 @@ class SecureVault:
             logger.error("SecureVault: Failed to decrypt global key '%s': %s", item_id, e)
             return None
 
+    @_synchronized
     def list_global_keys(self) -> list[dict]:
         """List and decrypt all global SSH keys."""
         assert self._conn is not None
@@ -904,6 +950,7 @@ class SecureVault:
                 keys.append(k)
         return keys
 
+    @_synchronized
     def clear_all(self) -> None:
         """Remove all vault items (but keep the master key envelope)."""
         assert self._conn is not None
@@ -911,6 +958,7 @@ class SecureVault:
         self._conn.commit()
         logger.warning("SecureVault: All items cleared.")
 
+    @_synchronized
     def destroy(self) -> None:
         """DANGER: Remove all vault data including the master key. Cannot be undone."""
         assert self._conn is not None
