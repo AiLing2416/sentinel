@@ -156,6 +156,8 @@ class TerminalTab(Gtk.Box):
         self._context_uri: str | None = None
         self._current_status_text: str = ""
         self._url_match_tag: int = -1
+        self._last_mouse_x: float = -1.0
+        self._last_mouse_y: float = -1.0
 
         self._build_ui()
         
@@ -393,7 +395,7 @@ class TerminalTab(Gtk.Box):
         # Floating status bubble (Chrome-style): only visible while active,
         # sized to its content, anchored to the bottom-left of the terminal.
         self._status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        self._status_bar.add_css_class("osd")
+        self._status_bar.add_css_class("terminal-status-bubble")
         self._status_bar.set_halign(Gtk.Align.START)
         self._status_bar.set_valign(Gtk.Align.END)
         self._status_bar.set_can_target(False)
@@ -405,17 +407,45 @@ class TerminalTab(Gtk.Box):
         self._status_label = Gtk.Label(
             label=initial_status,
             xalign=0,
-            ellipsize=3,
+            ellipsize=Pango.EllipsizeMode.END,
             max_width_chars=100,
             margin_start=8,
             margin_end=8,
-            margin_top=2,
-            margin_bottom=2,
+            margin_top=3,
+            margin_bottom=3,
         )
+        self._status_label.add_css_class("dim-label")
         self._status_label.add_css_class("caption")
         self._status_bar.append(self._status_label)
         self._search_overlay.add_overlay(self._status_bar)
         self._show_overlay_text(initial_status, timeout_ms=4000)
+
+    def _update_pointer_avoidance(self, x: float, y: float) -> None:
+        """Avoid mouse pointer by shifting bubble to bottom-right if pointer is in bottom-left."""
+        term_w = self._terminal.get_width()
+        term_h = self._terminal.get_height()
+        if term_w <= 0 or term_h <= 0:
+            term_w = self._search_overlay.get_width()
+            term_h = self._search_overlay.get_height()
+        if term_w <= 0 or term_h <= 0:
+            return
+
+        bubble_w = self._status_bar.get_width()
+        bubble_h = self._status_bar.get_height()
+        threshold_w = min(max(bubble_w, 200) + 20, term_w * 0.6)
+        threshold_h = max(bubble_h, 28) + 20
+
+        # Avoid toggling in narrow layouts
+        if term_w < threshold_w * 1.5:
+            if self._status_bar.get_halign() != Gtk.Align.START:
+                self._status_bar.set_halign(Gtk.Align.START)
+            return
+
+        is_near_bottom_left = (x < threshold_w) and (y > term_h - threshold_h)
+        target_align = Gtk.Align.END if is_near_bottom_left else Gtk.Align.START
+
+        if self._status_bar.get_halign() != target_align:
+            self._status_bar.set_halign(target_align)
 
     def _show_overlay_text(self, text: str, timeout_ms: int = 0) -> None:
         """Show the floating status bubble; auto-hide after timeout_ms if > 0."""
@@ -423,6 +453,10 @@ class TerminalTab(Gtk.Box):
             GLib.source_remove(self._status_hide_id)
             self._status_hide_id = 0
         self._status_label.set_label(text)
+        if self._last_mouse_x >= 0 and self._last_mouse_y >= 0:
+            self._update_pointer_avoidance(self._last_mouse_x, self._last_mouse_y)
+        else:
+            self._status_bar.set_halign(Gtk.Align.START)
         self._status_bar.set_visible(True)
         if timeout_ms > 0:
             self._status_hide_id = GLib.timeout_add(timeout_ms, self._hide_overlay_text)
@@ -647,17 +681,23 @@ class TerminalTab(Gtk.Box):
         self._update_hovered_uri()
 
     def _on_mouse_motion(self, controller: Gtk.EventControllerMotion, x: float, y: float) -> None:
-        """Track mouse motion to provide instant hover feedback on regex-matched links."""
+        """Track mouse motion to provide instant hover feedback on links and avoid mouse pointer."""
+        self._last_mouse_x = x
+        self._last_mouse_y = y
+        self._update_pointer_avoidance(x, y)
         if not self._enable_hyperlinks:
             return
         self._match_uri = self._get_uri_at_position(x, y)
         self._update_hovered_uri()
 
     def _on_mouse_leave(self, controller: Gtk.EventControllerMotion) -> None:
-        """Clear link preview when mouse leaves the terminal widget."""
+        """Clear link preview and reset pointer avoidance when mouse leaves the terminal widget."""
+        self._last_mouse_x = -1.0
+        self._last_mouse_y = -1.0
         self._osc8_uri = None
         self._match_uri = None
         self._update_hovered_uri()
+        self._status_bar.set_halign(Gtk.Align.START)
 
     def _update_hovered_uri(self) -> None:
         """Combine OSC 8 and regex hover sources and refresh the floating link label."""

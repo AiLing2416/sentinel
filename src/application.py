@@ -899,6 +899,15 @@ class SentinelApplication(Adw.Application):
             box-shadow: 0 4px 20px alpha(black, 0.10), 0 1px 4px alpha(black, 0.06);
         }
 
+        /* ── Terminal Floating Status Bubble ────────── */
+        .terminal-status-bubble {
+            background-color: @window_bg_color;
+            border: 1px solid @borders;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px alpha(black, 0.20);
+            margin: 6px;
+        }
+
         /* ── Entry Placeholder Fix ─────────────────────── */
         entry text placeholder,
         text placeholder,
