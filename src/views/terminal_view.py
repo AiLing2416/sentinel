@@ -151,6 +151,8 @@ class TerminalTab(Gtk.Box):
         self._enable_osc52: bool = True
         self._enable_hyperlinks: bool = True
         self._hovered_uri: str | None = None
+        self._osc8_uri: str | None = None
+        self._match_uri: str | None = None
         self._context_uri: str | None = None
         self._current_status_text: str = ""
         self._url_match_tag: int = -1
@@ -388,35 +390,61 @@ class TerminalTab(Gtk.Box):
         
         self.append(terminal_container)
 
-        # Status bar
-        self._status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self._status_bar.set_margin_start(8)
-        self._status_bar.set_margin_end(8)
-        self._status_bar.set_margin_top(2)
-        self._status_bar.set_margin_bottom(2)
+        # Floating status bubble (Chrome-style): only visible while active,
+        # sized to its content, anchored to the bottom-left of the terminal.
+        self._status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self._status_bar.add_css_class("osd")
+        self._status_bar.set_halign(Gtk.Align.START)
+        self._status_bar.set_valign(Gtk.Align.END)
+        self._status_bar.set_can_target(False)
+        self._status_bar.set_visible(False)
+        self._status_hide_id: int = 0
 
         initial_status = _("Connecting to {title}…").format(title=self.title) if self.is_remote else _("Spawning local shell...")
         self._current_status_text = initial_status
         self._status_label = Gtk.Label(
             label=initial_status,
             xalign=0,
-            hexpand=True,
             ellipsize=3,
+            max_width_chars=100,
+            margin_start=8,
+            margin_end=8,
+            margin_top=2,
+            margin_bottom=2,
         )
-        self._status_label.add_css_class("dim-label")
         self._status_label.add_css_class("caption")
         self._status_bar.append(self._status_label)
-        self.append(self._status_bar)
+        self._search_overlay.add_overlay(self._status_bar)
+        self._show_overlay_text(initial_status, timeout_ms=4000)
+
+    def _show_overlay_text(self, text: str, timeout_ms: int = 0) -> None:
+        """Show the floating status bubble; auto-hide after timeout_ms if > 0."""
+        if self._status_hide_id:
+            GLib.source_remove(self._status_hide_id)
+            self._status_hide_id = 0
+        self._status_label.set_label(text)
+        self._status_bar.set_visible(True)
+        if timeout_ms > 0:
+            self._status_hide_id = GLib.timeout_add(timeout_ms, self._hide_overlay_text)
+
+    def _hide_overlay_text(self) -> bool:
+        self._status_hide_id = 0
+        if not self._hovered_uri:
+            self._status_bar.set_visible(False)
+        return False
 
     def _set_status(self, text: str) -> None:
-        """Update current status text and update label if not hovering a link."""
+        """Update current status text; flash it briefly unless hovering a link."""
         self._current_status_text = text
         if not self._hovered_uri:
-            self._status_label.set_label(text)
+            self._show_overlay_text(text, timeout_ms=4000)
 
     def _restore_status_label(self) -> None:
-        """Restore the connection/process status text in the status bar."""
-        self._status_label.set_label(self._current_status_text)
+        """Hide the floating bubble once the link hover ends."""
+        if self._status_hide_id:
+            GLib.source_remove(self._status_hide_id)
+            self._status_hide_id = 0
+        self._status_bar.set_visible(False)
 
     def apply_terminal_config(self) -> None:
         """Apply basic terminal settings (font, size, scrollback, cursor, osc52, hyperlinks)."""
@@ -615,29 +643,31 @@ class TerminalTab(Gtk.Box):
         """Called when mouse hovers over an OSC 8 hyperlink."""
         if not self._enable_hyperlinks:
             return
-        if uri:
-            self._hovered_uri = uri
-            self._status_label.set_label(_("Link: {uri} (Ctrl+Click to open)").format(uri=uri))
-        else:
-            self._hovered_uri = None
-            self._restore_status_label()
+        self._osc8_uri = uri or None
+        self._update_hovered_uri()
 
     def _on_mouse_motion(self, controller: Gtk.EventControllerMotion, x: float, y: float) -> None:
-        """Track mouse motion to provide instant hover feedback on links."""
+        """Track mouse motion to provide instant hover feedback on regex-matched links."""
         if not self._enable_hyperlinks:
             return
-        uri = self._get_uri_at_position(x, y)
-        if uri != self._hovered_uri:
-            self._hovered_uri = uri
-            if uri:
-                self._status_label.set_label(_("Link: {uri} (Ctrl+Click to open)").format(uri=uri))
-            else:
-                self._restore_status_label()
+        self._match_uri = self._get_uri_at_position(x, y)
+        self._update_hovered_uri()
 
     def _on_mouse_leave(self, controller: Gtk.EventControllerMotion) -> None:
         """Clear link preview when mouse leaves the terminal widget."""
-        if self._hovered_uri is not None:
-            self._hovered_uri = None
+        self._osc8_uri = None
+        self._match_uri = None
+        self._update_hovered_uri()
+
+    def _update_hovered_uri(self) -> None:
+        """Combine OSC 8 and regex hover sources and refresh the floating link label."""
+        uri = self._osc8_uri or self._match_uri
+        if uri == self._hovered_uri:
+            return
+        self._hovered_uri = uri
+        if uri:
+            self._show_overlay_text(_("Link: {uri} (Ctrl+Click to open)").format(uri=uri))
+        else:
             self._restore_status_label()
 
     def _on_left_click(self, gesture: Gtk.GestureClick, n_press: int, x: float, y: float) -> None:
