@@ -56,10 +56,6 @@ class SentinelWindow(Adw.ApplicationWindow):
         vm = VaultManager.get()
         if not vm.is_unlocked:
             self._main_stack.set_visible_child_name("unlock")
-            if not vm.is_initialized:
-                self._unlock_stack.set_visible_child_name("setup")
-            else:
-                self._unlock_stack.set_visible_child_name("unlock")
         else:
             self._main_stack.set_visible_child_name("main_ui")
             self._load_connections()
@@ -84,7 +80,7 @@ class SentinelWindow(Adw.ApplicationWindow):
         self.set_content(self._main_stack)
 
     def _build_unlock_screen(self) -> Gtk.Widget:
-        # Card container to hold the forms
+        # Card container to hold the recovery / unlock UI
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
         card.add_css_class("unlock-card")
         card.set_margin_start(20)
@@ -93,59 +89,12 @@ class SentinelWindow(Adw.ApplicationWindow):
         card.set_margin_bottom(20)
 
         clamp = Adw.Clamp()
-        clamp.set_maximum_size(440)
+        clamp.set_maximum_size(460)
         clamp.set_halign(Gtk.Align.CENTER)
         clamp.set_valign(Gtk.Align.CENTER)
         clamp.set_vexpand(True)
         clamp.set_child(card)
 
-        # Stack for Setup vs Unlock
-        self._unlock_stack = Gtk.Stack(
-            transition_type=Gtk.StackTransitionType.CROSSFADE,
-            transition_duration=250,
-        )
-
-        # ── Setup Sub-page (First time initialization) ──
-        setup_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
-        setup_box.set_margin_start(24)
-        setup_box.set_margin_end(24)
-        setup_box.set_margin_top(24)
-        setup_box.set_margin_bottom(24)
-
-        s_icon = Gtk.Image.new_from_icon_name("security-high-symbolic")
-        s_icon.set_pixel_size(48)
-        s_icon.add_css_class("accent")
-        setup_box.append(s_icon)
-
-        s_title = Gtk.Label(label=_("Create Secure Vault"))
-        s_title.add_css_class("title-1")
-        setup_box.append(s_title)
-
-        s_desc = Gtk.Label(
-            label=_("Choose a master password to protect and encrypt all your connection details and SSH keys on disk."),
-            wrap=True,
-            justify=Gtk.Justification.CENTER,
-        )
-        s_desc.add_css_class("dim-label")
-        setup_box.append(s_desc)
-
-        s_list = Gtk.ListBox()
-        s_list.add_css_class("boxed-list")
-        self._setup_pw = Adw.PasswordEntryRow(title=_("Master Password"))
-        self._setup_confirm = Adw.PasswordEntryRow(title=_("Confirm Password"))
-        s_list.append(self._setup_pw)
-        s_list.append(self._setup_confirm)
-        setup_box.append(s_list)
-
-        s_btn = Gtk.Button(label=_("Create Vault"))
-        s_btn.add_css_class("suggested-action")
-        s_btn.add_css_class("pill")
-        s_btn.connect("clicked", self._on_setup_vault_clicked)
-        setup_box.append(s_btn)
-
-        self._unlock_stack.add_named(setup_box, "setup")
-
-        # ── Unlock Sub-page (Subsequent launches) ──
         unlock_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         unlock_box.set_margin_start(24)
         unlock_box.set_margin_end(24)
@@ -157,47 +106,59 @@ class SentinelWindow(Adw.ApplicationWindow):
         u_icon.add_css_class("warning")
         unlock_box.append(u_icon)
 
-        u_title = Gtk.Label(label=_("Unlock Sentinel"))
+        u_title = Gtk.Label(label=_("System Keychain Unavailable"))
         u_title.add_css_class("title-1")
         unlock_box.append(u_title)
 
         u_desc = Gtk.Label(
-            label=_("Enter your Sentinel vault master password to continue."),
+            label=_("Sentinel stores its master encryption key in your system keychain (KDE Wallet / GNOME Keyring). The key could not be loaded to unlock your local vault."),
             wrap=True,
             justify=Gtk.Justification.CENTER,
         )
         u_desc.add_css_class("dim-label")
         unlock_box.append(u_desc)
 
-        u_list = Gtk.ListBox()
-        u_list.add_css_class("boxed-list")
-        self._unlock_pw = Adw.PasswordEntryRow(title=_("Master Password"))
-        u_list.append(self._unlock_pw)
-        unlock_box.append(u_list)
+        # Primary action: Retry Keychain Unlock
+        retry_btn = Gtk.Button(label=_("Retry Keychain Unlock"))
+        retry_btn.add_css_class("suggested-action")
+        retry_btn.add_css_class("pill")
+        retry_btn.connect("clicked", self._on_retry_keychain_unlock_clicked)
+        unlock_box.append(retry_btn)
 
-        u_btn = Gtk.Button(label=_("Unlock"))
-        u_btn.add_css_class("suggested-action")
-        u_btn.add_css_class("pill")
-        u_btn.connect("clicked", self._on_unlock_vault_clicked)
-        self._unlock_pw.connect("entry-activated", self._on_unlock_vault_clicked)
-        unlock_box.append(u_btn)
-
-        # Reset helper option
-        reset_lbl = Gtk.Label(label=_("Forgot your master password?"))
+        # Destructive recovery action: Reset Local Vault & Restore from Bitwarden
+        reset_lbl = Gtk.Label(label=_("Cannot unlock your local keychain?"))
         reset_lbl.add_css_class("caption")
         reset_lbl.add_css_class("dim-label")
         reset_lbl.set_margin_top(16)
         unlock_box.append(reset_lbl)
 
-        reset_btn = Gtk.Button(label=_("Reset & Erase Everything"))
+        reset_btn = Gtk.Button(label=_("Reset Vault & Re-sync from Bitwarden"))
         reset_btn.add_css_class("flat")
         reset_btn.add_css_class("destructive-action")
         reset_btn.connect("clicked", self._on_reset_vault_clicked)
         unlock_box.append(reset_btn)
 
-        self._unlock_stack.add_named(unlock_box, "unlock")
+        # Optional manual password fallback (for legacy password-protected vaults)
+        legacy_group = Adw.PreferencesGroup()
+        legacy_group.set_margin_top(12)
+        legacy_expander = Adw.ExpanderRow(title=_("Enter Master Password (Legacy)"))
+        legacy_expander.set_subtitle(_("If your vault was previously created with a manual password"))
 
-        card.append(self._unlock_stack)
+        self._unlock_pw = Adw.PasswordEntryRow(title=_("Master Password"))
+        self._unlock_pw.connect("entry-activated", self._on_unlock_vault_clicked)
+        legacy_expander.add_row(self._unlock_pw)
+
+        manual_unlock_action = Adw.ActionRow()
+        manual_unlock_btn = Gtk.Button(label=_("Unlock"))
+        manual_unlock_btn.add_css_class("suggested-action")
+        manual_unlock_btn.set_valign(Gtk.Align.CENTER)
+        manual_unlock_btn.connect("clicked", self._on_unlock_vault_clicked)
+        manual_unlock_action.add_suffix(manual_unlock_btn)
+        legacy_expander.add_row(manual_unlock_action)
+        legacy_group.add(legacy_expander)
+        unlock_box.append(legacy_group)
+
+        card.append(unlock_box)
 
         self._unlock_toast_overlay = Adw.ToastOverlay()
         self._unlock_toast_overlay.set_child(clamp)
@@ -593,28 +554,12 @@ class SentinelWindow(Adw.ApplicationWindow):
 
     # ── Local Vault Actions ───────────────────────────────────
 
-    def _on_setup_vault_clicked(self, _btn) -> None:
-        pwd = self._setup_pw.get_text()
-        confirm = self._setup_confirm.get_text()
-        if not pwd:
-            self._show_unlock_toast(_("Please enter a master password."))
-            return
-        if pwd != confirm:
-            self._show_unlock_toast(_("Passwords do not match."))
-            return
-        if len(pwd) < 8:
-            self._show_unlock_toast(_("Password must be at least 8 characters."))
-            return
-
-        pwd_sb = SecureBytes(pwd)
-        try:
-            VaultManager.get().initialize(pwd_sb)
-            pwd_sb.clear()
-            self._show_toast(_("Secure Vault initialized."))
+    def _on_retry_keychain_unlock_clicked(self, _btn) -> None:
+        if VaultManager.get().startup():
+            self._show_toast(_("Unlocked with system keychain."))
             self._on_successful_unlock()
-        except Exception as e:
-            pwd_sb.clear()
-            self._show_unlock_toast(_("Failed to initialize vault: {e}").format(e=e))
+        else:
+            self._show_unlock_toast(_("Could not unlock with system keychain. Please ensure your wallet or keyring is unlocked."))
 
     def _on_unlock_vault_clicked(self, _btn) -> None:
         pwd = self._unlock_pw.get_text()
@@ -626,17 +571,18 @@ class SentinelWindow(Adw.ApplicationWindow):
 
         if ok:
             self._unlock_pw.set_text("")
+            self._show_toast(_("Vault unlocked successfully."))
             self._on_successful_unlock()
         else:
             self._show_unlock_toast(_("Wrong master password."))
 
     def _on_reset_vault_clicked(self, _btn) -> None:
         dialog = Adw.AlertDialog(
-            heading=_("Reset & Erase Everything?"),
-            body=_("This will permanently erase all connections and SSH keys inside your Sentinel secure vault. This cannot be undone."),
+            heading=_("Reset Local Vault?"),
+            body=_("This will clear the local database and generate a fresh encryption key. If your connections are backed up in Bitwarden, you can restore them via Vault Settings."),
         )
         dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("reset", _("Erase All"))
+        dialog.add_response("reset", _("Reset Vault"))
         dialog.set_response_appearance("reset", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.set_default_response("cancel")
 
@@ -644,8 +590,11 @@ class SentinelWindow(Adw.ApplicationWindow):
             if resp == "reset":
                 VaultManager.get().destroy_vault()
                 VaultManager.get()._vault.open()
-                self._show_unlock_toast(_("Sentinel erased. Please configure a new master password."))
-                self._unlock_stack.set_visible_child_name("setup")
+                if VaultManager.get().startup():
+                    self._show_toast(_("Local vault reset. You can now restore connections from Bitwarden."))
+                    self._on_successful_unlock()
+                else:
+                    self._show_unlock_toast(_("Failed to re-initialize vault."))
 
         dialog.connect("response", _on_resp)
         dialog.present(self)

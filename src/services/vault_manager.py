@@ -84,13 +84,32 @@ class VaultManager:
             else:
                 logger.warning("VaultManager: Key from Keyring was rejected. SecureVault might be out of sync.")
 
-        # ── 2. If keyring lookup failed/rejected but vault is already initialized ──
-        if self._vault.is_initialized:
-            logger.info("VaultManager: Vault is initialized but keyring unlock was not possible. Manual unlock required.")
-            return False
+        # ── 2. If vault is not yet initialized, auto-generate machine key and initialize ──
+        if not self._vault.is_initialized:
+            logger.info("VaultManager: Initializing auto-managed secure vault with random machine key...")
+            try:
+                raw_key_ba = self._vault.initialize_with_random_key()
+                key_to_save = bytes(raw_key_ba)
+                for i in range(len(raw_key_ba)):
+                    raw_key_ba[i] = 0
 
-        # ── 3. Vault is not yet initialized ──
-        logger.info("VaultManager: Vault is not initialized. Setup required.")
+                if save_master_key(key_to_save):
+                    logger.info("VaultManager: Random master key generated and saved to system keyring.")
+                else:
+                    logger.warning("VaultManager: Failed to save master key to keyring.")
+
+                try:
+                    from db.migration import migrate_if_needed
+                    migrate_if_needed()
+                except Exception as me:
+                    logger.error("VaultManager: Init auto-migration failed: %s", me)
+                return True
+            except Exception as e:
+                logger.error("VaultManager: Auto-initialization failed: %s", e)
+                return False
+
+        # ── 3. Vault is initialized but keyring unlock failed ──
+        logger.info("VaultManager: Vault is initialized but keyring unlock was not possible. Recovery or manual unlock required.")
         return False
 
     # ── Unlock / Lock ─────────────────────────────────────────

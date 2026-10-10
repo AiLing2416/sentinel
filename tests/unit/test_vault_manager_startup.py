@@ -22,21 +22,41 @@ class TestVaultManagerStartup:
         yield
         VaultManager._instance = None
 
-    def test_startup_uninitialized_returns_false_without_erasing(self, tmp_path: Path) -> None:
-        """When the vault is not initialized, startup() returns False without auto-creating anything."""
+    def test_startup_uninitialized_auto_generates_random_key_and_unlocks(self, tmp_path: Path) -> None:
+        """When the vault is not initialized, startup() generates a random key,
+        saves it to keyring, and transparently unlocks the vault.
+        """
         db_path = tmp_path / "test_vault.db"
+        keyring_store: dict[str, bytes] = {}
+
+        def mock_save_master_key(raw_key: bytes) -> bool:
+            keyring_store["master"] = bytes(raw_key)
+            return True
+
+        def mock_load_master_key() -> bytes | None:
+            return keyring_store.get("master")
+
         with patch("vault.secure_vault._default_vault_path", return_value=db_path), \
-             patch("services.vault_manager.load_master_key", return_value=None):
-            
+             patch("services.vault_manager.save_master_key", side_effect=mock_save_master_key), \
+             patch("services.vault_manager.load_master_key", side_effect=mock_load_master_key):
+
             vm = VaultManager()
             assert not vm.is_initialized
             assert not vm.is_unlocked
 
-            # startup() should return False and NOT initialize the vault
+            # startup() should auto-initialize and return True
             res = vm.startup()
-            assert res is False
-            assert not vm.is_initialized
+            assert res is True
+            assert vm.is_initialized
+            assert vm.is_unlocked
+            assert "master" in keyring_store
+            assert len(keyring_store["master"]) == 32
+
+            # Simulate restart: on next startup with key in keyring, it unlocks cleanly
+            vm.lock_session_only()
             assert not vm.is_unlocked
+            assert vm.startup() is True
+            assert vm.is_unlocked
 
     def test_startup_keyring_failure_does_not_destroy_vault(self, tmp_path: Path) -> None:
         """When vault is initialized with data, but keyring returns None or invalid key,
