@@ -33,6 +33,46 @@ except (ImportError, ValueError):
 logger = logging.getLogger(__name__)
 
 
+def is_network_error(err_msg: str | Exception) -> bool:
+    """Check if an error string or exception indicates network restriction or connectivity issues."""
+    msg = str(err_msg).lower()
+    keywords = [
+        "failed to fetch",
+        "fetch failed",
+        "network request failed",
+        "network error",
+        "enotfound",
+        "eai_again",
+        "econnrefused",
+        "etimedout",
+        "ehostunreach",
+        "enetunreach",
+        "socket hang up",
+        "timed out",
+        "timeout",
+        "connect etimedout",
+        "connect econnrefused",
+        "certificate has expired",
+        "self signed certificate",
+        "unable to verify the first certificate",
+        "unable to connect",
+    ]
+    return any(kw in msg for kw in keywords)
+
+
+def is_session_expired_error(err_msg: str | Exception) -> bool:
+    """Check if an error string or exception indicates an invalid or expired Bitwarden session."""
+    msg = str(err_msg).lower()
+    keywords = [
+        "not logged in",
+        "session key is invalid",
+        "session has expired",
+        "invalid session",
+        "unauthenticated",
+    ]
+    return any(kw in msg for kw in keywords)
+
+
 class BitwardenBackend(VaultBackend):
     """Bitwarden backend using the 'bw' CLI."""
 
@@ -385,6 +425,57 @@ class BitwardenBackend(VaultBackend):
         self._cli_session_active = False
         self._status_cache = None
 
+    async def get_status(self) -> dict[str, Any]:
+        """Get structured status of the Bitwarden CLI.
+        
+        Returns:
+            {
+                "status": "unauthenticated" | "locked" | "unlocked",
+                "server_url": str,
+                "user_email": str,
+                "last_sync": str | None,
+                "network_error": bool,
+                "raw_error": str | None,
+            }
+        """
+        if not self._session_token:
+            self._try_load_cached_session()
+
+        res: dict[str, Any] = {
+            "status": "unauthenticated",
+            "server_url": "",
+            "user_email": "",
+            "last_sync": None,
+            "network_error": False,
+            "raw_error": None,
+        }
+
+        try:
+            status_raw = await self._run_bw(["status"])
+            status = json.loads(status_raw)
+            res["status"] = status.get("status", "unauthenticated")
+            res["server_url"] = status.get("serverUrl") or ""
+            res["user_email"] = status.get("userEmail") or ""
+            res["last_sync"] = status.get("lastSync")
+        except Exception as e:
+            err_msg = str(e)
+            res["raw_error"] = err_msg
+            if is_network_error(err_msg):
+                res["network_error"] = True
+            logger.warning("Bitwarden: get_status error: %s", e)
+
+        # Fallback to local vault session email if CLI output has none
+        if not res["user_email"]:
+            try:
+                from services.vault_manager import VaultManager
+                saved_email, _ = VaultManager.get().get_bitwarden_session()
+                if saved_email:
+                    res["user_email"] = saved_email
+            except Exception:
+                pass
+
+        return res
+
     async def is_unlocked(self) -> bool:
         """Check if the vault is unlocked. Uses a 30s cache to keep UI responsive."""
         import time
@@ -398,8 +489,6 @@ class BitwardenBackend(VaultBackend):
         if not self._session_token:
             self._try_load_cached_session()
 
-
-
         try:
             logger.debug("Bitwarden: Cache expired or missing, checking 'bw status'...")
             status_raw = await self._run_bw(["status"])
@@ -410,12 +499,13 @@ class BitwardenBackend(VaultBackend):
             logger.info(f"Bitwarden: Current CLI status is {state} (unlocked={unlocked})")
             
             if not unlocked and self._session_token:
-                # Token in memory but CLI says locked — token probably expired.
-                logger.warning("Bitwarden: In-memory token present but CLI reports locked. Clearing stale token.")
-                self._session_token.clear()
-                self._session_token = None
-                self._item_cache.clear()
-                self._cli_session_active = False
+                # Only clear token if CLI explicitly reported locked/unauthenticated
+                if state in ("locked", "unauthenticated"):
+                    logger.warning("Bitwarden: In-memory token present but CLI reports %s. Clearing stale token.", state)
+                    self._session_token.clear()
+                    self._session_token = None
+                    self._item_cache.clear()
+                    self._cli_session_active = False
             elif unlocked and not self._session_token:
                 # bw CLI has its own valid session (e.g. from a previous app run).
                 # Mark this so _run_bw_raw doesn't log spurious warnings.
@@ -428,9 +518,10 @@ class BitwardenBackend(VaultBackend):
             return unlocked
         except Exception as e:
             logger.error(f"Bitwarden: Failed to check vault status: {e}")
-            # If bw command fails with no token, conservatively return False.
+            # If command fails (e.g. temporary spawn issue or network timeout),
+            # don't erase token and only cache failure for 5s instead of 30s.
             self._status_cache = False
-            self._status_cache_time = now
+            self._status_cache_time = now - 25
             return False
 
     def _get_cached_credential(self, item_id: str, cred_type: str) -> Any | None:
@@ -823,7 +914,12 @@ class BitwardenBackend(VaultBackend):
             self._auto_synced = True
             logger.info("Bitwarden: 'bw sync' completed successfully.")
         except Exception as e:
+            err_str = str(e)
             logger.error(f"Bitwarden: 'bw sync' failed: {e}")
+            if is_network_error(err_str):
+                raise ConnectionError("Network restricted: Unable to connect to Bitwarden server.") from e
+            elif is_session_expired_error(err_str):
+                raise PermissionError("Bitwarden session expired. Please log in again.") from e
             raise
 
     async def store_connection_config(self, config: dict) -> str:

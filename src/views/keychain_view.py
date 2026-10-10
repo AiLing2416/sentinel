@@ -898,8 +898,15 @@ class KeychainPage(Gtk.Box):
                 GLib.idle_add(_on_success)
             except Exception as e:
                 # Error callback
-                def _on_error():
-                    self._show_toast(_("Failed to upload to Bitwarden: {err}").format(err=str(e)))
+                err_msg = str(e)
+                def _on_error(err=err_msg):
+                    from vault.bitwarden import is_network_error, is_session_expired_error
+                    if is_network_error(err):
+                        self._show_toast(_("Failed to upload to Bitwarden: Network restricted, unable to connect to server."))
+                    elif is_session_expired_error(err):
+                        self._show_toast(_("Failed to upload to Bitwarden: Session expired. Please log in again."))
+                    else:
+                        self._show_toast(_("Failed to upload to Bitwarden: {err}").format(err=err))
                     return False
                 GLib.idle_add(_on_error)
 

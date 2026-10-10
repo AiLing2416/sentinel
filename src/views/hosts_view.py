@@ -533,9 +533,17 @@ class HostsPage(Gtk.Box):
         async def _fetch_and_update():
             is_unlocked = await vault.is_unlocked()
             if not is_unlocked:
-                def _notify_locked():
+                status_info = await vault.get_status() if hasattr(vault, "get_status") else {}
+                current_state = status_info.get("status")
+                if current_state == "locked":
+                    msg = _("Please unlock Bitwarden in Vault Settings first.")
+                elif current_state == "unauthenticated":
+                    msg = _("Please log in to Bitwarden in Vault Settings first.")
+                else:
+                    msg = _("Bitwarden is unavailable. Please check Vault Settings.")
+                def _notify_locked(notice=msg):
                     picker.destroy()
-                    self._parent._show_toast(_("Please log in / unlock Bitwarden via Vault Settings first."))
+                    self._parent._show_toast(notice)
                     self._parent.show_vault_settings()
                     return False
                 _GLib.idle_add(_notify_locked)
@@ -624,15 +632,11 @@ class HostsPage(Gtk.Box):
                     async def _async_fetch():
                         vault = VaultService.get().get_backend("bitwarden")
                         is_unlocked = await vault.is_unlocked() if vault else False
-                        with open("/media/ailing/CS650/Docs/Sentinel/debug_vault.log", "a") as f:
-                            f.write(f"Vault: {vault is not None}, Unlocked: {is_unlocked}, ItemID: {item_id}\n")
                         if vault and is_unlocked:
                             try:
                                 item_raw = await vault._run_bw(["get", "item", item_id])
                                 item = json.loads(item_raw)
                                 name = item.get("name", "")
-                                with open("/media/ailing/CS650/Docs/Sentinel/debug_vault.log", "a") as f:
-                                    f.write(f"Success! Name: {name}\n")
                                 if name:
                                     def _idle_update():
                                         if self._editing_conn and self._editing_conn.vault_item_id == item_id:
@@ -642,8 +646,6 @@ class HostsPage(Gtk.Box):
                                         return False
                                     GLib.idle_add(_idle_update)
                             except Exception as e:
-                                with open("/media/ailing/CS650/Docs/Sentinel/debug_vault.log", "a") as f:
-                                    f.write(f"Failed to fetch: {e}\n")
                                 logger.error(f"Failed to fetch item name for {item_id}: {e}")
 
                     SSHService().engine.run_coroutine(_async_fetch())

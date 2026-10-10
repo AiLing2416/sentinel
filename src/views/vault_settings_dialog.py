@@ -21,6 +21,7 @@ _ = gettext.gettext
 from services.vault_service import VaultService
 from services.vault_manager import VaultManager
 from services.sync_manager import SyncManager
+from vault.bitwarden import is_network_error, is_session_expired_error
 from utils.secure import SecureBytes
 from db.database import Database
 import logging
@@ -560,40 +561,39 @@ class VaultManagerWindow(Gtk.Box):
         async def _do_check():
             await self._vault.is_unlocked()
             
-            state = "unauthenticated"
-            server = ""
-            email = ""
+            status_info = await self._vault.get_status() if hasattr(self._vault, "get_status") else {}
+            state = status_info.get("status", "unauthenticated")
+            server = status_info.get("server_url", "")
+            email = status_info.get("user_email", "")
+            network_error = status_info.get("network_error", False)
+
+            saved_email = ""
             try:
-                status_raw = await self._vault._run_bw(["status"])
-                status = json.loads(status_raw)
-                state = status.get("status", "unauthenticated")
-                server = status.get("serverUrl", "")
+                saved_email_val, _unused = VaultManager.get().get_bitwarden_session()
+                saved_email = saved_email_val or ""
             except Exception:
                 pass
 
-            if state == "unlocked":
-                try:
-                    email_val, _unused = VaultManager.get().get_bitwarden_session()
-                    email = email_val or ""
-                except Exception:
-                    pass
+            display_email = email or saved_email
 
             def _update():
                 if state == "unauthenticated":
                     self._server_entry.set_text(server or "")
                     self._bw_stack.set_visible_child_name("login")
+                    if network_error:
+                        self._show_toast(_("Network restricted: Unable to connect to Bitwarden server."))
                 elif state == "locked":
-                    saved_email = ""
-                    try:
-                        saved_email_val, _unused = VaultManager.get().get_bitwarden_session()
-                        saved_email = saved_email_val or ""
-                    except Exception:
-                        pass
-                    self._unlock_email_row.set_subtitle(saved_email or email or _("Logged In"))
+                    self._unlock_email_row.set_subtitle(display_email or _("Logged In"))
                     self._bw_stack.set_visible_child_name("unlock")
+                    if network_error:
+                        self._show_toast(_("Network restricted: Offline unlock available."))
                 elif state == "unlocked":
                     self._server_info_row.set_subtitle(server or _("Official Cloud Server"))
-                    self._account_row.set_subtitle(email or _("Unlocked ✓"))
+                    if network_error:
+                        status_text = f"{display_email} (Network Restricted)" if display_email else _("Unlocked ✓ (Network Restricted)")
+                    else:
+                        status_text = display_email or _("Unlocked ✓")
+                    self._account_row.set_subtitle(status_text)
                     self._bw_stack.set_visible_child_name("settings")
                     self._load_folders()
 
@@ -905,9 +905,15 @@ class VaultManagerWindow(Gtk.Box):
                 ) and False)
             except Exception as e:
                 err_msg = str(e)
-                GLib.idle_add(lambda err=err_msg: (
+                if is_network_error(err_msg):
+                    toast_err = _("Upload failed: Network restricted, unable to connect to server.")
+                elif is_session_expired_error(err_msg):
+                    toast_err = _("Upload failed: Bitwarden session expired. Please log in again.")
+                else:
+                    toast_err = _("Upload failed: {e}").format(e=err_msg)
+                GLib.idle_add(lambda msg=toast_err: (
                     self._push_btn.set_sensitive(True),
-                    self._show_toast(_("Upload failed: {e}").format(e=err))
+                    self._show_toast(msg)
                 ) and False)
                 
         self._run_coroutine(_do_push())
@@ -950,9 +956,15 @@ class VaultManagerWindow(Gtk.Box):
                 GLib.idle_add(_success)
             except Exception as e:
                 err_msg = str(e)
-                GLib.idle_add(lambda err=err_msg: (
+                if is_network_error(err_msg):
+                    toast_err = _("Download failed: Network restricted, unable to connect to server.")
+                elif is_session_expired_error(err_msg):
+                    toast_err = _("Download failed: Bitwarden session expired. Please log in again.")
+                else:
+                    toast_err = _("Download failed: {e}").format(e=err_msg)
+                GLib.idle_add(lambda msg=toast_err: (
                     self._pull_btn.set_sensitive(True),
-                    self._show_toast(_("Download failed: {e}").format(e=err))
+                    self._show_toast(msg)
                 ) and False)
                 
         self._run_coroutine(_do_pull())
@@ -1137,6 +1149,10 @@ class VaultManagerWindow(Gtk.Box):
                     self._login_btn.set_sensitive(True)
                     if self._is_2fa_required(err):
                         self._switch_to_2fa(err)
+                    elif is_network_error(err):
+                        self._bw_stack.set_visible_child_name("login")
+                        self._main_stack.set_visible_child_name("content")
+                        self._show_toast(_("Network restricted: Unable to connect to Bitwarden server. Please check your network or server URL."))
                     else:
                         self._bw_stack.set_visible_child_name("login")
                         self._main_stack.set_visible_child_name("content")
@@ -1196,7 +1212,10 @@ class VaultManagerWindow(Gtk.Box):
                     self._2fa_submit_btn.set_sensitive(True)
                     self._bw_stack.set_visible_child_name("two_factor")
                     self._main_stack.set_visible_child_name("content")
-                    self._show_toast(_("Verification failed: {err}").format(err=err))
+                    if is_network_error(err):
+                        self._show_toast(_("Network restricted: Unable to connect to Bitwarden server."))
+                    else:
+                        self._show_toast(_("Verification failed: {err}").format(err=err))
                     return False
                 GLib.idle_add(_fail)
 
@@ -1257,12 +1276,21 @@ class VaultManagerWindow(Gtk.Box):
 
         async def _do_sync():
             try:
-                await self._vault._run_bw(["sync"])
+                if hasattr(self._vault, "sync"):
+                    await self._vault.sync()
+                else:
+                    await self._vault._run_bw(["sync"])
                 GLib.idle_add(lambda: self._show_toast(_("Sync completed.")) or False)
                 self._load_folders()
             except Exception as e:
                 err_msg = str(e)
-                GLib.idle_add(lambda err=err_msg: self._show_toast(_("Sync failed: {e}").format(e=err)) or False)
+                if is_network_error(err_msg):
+                    toast_msg = _("Network restricted: Unable to sync with Bitwarden server.")
+                elif is_session_expired_error(err_msg):
+                    toast_msg = _("Bitwarden session expired. Please log in again.")
+                else:
+                    toast_msg = _("Sync failed: {e}").format(e=err_msg)
+                GLib.idle_add(lambda msg=toast_msg: self._show_toast(msg) or False)
 
         self._run_coroutine(_do_sync())
 
