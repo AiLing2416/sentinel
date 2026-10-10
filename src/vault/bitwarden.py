@@ -109,7 +109,13 @@ class BitwardenBackend(VaultBackend):
         # Flag: bw CLI is unlocked via its own session management (no in-memory token needed)
         self._cli_session_active: bool = False
 
-        self._expected_sha = "8b925256504fde78684df7b937ec2f03417ace5fde4a663a9a6cd85dc94b122e"
+        # Known authentic binary SHA256 hashes for bundled Bitwarden CLI
+        self._trusted_shas: set[str] = {
+            "36a952f0632814b79ee4a125b3dacb85d11be20c8b63eb19ca42b686cc90e20b",  # v2026.9.1 x86_64
+            "eb291a7880271daaa343804138e6f66075e729581d47b3796b51fc3c68e94b4b",  # v2026.9.1 arm64
+            "8b925256504fde78684df7b937ec2f03417ace5fde4a663a9a6cd85dc94b122e",  # v2026.2.0 x86_64
+        }
+        self._expected_sha = "36a952f0632814b79ee4a125b3dacb85d11be20c8b63eb19ca42b686cc90e20b"
 
         # Load persisted Bitwarden session from local secure vault (if available)
         self._try_load_cached_session()
@@ -134,7 +140,7 @@ class BitwardenBackend(VaultBackend):
 
         # Security check for bundled binary
         if "bin/bw" in self._cli_path:
-            if not await self._verify_binary(self._cli_path, self._expected_sha):
+            if not await self._verify_binary(self._cli_path, self._trusted_shas):
                  raise RuntimeError("Bitwarden CLI integrity check failed! Potential tampering detected.")
 
         env = os.environ.copy()
@@ -208,18 +214,20 @@ class BitwardenBackend(VaultBackend):
 
         return stdout
 
-    async def _verify_binary(self, path: str, expected_sha: str) -> bool:
+    async def _verify_binary(self, path: str, expected: set[str] | str) -> bool:
         """Verify the SHA256 hash of the 'bw' binary."""
         import hashlib
         try:
-            def _calc():
+            def _calc() -> str:
                 h = hashlib.sha256()
                 with open(path, "rb") as f:
                     while chunk := f.read(8192):
                         h.update(chunk)
                 return h.hexdigest()
             actual = await asyncio.to_thread(_calc)
-            return actual == expected_sha
+            if isinstance(expected, (set, list, tuple)):
+                return actual in expected
+            return actual == expected
         except Exception:
             return False
 

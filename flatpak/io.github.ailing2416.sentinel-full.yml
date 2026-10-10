@@ -28,13 +28,13 @@ modules:
       - install -D rclone /app/bin/rclone
     sources:
       - type: archive
-        url: https://downloads.rclone.org/v1.73.2/rclone-v1.73.2-linux-amd64.zip
-        sha256: 00a1d8cb85552b7b07bb0416559b2e78fcf9c6926662a52682d81b5f20c90535
+        url: https://downloads.rclone.org/v1.75.2/rclone-v1.75.2-linux-amd64.zip
+        sha256: 349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702
         strip-components: 1
         only-arches: [x86_64]
       - type: archive
-        url: https://downloads.rclone.org/v1.73.2/rclone-v1.73.2-linux-arm64.zip
-        sha256: 2f7d8b807e6ea638855129052c834ca23aa538d3ad7786e30b8ad1e97c5db47b
+        url: https://downloads.rclone.org/v1.75.2/rclone-v1.75.2-linux-arm64.zip
+        sha256: 7e1e8d69654941b7b7df84ee74c5f7fb09cce7d5496947fb7bf16b55ff427d10
         strip-components: 1
         only-arches: [aarch64]
 
@@ -44,12 +44,12 @@ modules:
       - install -D bw /app/bin/bw
     sources:
       - type: archive
-        url: https://github.com/bitwarden/clients/releases/download/cli-v2026.2.0/bw-linux-2026.2.0.zip
-        sha256: 8d73e2a471993db8b2e6e4f69293a71e28e9b4c2cb4b696665f5f396126e1850
+        url: https://github.com/bitwarden/clients/releases/download/cli-v2026.9.1/bw-linux-2026.9.1.zip
+        sha256: 84289eaf59d691f04242605112f21b00e8dba65acdedbc60dde001a2860f2097
         only-arches: [x86_64]
       - type: archive
-        url: https://github.com/bitwarden/clients/releases/download/cli-v2026.2.0/bw-linux-arm64-2026.2.0.zip
-        sha256: e714e09b753398a687ae6b6ef062180120354aa4583392f414c1cca9fecfca5e
+        url: https://github.com/bitwarden/clients/releases/download/cli-v2026.9.1/bw-linux-arm64-2026.9.1.zip
+        sha256: c451c773378a6f1f041ea26568a897b285a8656bee16a16e4914ce9e40fb7c79
         only-arches: [aarch64]
 
   - name: vte
@@ -65,8 +65,8 @@ modules:
       - -Dicu=true
     sources:
       - type: archive
-        url: https://download.gnome.org/sources/vte/0.82/vte-0.82.3.tar.xz
-        sha256: 6dc6278f6fee30d07d1a03e2ba3335b1ea4e8d2956ceb59d861943115d930a85
+        url: https://download.gnome.org/sources/vte/0.84/vte-0.84.1.tar.xz
+        sha256: aca1caa8478aebcdbb1d67897fb3511eb7601debae6810e16a15b6fa25f31ac8
 
   - name: python3-dependencies
     build-options:
@@ -103,3 +103,6 @@ modules:
     sources:
       - type: dir
         path: ..
+        skip:
+          - .git
+          - .venv
