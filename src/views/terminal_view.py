@@ -300,17 +300,26 @@ class TerminalTab(Gtk.Box):
         # Right-click context menu
         self._setup_context_menu()
 
-        # Search bar
-        self._search_bar = Gtk.SearchBar(halign=Gtk.Align.FILL)
-        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        search_box.add_css_class("toolbar")
-        search_box.set_margin_start(12)
-        search_box.set_margin_end(12)
-        search_box.set_margin_top(6)
-        search_box.set_margin_bottom(6)
+        # Floating, draggable search box (overlaid on the terminal, per session)
+        self._search_pos: tuple[int, int] | None = None
+        self._search_drag_origin: tuple[int, int] = (0, 0)
+        self._search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self._search_box.add_css_class("osd")
+        self._search_box.add_css_class("toolbar")
+        self._search_box.set_halign(Gtk.Align.START)
+        self._search_box.set_valign(Gtk.Align.START)
+        self._search_box.set_visible(False)
+        search_box = self._search_box
 
-        self._search_entry = Gtk.SearchEntry(hexpand=True)
+        grip = Gtk.Image.new_from_icon_name("list-drag-handle-symbolic")
+        grip.set_tooltip_text(_("Drag to move"))
+        grip.set_cursor(Gdk.Cursor.new_from_name("grab"))
+        self._search_grip = grip
+        search_box.append(grip)
+
+        self._search_entry = Gtk.SearchEntry()
         self._search_entry.set_placeholder_text(_("Find in terminal..."))
+        self._search_entry.set_size_request(220, -1)
         search_box.append(self._search_entry)
 
         next_btn = Gtk.Button.new_from_icon_name("go-down-symbolic")
@@ -325,21 +334,17 @@ class TerminalTab(Gtk.Box):
 
         close_btn = Gtk.Button.new_from_icon_name("window-close-symbolic")
         close_btn.add_css_class("flat")
-        close_btn.connect("clicked", lambda *_: self._search_bar.set_search_mode(False))
+        close_btn.connect("clicked", lambda *_: self._set_search_visible(False))
         search_box.append(close_btn)
 
-        self._search_bar.set_child(search_box)
-        self._search_bar.connect_entry(self._search_entry)
         self._search_entry.connect("search-changed", self._on_search_changed)
         self._search_entry.connect("activate", lambda *_: self._on_search_next())
-        self._search_bar.connect("notify::search-mode-enabled", self._on_search_mode_changed)
+        self._search_entry.connect("stop-search", lambda *_: self._set_search_visible(False))
 
         search_key_ctrl = Gtk.EventControllerKey.new()
         search_key_ctrl.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
         search_key_ctrl.connect("key-pressed", self._on_search_shortcut)
         self._terminal.add_controller(search_key_ctrl)
-
-        self.prepend(self._search_bar)
 
         # Scrolled container: In GTK4, for VTE it's more stable to use a Box + Scrollbar
         terminal_container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, vexpand=True, hexpand=True)
@@ -357,6 +362,14 @@ class TerminalTab(Gtk.Box):
         overlay = Gtk.Overlay(hexpand=True, vexpand=True)
         overlay.set_child(self._terminal)
         overlay.add_overlay(self._resize_sensor)
+        overlay.add_overlay(self._search_box)
+        self._search_overlay = overlay
+
+        drag = Gtk.GestureDrag.new()
+        drag.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        drag.connect("drag-begin", self._on_search_drag_begin)
+        drag.connect("drag-update", self._on_search_drag_update)
+        overlay.add_controller(drag)
         # In GTK4, to make an overlay pass through mouse events, set its target property.
         self._resize_sensor.set_can_target(False)
 
@@ -702,11 +715,19 @@ class TerminalTab(Gtk.Box):
         return (self._searching or self._selecting
                 or self._terminal.get_has_selection())
 
-    def _on_search_mode_changed(self, search_bar: Gtk.SearchBar, _pspec: Any) -> None:
-        """Pause terminal writes while searching; resume when the bar closes."""
-        self._searching = search_bar.get_search_mode()
-        if self._searching:
+    _SEARCH_MARGIN = 12
+
+    def _set_search_visible(self, visible: bool) -> None:
+        """Show/hide the floating search box. Pause terminal writes while open."""
+        if visible == self._searching:
+            if visible:
+                self._search_entry.grab_focus()
+            return
+        self._searching = visible
+        self._search_box.set_visible(visible)
+        if visible:
             self._suspend_follow()
+            GLib.idle_add(self._place_search_box)
             self._search_entry.grab_focus()
             return
         self._terminal.search_set_regex(None, 0)
@@ -714,13 +735,59 @@ class TerminalTab(Gtk.Box):
         self._flush_held_output()
         self._terminal.grab_focus()
 
+    def _search_bounds(self) -> tuple[int, int]:
+        """Return the max (x, y) margin so the box stays inside the terminal."""
+        _min_w, nat_w, _a, _b = self._search_box.measure(Gtk.Orientation.HORIZONTAL, -1)
+        _min_h, nat_h, _c, _d = self._search_box.measure(Gtk.Orientation.VERTICAL, -1)
+        nat_w -= self._search_box.get_margin_start() + self._search_box.get_margin_end()
+        nat_h -= self._search_box.get_margin_top() + self._search_box.get_margin_bottom()
+        max_x = max(0, self._search_overlay.get_width() - nat_w)
+        max_y = max(0, self._search_overlay.get_height() - nat_h)
+        return max_x, max_y
+
+    def _apply_search_pos(self, x: int, y: int) -> None:
+        max_x, max_y = self._search_bounds()
+        x = max(0, min(int(x), max_x))
+        y = max(0, min(int(y), max_y))
+        self._search_pos = (x, y)
+        self._search_box.set_margin_start(x)
+        self._search_box.set_margin_top(y)
+
+    def _place_search_box(self) -> bool:
+        """Place the box at the remembered position (default: top-right)."""
+        if self._search_pos is None:
+            max_x, _max_y = self._search_bounds()
+            self._apply_search_pos(max_x - self._SEARCH_MARGIN, self._SEARCH_MARGIN)
+        else:
+            self._apply_search_pos(*self._search_pos)
+        return False
+
+    def _on_search_drag_begin(self, gesture: Gtk.GestureDrag, x: float, y: float) -> None:
+        # Gesture lives on the stationary overlay, so offsets stay in a fixed frame.
+        picked = self._search_overlay.pick(x, y, Gtk.PickFlags.DEFAULT)
+        if (not self._searching or picked is None
+                or (picked is not self._search_grip
+                    and not picked.is_ancestor(self._search_grip))):
+            self._search_dragging = False
+            gesture.set_state(Gtk.EventSequenceState.DENIED)
+            return
+        self._search_dragging = True
+        gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+        self._search_drag_origin = self._search_pos or (
+            self._search_box.get_margin_start(), self._search_box.get_margin_top())
+
+    def _on_search_drag_update(self, gesture: Gtk.GestureDrag, dx: float, dy: float) -> None:
+        if not getattr(self, "_search_dragging", False):
+            return
+        ox, oy = self._search_drag_origin
+        self._apply_search_pos(ox + dx, oy + dy)
+
     def _on_search_shortcut(self, controller: Gtk.EventControllerKey, keyval: int,
                             keycode: int, state: Gdk.ModifierType) -> bool:
-        """Ctrl+Shift+F opens the in-terminal search bar."""
+        """Ctrl+Shift+F opens the in-terminal search box."""
         mask = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
         if keyval in (Gdk.KEY_F, Gdk.KEY_f) and (state & mask) == mask:
-            self._search_bar.set_search_mode(True)
-            self._search_entry.grab_focus()
+            self._set_search_visible(True)
             return True
         return False
 
@@ -983,7 +1050,7 @@ class TerminalTab(Gtk.Box):
         action_group.add_action(clear_action)
 
         find_action = Gio.SimpleAction.new("find", None)
-        find_action.connect("activate", lambda *_: self._search_bar.set_search_mode(True))
+        find_action.connect("activate", lambda *_: self._set_search_visible(True))
         action_group.add_action(find_action)
 
         ro_action = Gio.SimpleAction.new_stateful("read-only", None, GLib.Variant.new_boolean(False))
