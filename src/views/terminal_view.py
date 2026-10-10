@@ -390,7 +390,10 @@ class TerminalTab(Gtk.Box):
 
         # Status bar
         self._status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self._status_bar.add_css_class("toolbar")
+        self._status_bar.set_margin_start(8)
+        self._status_bar.set_margin_end(8)
+        self._status_bar.set_margin_top(2)
+        self._status_bar.set_margin_bottom(2)
 
         initial_status = _("Connecting to {title}…").format(title=self.title) if self.is_remote else _("Spawning local shell...")
         self._current_status_text = initial_status
@@ -402,6 +405,8 @@ class TerminalTab(Gtk.Box):
         )
         self._status_label.add_css_class("dim-label")
         self._status_label.add_css_class("caption")
+        self._status_bar.append(self._status_label)
+        self.append(self._status_bar)
 
     def _set_status(self, text: str) -> None:
         """Update current status text and update label if not hovering a link."""
