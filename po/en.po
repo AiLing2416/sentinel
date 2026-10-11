@@ -574,7 +574,7 @@ msgstr ""
 
 #: src/views/vault_settings_dialog.py:548
 msgid "Folder"
-msgstr "New Folder"
+msgstr "Folder"
 
 #: src/views/vault_settings_dialog.py:554
 msgid "Sync Vault"
