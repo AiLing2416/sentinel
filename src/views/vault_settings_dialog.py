@@ -590,7 +590,7 @@ class VaultManagerWindow(Gtk.Box):
                 elif state == "unlocked":
                     self._server_info_row.set_subtitle(server or _("Official Cloud Server"))
                     if network_error:
-                        status_text = f"{display_email} (Network Restricted)" if display_email else _("Unlocked ✓ (Network Restricted)")
+                        status_text = _("{email} (Network Restricted)").format(email=display_email) if display_email else _("Unlocked ✓ (Network Restricted)")
                     else:
                         status_text = display_email or _("Unlocked ✓")
                     self._account_row.set_subtitle(status_text)

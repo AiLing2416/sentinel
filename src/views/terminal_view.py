@@ -343,6 +343,7 @@ class TerminalTab(Gtk.Box):
 
         close_btn = Gtk.Button.new_from_icon_name("window-close-symbolic")
         close_btn.add_css_class("flat")
+        close_btn.set_tooltip_text(_("Close"))
         close_btn.connect("clicked", lambda *_: self._set_search_visible(False))
         search_box.append(close_btn)
 

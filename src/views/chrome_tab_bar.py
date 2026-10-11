@@ -19,6 +19,7 @@ Key features:
 from __future__ import annotations
 
 from typing import Callable
+import gettext
 
 import gi
 
@@ -26,6 +27,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
+
+_ = gettext.gettext
 
 
 class _DragState:
@@ -98,7 +101,7 @@ class ChromeTab(Gtk.Box):
 
         # Tab title (ellipsized)
         self._label = Gtk.Label(
-            label=self._page.get_title() or "Untitled",
+            label=self._page.get_title() or _("Untitled"),
             xalign=0,
             hexpand=True,
             ellipsize=3,  # PANGO_ELLIPSIZE_END
@@ -120,7 +123,7 @@ class ChromeTab(Gtk.Box):
         self._close_btn.add_css_class("circular")
         self._close_btn.set_valign(Gtk.Align.CENTER)
         self._close_btn.set_can_focus(False)
-        self._close_btn.set_tooltip_text("Close tab")
+        self._close_btn.set_tooltip_text(_("Close tab"))
         self._close_btn.connect("clicked", self._on_close_clicked)
         self.append(self._close_btn)
 
@@ -172,7 +175,7 @@ class ChromeTab(Gtk.Box):
         self._on_close_cb(self._page)
 
     def _on_page_title_changed(self, page: Adw.TabPage, _pspec) -> None:  # noqa: ANN001
-        self._label.set_label(page.get_title() or "Untitled")
+        self._label.set_label(page.get_title() or _("Untitled"))
 
     def _on_page_icon_changed(self, page: Adw.TabPage, _pspec) -> None:  # noqa: ANN001
         icon = page.get_icon()
@@ -228,7 +231,7 @@ class ChromeTab(Gtk.Box):
 
     def update_from_page(self) -> None:
         """Re-sync visual state from the underlying page."""
-        self._label.set_label(self._page.get_title() or "Untitled")
+        self._label.set_label(self._page.get_title() or _("Untitled"))
         icon = self._page.get_icon()
         if icon:
             self._icon.set_from_gicon(icon)
