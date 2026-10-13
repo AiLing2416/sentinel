@@ -126,7 +126,10 @@ async def _connect_with_watchdog(connect_coro: Any, host: str, port: int, fast_t
     if fast_timeout <= 0:
         return await connect_coro
 
-    connect_task = asyncio.create_task(connect_coro)
+    async def _run_connect():
+        return await connect_coro
+
+    connect_task = asyncio.create_task(_run_connect())
     probe_task = asyncio.create_task(_probe_ssh_banner(host, port, fast_timeout))
 
     try:
