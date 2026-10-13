@@ -917,11 +917,16 @@ class TerminalTab(Gtk.Box):
         self._selecting = True
         self._suspend_follow()
 
-    def _on_terminal_event(self, controller: Gtk.EventControllerLegacy, event: Gdk.Event) -> bool:
-        if (event.get_event_type() == Gdk.EventType.BUTTON_RELEASE
-                and event.get_button() == 1):
-            self._selecting = False
-            self._flush_held_output()
+    def _on_terminal_event(self, controller: Gtk.EventControllerLegacy, event: Gdk.Event | None) -> bool:
+        if not event:
+            return False
+        try:
+            if (event.get_event_type() == Gdk.EventType.BUTTON_RELEASE
+                    and event.get_button() == 1):
+                self._selecting = False
+                self._flush_held_output()
+        except Exception:
+            pass
         return False
 
     def _on_key_unfreeze(self, controller: Gtk.EventControllerKey, keyval: int,
@@ -1070,7 +1075,6 @@ class TerminalTab(Gtk.Box):
     def _show_reconnect_prompt(self) -> None:
         if self._reconnect_sid:
             return
-        self._terminal.feed(b"\r\n\033[1;33m[Session ended. Press Enter to reconnect, or Ctrl+D to close this tab.]\033[0m\r\n")
         self._reconnect_sid = self._terminal.connect("commit", self._on_reconnect_key)
 
     def _on_reconnect_key(self, terminal: Vte.Terminal, text: str, size: int) -> None:
@@ -1086,7 +1090,6 @@ class TerminalTab(Gtk.Box):
             self._set_status(_("Reconnecting…"), persistent=False)
             # Reset terminal state (exit alternate screen, show cursor, reset formatting) without clearing screen/history
             self._terminal.feed(b"\033[?1049l\033[?25h\033[0m")
-            self._terminal.feed(f"\r\n\033[1;32m[{_('Reconnecting…')}]\033[0m\r\n".encode("utf-8"))
             if self.is_remote:
                 self._connect_remote()
             else:
