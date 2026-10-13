@@ -84,6 +84,89 @@ class BoundClient(SentinelSSHClient):
             db.close()
 
 
+async def _probe_ssh_banner(host: str, port: int, timeout: float) -> tuple[bool, str]:
+    """Probe whether the remote SSH server is reachable and responsive.
+
+    Verifies that the server returns an RFC 4253 SSH version banner within `timeout` seconds,
+    preventing false positives from TUN/transparent proxies that fake TCP handshakes.
+    """
+    try:
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(host, port),
+            timeout=timeout
+        )
+        try:
+            banner = await asyncio.wait_for(reader.read(32), timeout=timeout)
+            if banner.startswith(b"SSH-"):
+                return True, "online"
+            return False, "not_ssh"
+        finally:
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
+    except (TimeoutError, asyncio.TimeoutError):
+        return False, "timed_out"
+    except ConnectionRefusedError:
+        return False, "port_closed"
+    except OSError as e:
+        return False, f"os_error_{getattr(e, 'errno', 'unknown')}"
+    except Exception as e:
+        return False, f"error_{e}"
+
+
+async def _connect_with_watchdog(connect_coro: Any, host: str, port: int, fast_timeout: float) -> Any:
+    """Race main asyncssh connection against a fast watchdog probe.
+
+    If fast_timeout <= 0, watchdog is disabled and main connection runs normally.
+    If watchdog probe determines host is unreachable/timed out before main connection settles,
+    it cancels the main connection early to save time.
+    """
+    if fast_timeout <= 0:
+        return await connect_coro
+
+    connect_task = asyncio.create_task(connect_coro)
+    probe_task = asyncio.create_task(_probe_ssh_banner(host, port, fast_timeout))
+
+    try:
+        while not connect_task.done():
+            done, _ = await asyncio.wait(
+                [connect_task, probe_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            if connect_task in done:
+                if not probe_task.done():
+                    probe_task.cancel()
+                return await connect_task
+
+            if probe_task in done:
+                ok, reason = probe_task.result()
+                if not ok:
+                    logger.warning(
+                        f"SSHService: Fast watchdog detected unreachable host {host}:{port} ({reason}), aborting main connection"
+                    )
+                    connect_task.cancel()
+                    try:
+                        await connect_task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+                    if reason == "port_closed":
+                        raise ConnectionRefusedError(errno.ECONNREFUSED, f"Connect call failed ({host}, {port})")
+                    elif "os_error" in reason:
+                        raise OSError(errno.EHOSTUNREACH, f"No route to host ({host})")
+                    else:
+                        raise TimeoutError(f"Fast watchdog timed out after {fast_timeout}s")
+                else:
+                    logger.debug(f"SSHService: Fast watchdog confirmed host {host}:{port} is online")
+                    return await connect_task
+    finally:
+        if not probe_task.done():
+            probe_task.cancel()
+        if not connect_task.done():
+            connect_task.cancel()
+
+
 class SSHService:
     """Connects to SSH servers using asyncssh, bridging I/O to GTK UI."""
 
@@ -189,90 +272,6 @@ class SSHService:
             return db.get_connection(conn_id)
         finally:
             db.close()
-
-
-async def _probe_ssh_banner(host: str, port: int, timeout: float) -> tuple[bool, str]:
-    """Probe whether the remote SSH server is reachable and responsive.
-
-    Verifies that the server returns an RFC 4253 SSH version banner within `timeout` seconds,
-    preventing false positives from TUN/transparent proxies that fake TCP handshakes.
-    """
-    try:
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(host, port),
-            timeout=timeout
-        )
-        try:
-            banner = await asyncio.wait_for(reader.read(32), timeout=timeout)
-            if banner.startswith(b"SSH-"):
-                return True, "online"
-            return False, "not_ssh"
-        finally:
-            writer.close()
-            try:
-                await writer.wait_closed()
-            except Exception:
-                pass
-    except (TimeoutError, asyncio.TimeoutError):
-        return False, "timed_out"
-    except ConnectionRefusedError:
-        return False, "port_closed"
-    except OSError as e:
-        return False, f"os_error_{getattr(e, 'errno', 'unknown')}"
-    except Exception as e:
-        return False, f"error_{e}"
-
-
-async def _connect_with_watchdog(connect_coro: Any, host: str, port: int, fast_timeout: float) -> Any:
-    """Race main asyncssh connection against a fast watchdog probe.
-
-    If fast_timeout <= 0, watchdog is disabled and main connection runs normally.
-    If watchdog probe determines host is unreachable/timed out before main connection settles,
-    it cancels the main connection early to save time.
-    """
-    if fast_timeout <= 0:
-        return await connect_coro
-
-    connect_task = asyncio.create_task(connect_coro)
-    probe_task = asyncio.create_task(_probe_ssh_banner(host, port, fast_timeout))
-
-    try:
-        while not connect_task.done():
-            done, _ = await asyncio.wait(
-                [connect_task, probe_task],
-                return_when=asyncio.FIRST_COMPLETED
-            )
-            if connect_task in done:
-                if not probe_task.done():
-                    probe_task.cancel()
-                return await connect_task
-
-            if probe_task in done:
-                ok, reason = probe_task.result()
-                if not ok:
-                    logger.warning(
-                        f"SSHService: Fast watchdog detected unreachable host {host}:{port} ({reason}), aborting main connection"
-                    )
-                    connect_task.cancel()
-                    try:
-                        await connect_task
-                    except (asyncio.CancelledError, Exception):
-                        pass
-                    if reason == "port_closed":
-                        raise ConnectionRefusedError(errno.ECONNREFUSED, f"Connect call failed ({host}, {port})")
-                    elif "os_error" in reason:
-                        raise OSError(errno.EHOSTUNREACH, f"No route to host ({host})")
-                    else:
-                        raise TimeoutError(f"Fast watchdog timed out after {fast_timeout}s")
-                else:
-                    logger.debug(f"SSHService: Fast watchdog confirmed host {host}:{port} is online")
-                    return await connect_task
-    finally:
-        if not probe_task.done():
-            probe_task.cancel()
-        if not connect_task.done():
-            connect_task.cancel()
-
 
     async def _establish_connection(
         self,
