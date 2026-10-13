@@ -31,6 +31,7 @@ class SentinelSSHClient(asyncssh.SSHClient):
         self._ui_callbacks = ui_callbacks
         self._password_provider = password_provider
         self._totp_provider = kwargs.get("totp_provider")
+        self._connected: bool = False
 
     def validate_host_public_key(
         self, host: str, addr: str, port: int, key: asyncssh.SSHKey
@@ -128,10 +129,12 @@ class SentinelSSHClient(asyncssh.SSHClient):
 
     def connection_lost(self, exc: Exception | None) -> None:
         logger.info(f"Connection lost to {self._conn.hostname}: {exc}")
-        if cb := self._ui_callbacks.get("on_disconnected"):
-            call_ui_sync(cb, exc)
+        if self._connected:
+            if cb := self._ui_callbacks.get("on_disconnected"):
+                call_ui_sync(cb, exc)
 
     def auth_completed(self) -> None:
+        self._connected = True
         logger.info(f"Authentication successful for {self._conn.hostname}")
 
 

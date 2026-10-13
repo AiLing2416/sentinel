@@ -2625,3 +2625,21 @@ msgstr "同步失败：{e}"
 #~ msgid "Downloaded {display_name}"
 #~ msgstr "已下载 {display_name}"
 
+msgid "Connection timed out"
+msgstr "连接超时"
+
+msgid "Connection refused"
+msgstr "连接被拒绝"
+
+msgid "Host unreachable"
+msgstr "主机不可达"
+
+msgid "Network unreachable"
+msgstr "网络不可达"
+
+msgid "Authentication failed: Permission denied"
+msgstr "认证失败：权限被拒绝"
+
+msgid "Connection failed: {detail}"
+msgstr "连接失败：{detail}"
+

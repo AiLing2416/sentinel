@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import gettext
 from typing import Callable, Any
@@ -403,6 +404,7 @@ class TerminalTab(Gtk.Box):
         self._status_bar.set_can_target(False)
         self._status_bar.set_visible(False)
         self._status_hide_id: int = 0
+        self._status_persistent: bool = False
 
         initial_status = _("Connecting to {title}…").format(title=self.title) if self.is_remote else _("Spawning local shell...")
         self._current_status_text = initial_status
@@ -471,22 +473,31 @@ class TerminalTab(Gtk.Box):
 
     def _hide_overlay_text(self) -> bool:
         self._status_hide_id = 0
-        if not self._hovered_uri:
+        if not self._hovered_uri and not self._status_persistent:
             self._status_bar.set_visible(False)
         return False
 
-    def _set_status(self, text: str) -> None:
-        """Update current status text; flash it briefly unless hovering a link."""
+    def _set_status(self, text: str, persistent: bool = False) -> None:
+        """Update current status text; flash it briefly unless hovering a link or persistent."""
         self._current_status_text = text
+        self._status_persistent = persistent
+        if persistent:
+            self._status_bar.add_css_class("status-disconnected")
+        else:
+            self._status_bar.remove_css_class("status-disconnected")
+
         if not self._hovered_uri:
-            self._show_overlay_text(text, timeout_ms=4000)
+            self._show_overlay_text(text, timeout_ms=0 if persistent else 4000)
 
     def _restore_status_label(self) -> None:
-        """Hide the floating bubble once the link hover ends."""
+        """Hide the floating bubble once the link hover ends, or restore persistent status."""
         if self._status_hide_id:
             GLib.source_remove(self._status_hide_id)
             self._status_hide_id = 0
-        self._status_bar.set_visible(False)
+        if self._status_persistent and self._current_status_text:
+            self._show_overlay_text(self._current_status_text, timeout_ms=0)
+        else:
+            self._status_bar.set_visible(False)
 
     def apply_terminal_config(self) -> None:
         """Apply basic terminal settings (font, size, scrollback, cursor, osc52, hyperlinks)."""
@@ -557,6 +568,7 @@ class TerminalTab(Gtk.Box):
             self._bg_task = None
             
         logger.info(f"TerminalTab: Starting remote connection to {self.title}")
+        self._set_status(_("Connecting to {title}…").format(title=self.title), persistent=False)
         from views.dialogs import prompt_password, prompt_host_key, prompt_vault_unlock, prompt_vault_item_selection
         from services.vault_service import VaultService
         
@@ -768,7 +780,7 @@ class TerminalTab(Gtk.Box):
 
     def _on_remote_connected(self, bridge: Any) -> None:
         self._session_bridge = bridge
-        self._set_status(_("Connected — {title}").format(title=self.title))
+        self._set_status(_("Connected — {title}").format(title=self.title), persistent=False)
         
         # Immediate sync if we already have a size
         cols, rows = self._terminal.get_column_count(), self._terminal.get_row_count()
@@ -787,12 +799,19 @@ class TerminalTab(Gtk.Box):
         GLib.timeout_add(250, _delayed_resize)
 
     def _on_remote_error(self, msg: str) -> None:
-        self._set_status(msg)
-        self._print_terminal_error(msg)
+        self._set_status(msg, persistent=True)
         self._show_reconnect_prompt()
         
     def _on_remote_disconnected(self, exc: Exception | None) -> None:
-        self._set_status(_("Disconnected: {exc}").format(exc=exc) if exc else _("Disconnected"))
+        if exc:
+            if isinstance(exc, (TimeoutError, asyncio.TimeoutError)):
+                err_text = _("Connection timed out")
+            else:
+                detail = str(exc).strip() or type(exc).__name__
+                err_text = _("Disconnected: {exc}").format(exc=detail)
+        else:
+            err_text = _("Disconnected")
+        self._set_status(err_text, persistent=True)
         self._session_bridge = None
         # Only show reconnect if the background task has truly finished
         # This prevents the prompt during host key trust retries
@@ -999,7 +1018,7 @@ class TerminalTab(Gtk.Box):
         return False
 
     def _on_remote_exited(self, exit_status: int) -> None:
-        self._set_status(_("Exited with code {exit_status}").format(exit_status=exit_status))
+        self._set_status(_("Exited with code {exit_status}").format(exit_status=exit_status), persistent=True)
         self._handle_session_exit()
 
     # ── Local Process ──────────────────────────────────────────
@@ -1009,6 +1028,8 @@ class TerminalTab(Gtk.Box):
         if not self._ssh_command:
             logger.error("TerminalTab: No command defined for local shell")
             return
+
+        self._set_status(_("Spawning local shell..."), persistent=False)
 
         ui_callbacks = {
             "on_connected": self._on_remote_connected,
@@ -1025,7 +1046,7 @@ class TerminalTab(Gtk.Box):
 
     def _on_local_child_exited(self, terminal: Vte.Terminal, exit_status: int) -> None:
         self._child_pid = None
-        self._set_status(_("Exited code {exit_status}").format(exit_status=exit_status >> 8))
+        self._set_status(_("Exited code {exit_status}").format(exit_status=exit_status >> 8), persistent=True)
         self._handle_session_exit()
         
     def _handle_session_exit(self) -> None:
@@ -1037,6 +1058,8 @@ class TerminalTab(Gtk.Box):
             logger.info("TerminalTab: User initiated EOF (Ctrl+D), closing tab.")
             self.request_close()
         else:
+            if not self._status_persistent:
+                self._set_status(_("Disconnected"), persistent=True)
             self._show_reconnect_prompt()
 
     # ── Shared ────────────────────────────────────────────────
@@ -1060,7 +1083,7 @@ class TerminalTab(Gtk.Box):
             if self._reconnect_sid:
                 terminal.disconnect(self._reconnect_sid)
                 self._reconnect_sid = 0
-            self._set_status(_("Reconnecting…"))
+            self._set_status(_("Reconnecting…"), persistent=False)
             # Reset terminal state (exit alternate screen, show cursor, reset formatting) without clearing screen/history
             self._terminal.feed(b"\033[?1049l\033[?25h\033[0m")
             self._terminal.feed(f"\r\n\033[1;32m[{_('Reconnecting…')}]\033[0m\r\n".encode("utf-8"))

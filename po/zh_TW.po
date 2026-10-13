@@ -2616,3 +2616,21 @@ msgstr "同步失敗：{e}"
 #~ msgid "Downloaded {display_name}"
 #~ msgstr "已下載 {display_name}"
 
+msgid "Connection timed out"
+msgstr "連線逾時"
+
+msgid "Connection refused"
+msgstr "連線被拒絕"
+
+msgid "Host unreachable"
+msgstr "主機無法連線"
+
+msgid "Network unreachable"
+msgstr "網路無法連線"
+
+msgid "Authentication failed: Permission denied"
+msgstr "認證失敗：權限被拒絕"
+
+msgid "Connection failed: {detail}"
+msgstr "連線失敗：{detail}"
+

@@ -908,6 +908,11 @@ class SentinelApplication(Adw.Application):
             margin: 6px;
         }
 
+        .terminal-status-bubble.status-disconnected {
+            border: 1px solid alpha(@error_color, 0.55);
+            background-color: mix(@window_bg_color, @error_color, 0.08);
+        }
+
         /* ── Entry Placeholder Fix ─────────────────────── */
         entry text placeholder,
         text placeholder,

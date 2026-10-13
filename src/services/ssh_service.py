@@ -9,6 +9,8 @@ SessionBridge. Passwords and interactive callbacks are handled securely.
 from __future__ import annotations
 
 import asyncio
+import errno
+import gettext
 import logging
 import shutil
 import datetime
@@ -19,6 +21,8 @@ from typing import Callable, Any, Sequence, cast
 from enum import Enum
 
 import asyncssh
+
+_ = gettext.gettext
 
 from models.connection import AuthMethod, Connection
 from models.forward_rule import ForwardRule, ForwardType
@@ -388,7 +392,21 @@ class SSHService:
             if "on_cancelled" in ui_callbacks: call_ui_sync(ui_callbacks["on_cancelled"])
             return None
         except Exception as e:
-            err_msg = f"Authentication failed: {e}" if isinstance(e, asyncssh.PermissionDenied) else f"Connection failed: {e}"
+            if isinstance(e, (TimeoutError, asyncio.TimeoutError)) or getattr(e, "errno", None) in (110, getattr(errno, "ETIMEDOUT", 110)):
+                err_msg = _("Connection timed out")
+            elif isinstance(e, ConnectionRefusedError) or getattr(e, "errno", None) in (111, getattr(errno, "ECONNREFUSED", 111)):
+                err_msg = _("Connection refused")
+            elif getattr(e, "errno", None) in (113, getattr(errno, "EHOSTUNREACH", 113)):
+                err_msg = _("Host unreachable")
+            elif getattr(e, "errno", None) in (101, getattr(errno, "ENETUNREACH", 101)):
+                err_msg = _("Network unreachable")
+            elif isinstance(e, asyncssh.PermissionDenied):
+                err_msg = _("Authentication failed: Permission denied")
+            else:
+                detail = str(e).strip() or type(e).__name__
+                err_msg = _("Connection failed: {detail}").format(detail=detail)
+
+            logger.error(f"SSHService: Connection failed to {conn.hostname}: {err_msg} ({type(e).__name__})")
             call_ui_sync(ui_callbacks["on_error"], err_msg)
             return None
         finally:
