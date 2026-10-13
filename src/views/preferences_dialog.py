@@ -161,6 +161,22 @@ class PreferencesWindow(Adw.Window):
 
         page.add(term_group)
 
+        # ── Group 3: Connection & Network ──────────────────────
+        network_group = Adw.PreferencesGroup(
+            title=_("Connection & Network"),
+            description=_("Configure timeout and reachability detection for SSH connections"),
+        )
+
+        # Fast Connection Timeout Watchdog
+        self._fast_timeout_row = Adw.SpinRow.new_with_range(0, 30, 1)
+        self._fast_timeout_row.set_title(_("Fast Timeout Intervention"))
+        self._fast_timeout_row.set_subtitle(_("Detect unreachable hosts in background and abort early (0 to disable, default 5s)"))
+        self._fast_timeout_handler = self._fast_timeout_row.connect(
+            "notify::value", self._on_fast_timeout_changed
+        )
+        network_group.add(self._fast_timeout_row)
+        page.add(network_group)
+
         # Wrap in ScrolledWindow
         scroll = Gtk.ScrolledWindow()
         scroll.set_child(page)
@@ -228,6 +244,10 @@ class PreferencesWindow(Adw.Window):
         saved_search_keys = self._db.get_meta("terminal_search_forward_keys", "true") == "true"
         self._search_keys_row.set_active(saved_search_keys)
 
+        # Load Fast Timeout Watchdog
+        saved_fast_timeout = int(self._db.get_meta("network_fast_timeout", "5"))
+        self._fast_timeout_row.set_value(saved_fast_timeout)
+
         self._block_signals(False)
 
     def _block_signals(self, block: bool) -> None:
@@ -241,6 +261,7 @@ class PreferencesWindow(Adw.Window):
             self._osc52_row.handler_block(self._osc52_handler)
             self._hyperlinks_row.handler_block(self._hyperlinks_handler)
             self._search_keys_row.handler_block(self._search_keys_handler)
+            self._fast_timeout_row.handler_block(self._fast_timeout_handler)
         else:
             self._scheme_row.handler_unblock(self._scheme_handler)
             self._font_row.handler_unblock(self._font_handler)
@@ -251,6 +272,7 @@ class PreferencesWindow(Adw.Window):
             self._osc52_row.handler_unblock(self._osc52_handler)
             self._hyperlinks_row.handler_unblock(self._hyperlinks_handler)
             self._search_keys_row.handler_unblock(self._search_keys_handler)
+            self._fast_timeout_row.handler_unblock(self._fast_timeout_handler)
 
     def _on_scheme_changed(self, *args) -> None:
         idx = self._scheme_row.get_selected()
@@ -312,6 +334,10 @@ class PreferencesWindow(Adw.Window):
         val = "true" if self._search_keys_row.get_active() else "false"
         self._db.set_meta("terminal_search_forward_keys", val)
         self._notify_terminal_config_changed()
+
+    def _on_fast_timeout_changed(self, *args) -> None:
+        val = int(self._fast_timeout_row.get_value())
+        self._db.set_meta("network_fast_timeout", str(val))
 
     def _notify_terminal_config_changed(self) -> None:
         app = self.get_application()

@@ -2643,3 +2643,16 @@ msgstr "认证失败：权限被拒绝"
 msgid "Connection failed: {detail}"
 msgstr "连接失败：{detail}"
 
+msgid "Connection & Network"
+msgstr "连接与网络"
+
+msgid "Configure timeout and reachability detection for SSH connections"
+msgstr "配置 SSH 连接的超时与可达性检测"
+
+msgid "Fast Timeout Intervention"
+msgstr "快速超时干预"
+
+msgid "Detect unreachable hosts in background and abort early (0 to disable, default 5s)"
+msgstr "后台检测不可达主机并提前终止（设为 0 禁用，默认 5 秒）"
+
+

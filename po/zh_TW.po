@@ -2634,3 +2634,16 @@ msgstr "認證失敗：權限被拒絕"
 msgid "Connection failed: {detail}"
 msgstr "連線失敗：{detail}"
 
+msgid "Connection & Network"
+msgstr "連線與網路"
+
+msgid "Configure timeout and reachability detection for SSH connections"
+msgstr "設定 SSH 連線的逾時與可達性偵測"
+
+msgid "Fast Timeout Intervention"
+msgstr "快速逾時干預"
+
+msgid "Detect unreachable hosts in background and abort early (0 to disable, default 5s)"
+msgstr "背景偵測不可達主機並提前終止（設為 0 停用，預設 5 秒）"
+
+
