@@ -1,6 +1,7 @@
 data/io.github.ailing2416.sentinel.desktop.in
 data/io.github.ailing2416.sentinel.metainfo.xml.in
 src/application.py
+src/services/ssh_service.py
 src/utils/themes.py
 src/vault/bitwarden.py
 src/views/about_dialog.py

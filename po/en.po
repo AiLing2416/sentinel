@@ -2512,3 +2512,6 @@ msgstr "Sync failed: {e}"
 #~ msgid "Downloaded {display_name}"
 #~ msgstr "Downloaded {display_name}"
 
+msgid "Could not resolve hostname"
+msgstr "Could not resolve hostname"
+

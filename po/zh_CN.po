@@ -2631,6 +2631,9 @@ msgstr "连接超时"
 msgid "Connection refused"
 msgstr "连接被拒绝"
 
+msgid "Could not resolve hostname"
+msgstr "无法解析主机名"
+
 msgid "Host unreachable"
 msgstr "主机不可达"
 

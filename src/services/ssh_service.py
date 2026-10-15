@@ -13,6 +13,7 @@ import errno
 import gettext
 import logging
 import shutil
+import socket
 import datetime
 import time
 from dataclasses import dataclass
@@ -110,6 +111,8 @@ async def _probe_ssh_banner(host: str, port: int, timeout: float) -> tuple[bool,
         return False, "timed_out"
     except ConnectionRefusedError:
         return False, "port_closed"
+    except (socket.gaierror, socket.herror) as e:
+        return False, f"name_resolution_failed_{getattr(e, 'errno', 'unknown')}"
     except OSError as e:
         return False, f"os_error_{getattr(e, 'errno', 'unknown')}"
     except Exception as e:
@@ -156,6 +159,8 @@ async def _connect_with_watchdog(connect_coro: Any, host: str, port: int, fast_t
                         pass
                     if reason == "port_closed":
                         raise ConnectionRefusedError(errno.ECONNREFUSED, f"Connect call failed ({host}, {port})")
+                    elif reason.startswith("name_resolution_failed"):
+                        raise socket.gaierror(getattr(socket, "EAI_NONAME", -2), f"Name or service not known ({host})")
                     elif "os_error" in reason:
                         raise OSError(errno.EHOSTUNREACH, f"No route to host ({host})")
                     else:
@@ -497,6 +502,8 @@ class SSHService:
                 err_msg = _("Connection timed out")
             elif isinstance(e, ConnectionRefusedError) or getattr(e, "errno", None) in (111, getattr(errno, "ECONNREFUSED", 111)):
                 err_msg = _("Connection refused")
+            elif isinstance(e, (socket.gaierror, socket.herror)):
+                err_msg = _("Could not resolve hostname")
             elif getattr(e, "errno", None) in (113, getattr(errno, "EHOSTUNREACH", 113)):
                 err_msg = _("Host unreachable")
             elif getattr(e, "errno", None) in (101, getattr(errno, "ENETUNREACH", 101)):

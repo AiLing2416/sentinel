@@ -2609,3 +2609,6 @@ msgstr "Synchronisation fehlgeschlagen: {e}"
 #~ msgid "Downloaded {display_name}"
 #~ msgstr "{display_name} heruntergeladen"
 
+msgid "Could not resolve hostname"
+msgstr "Hostname konnte nicht aufgelöst werden"
+

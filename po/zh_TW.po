@@ -2622,6 +2622,9 @@ msgstr "連線逾時"
 msgid "Connection refused"
 msgstr "連線被拒絕"
 
+msgid "Could not resolve hostname"
+msgstr "無法解析主機名稱"
+
 msgid "Host unreachable"
 msgstr "主機無法連線"
 
