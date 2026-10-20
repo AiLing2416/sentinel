@@ -13,6 +13,7 @@ os.environ.pop("GTK_IM_MODULE", None)
 os.environ.pop("QT_IM_MODULE", None)
 
 import gi
+import ipaddress
 import logging
 import re
 
@@ -27,8 +28,26 @@ class SentinelLogFilter(logging.Filter):
 
     def __init__(self, name: str = ""):
         super().__init__(name)
-        # 1. IP regular expression (Captures first two octets)
+        # 1. IP regular expression
+        # IPv4 (Captures first two octets)
         self._ip_re = re.compile(r'\b(\d{1,3}\.\d{1,3})\.\d{1,3}\.\d{1,3}\b')
+        # IPv6 (Matches RFC-compliant full, compressed, and IPv4-mapped addresses)
+        self._ipv6_re = re.compile(
+            r'(?i)(?<![0-9a-f:])('
+            r'(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|'
+            r'(?:[0-9a-f]{1,4}:){1,6}:(?:\d{1,3}\.){3}\d{1,3}|'
+            r':(?::[0-9a-f]{1,4}){0,4}:(?:\d{1,3}\.){3}\d{1,3}|'
+            r'(?:[0-9a-f]{1,4}:){1,7}:|'
+            r'(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}|'
+            r'(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}|'
+            r'(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}|'
+            r'(?:[0-9a-f]{1,4}:){1,3}(?::[0-9a-f]{1,4}){1,4}|'
+            r'(?:[0-9a-f]{1,4}:){1,2}(?::[0-9a-f]{1,4}){1,5}|'
+            r'[0-9a-f]{1,4}:(?:(?::[0-9a-f]{1,4}){1,6})|'
+            r':(?::[0-9a-f]{1,4}){1,7}|'
+            r'::'
+            r')(?:%[0-9a-zA-Z_.-]+)?(?![0-9a-f]|:[0-9a-f]|\.\d)'
+        )
         
         # 2. Email regular expression
         self._email_re = re.compile(r'\b([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,4})\b')
@@ -59,7 +78,42 @@ class SentinelLogFilter(logging.Filter):
         return True
 
     def _redact(self, text: str) -> str:
-        # Step 1: Redact IP (Show first two octets)
+        # Step 1: Redact IP (IPv4 and IPv6)
+        def redact_ipv6(match):
+            val = match.group(0)
+            base_ip = val.split("%")[0]
+            try:
+                ip = ipaddress.ip_address(base_ip)
+                if ip.version != 6:
+                    return val
+            except ValueError:
+                return val
+
+            if ip.ipv4_mapped:
+                v4_str = str(ip.ipv4_mapped)
+                v4_parts = v4_str.split(".")
+                masked_v4 = f"{v4_parts[0]}.{v4_parts[1]}.*.*"
+                return f"::ffff:{masked_v4}"
+
+            if "::" in base_ip:
+                prefix_part, _ = base_ip.split("::", 1)
+                prefix_groups = [p for p in prefix_part.split(":") if p]
+                if len(prefix_groups) >= 2:
+                    return f"{prefix_groups[0]}:{prefix_groups[1]}:*:*"
+                elif len(prefix_groups) == 1:
+                    return f"{prefix_groups[0]}:*:*"
+                else:
+                    return "::*"
+            else:
+                parts = [p for p in base_ip.split(":") if p]
+                if len(parts) >= 2:
+                    return f"{parts[0]}:{parts[1]}:*:*"
+                elif len(parts) == 1:
+                    return f"{parts[0]}:*:*"
+                else:
+                    return "::*"
+
+        text = self._ipv6_re.sub(redact_ipv6, text)
         text = self._ip_re.sub(r'\1.*.*', text)
         
         # Step 2: Redact Emails (Show only domain TLD)
