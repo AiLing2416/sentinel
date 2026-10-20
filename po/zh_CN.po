@@ -1255,6 +1255,14 @@ msgstr "浅色模式"
 msgid "Dark Mode"
 msgstr "深色模式"
 
+#: src/views/preferences_dialog.py:46
+msgid "Connection Metadata"
+msgstr "连接元数据"
+
+#: src/views/preferences_dialog.py:47
+msgid "Connection Alias"
+msgstr "连接别名"
+
 #. ── Group 1: Appearance ───────────────────────────────
 #: src/views/preferences_dialog.py:71
 msgid "Appearance"
@@ -1264,6 +1272,15 @@ msgstr "外观"
 #: src/views/preferences_dialog.py:74
 msgid "Color Scheme"
 msgstr "色彩方案"
+
+#. Tab Title Style
+#: src/views/preferences_dialog.py:88
+msgid "Tab Title"
+msgstr "标签页标题"
+
+#: src/views/preferences_dialog.py:89
+msgid "Choose whether to display connection alias or metadata on tabs"
+msgstr "选择在标签页上显示连接别名还是元数据"
 
 #: src/views/preferences_dialog.py:85
 msgid "Basic Terminal Settings"

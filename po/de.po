@@ -1269,6 +1269,14 @@ msgstr "Heller Modus"
 msgid "Dark Mode"
 msgstr "Dunkler Modus"
 
+#: src/views/preferences_dialog.py:46
+msgid "Connection Metadata"
+msgstr "Verbindungsmetadaten"
+
+#: src/views/preferences_dialog.py:47
+msgid "Connection Alias"
+msgstr "Verbindungsalias"
+
 #. ── Group 1: Appearance ───────────────────────────────
 #: src/views/preferences_dialog.py:71
 msgid "Appearance"
@@ -1278,6 +1286,15 @@ msgstr "Erscheinungsbild"
 #: src/views/preferences_dialog.py:74
 msgid "Color Scheme"
 msgstr "Farbschema"
+
+#. Tab Title Style
+#: src/views/preferences_dialog.py:88
+msgid "Tab Title"
+msgstr "Tab-Titel"
+
+#: src/views/preferences_dialog.py:89
+msgid "Choose whether to display connection alias or metadata on tabs"
+msgstr "Wählen Sie, ob Verbindungsalias oder Metadaten auf Tabs angezeigt werden sollen"
 
 #: src/views/preferences_dialog.py:85
 msgid "Basic Terminal Settings"

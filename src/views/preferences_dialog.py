@@ -42,6 +42,11 @@ COLOR_SCHEMES = [
     (_("Dark Mode"), "dark"),
 ]
 
+TAB_TITLE_STYLES = [
+    (_("Connection Metadata"), "metadata"),
+    (_("Connection Alias"), "alias"),
+]
+
 
 class PreferencesWindow(Adw.Window):
     """A standalone window for managing Application Preferences."""
@@ -78,6 +83,18 @@ class PreferencesWindow(Adw.Window):
             "notify::selected", self._on_scheme_changed
         )
         appearance_group.add(self._scheme_row)
+
+        # Tab Title Style
+        self._tab_title_row = Adw.ComboRow(
+            title=_("Tab Title"),
+            subtitle=_("Choose whether to display connection alias or metadata on tabs"),
+        )
+        title_style_list = [item[0] for item in TAB_TITLE_STYLES]
+        self._tab_title_row.set_model(Gtk.StringList.new(title_style_list))
+        self._tab_title_handler = self._tab_title_row.connect(
+            "notify::selected", self._on_tab_title_style_changed
+        )
+        appearance_group.add(self._tab_title_row)
         page.add(appearance_group)
 
         # ── Group 2: Basic Terminal Settings ───────────────────
@@ -197,6 +214,15 @@ class PreferencesWindow(Adw.Window):
                 break
         self._scheme_row.set_selected(scheme_idx)
 
+        # Load Tab Title Style
+        saved_title_style = self._db.get_meta("tab_title_style", "metadata")
+        title_style_idx = 0
+        for i, (_, code) in enumerate(TAB_TITLE_STYLES):
+            if code == saved_title_style:
+                title_style_idx = i
+                break
+        self._tab_title_row.set_selected(title_style_idx)
+
         # Load Font Family
         saved_font = self._db.get_meta("terminal_font_family", "Monospace")
         font_idx = 0
@@ -253,6 +279,7 @@ class PreferencesWindow(Adw.Window):
     def _block_signals(self, block: bool) -> None:
         if block:
             self._scheme_row.handler_block(self._scheme_handler)
+            self._tab_title_row.handler_block(self._tab_title_handler)
             self._font_row.handler_block(self._font_handler)
             self._font_size_row.handler_block(self._font_size_handler)
             self._scrollback_row.handler_block(self._scrollback_handler)
@@ -264,6 +291,7 @@ class PreferencesWindow(Adw.Window):
             self._fast_timeout_row.handler_block(self._fast_timeout_handler)
         else:
             self._scheme_row.handler_unblock(self._scheme_handler)
+            self._tab_title_row.handler_unblock(self._tab_title_handler)
             self._font_row.handler_unblock(self._font_handler)
             self._font_size_row.handler_unblock(self._font_size_handler)
             self._scrollback_row.handler_unblock(self._scrollback_handler)
@@ -288,6 +316,13 @@ class PreferencesWindow(Adw.Window):
                 style_mgr.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
             else:
                 style_mgr.set_color_scheme(Adw.ColorScheme.DEFAULT)
+
+    def _on_tab_title_style_changed(self, *args) -> None:
+        idx = self._tab_title_row.get_selected()
+        if 0 <= idx < len(TAB_TITLE_STYLES):
+            style_code = TAB_TITLE_STYLES[idx][1]
+            self._db.set_meta("tab_title_style", style_code)
+            self._notify_terminal_config_changed()
 
     def _on_font_changed(self, *args) -> None:
         idx = self._font_row.get_selected()

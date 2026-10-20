@@ -1293,6 +1293,14 @@ msgstr ""
 msgid "Dark Mode"
 msgstr ""
 
+#: src/views/preferences_dialog.py:46
+msgid "Connection Metadata"
+msgstr ""
+
+#: src/views/preferences_dialog.py:47
+msgid "Connection Alias"
+msgstr ""
+
 #. ── Group 1: Appearance ───────────────────────────────
 #: src/views/preferences_dialog.py:71
 msgid "Appearance"
@@ -1301,6 +1309,15 @@ msgstr ""
 #. Global Color Scheme
 #: src/views/preferences_dialog.py:74
 msgid "Color Scheme"
+msgstr ""
+
+#. Tab Title Style
+#: src/views/preferences_dialog.py:88
+msgid "Tab Title"
+msgstr ""
+
+#: src/views/preferences_dialog.py:89
+msgid "Choose whether to display connection alias or metadata on tabs"
 msgstr ""
 
 #: src/views/preferences_dialog.py:85

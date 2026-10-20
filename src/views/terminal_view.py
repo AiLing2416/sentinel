@@ -78,6 +78,7 @@ def get_terminal_config(force_refresh: bool = False) -> dict[str, Any]:
             enable_osc52 = db.get_meta("terminal_enable_osc52", "true") == "true"
             enable_hyperlinks = db.get_meta("terminal_enable_hyperlinks", "true") == "true"
             search_forward_keys = db.get_meta("terminal_search_forward_keys", "true") == "true"
+            tab_title_style = db.get_meta("tab_title_style", "metadata")
             _CONFIG_CACHE = {
                 "font_family": font_family if font_family else "Monospace",
                 "font_size": int(font_size) if font_size and font_size.isdigit() else 11,
@@ -87,6 +88,7 @@ def get_terminal_config(force_refresh: bool = False) -> dict[str, Any]:
                 "enable_osc52": enable_osc52,
                 "enable_hyperlinks": enable_hyperlinks,
                 "search_forward_keys": search_forward_keys,
+                "tab_title_style": tab_title_style if tab_title_style in ("alias", "metadata") else "metadata",
             }
         except Exception as e:
             logger.error(f"Failed to load terminal config from database: {e}")
@@ -99,6 +101,7 @@ def get_terminal_config(force_refresh: bool = False) -> dict[str, Any]:
                 "enable_osc52": True,
                 "enable_hyperlinks": True,
                 "search_forward_keys": True,
+                "tab_title_style": "metadata",
             }
         finally:
             try:
@@ -174,6 +177,13 @@ class TerminalTab(Gtk.Box):
     @property
     def title(self) -> str:
         if self._connection:
+            cfg = get_terminal_config()
+            if (
+                cfg.get("tab_title_style") == "alias"
+                and self._connection.name
+                and self._connection.name.strip()
+            ):
+                return self._connection.name.strip()
             return f"{self._connection.username}@{self._connection.hostname}" if self._connection.username else self._connection.hostname
         return _("Local Shell")
 
@@ -1545,6 +1555,8 @@ class TerminalTabView:
             child = page.get_child()
             if hasattr(child, "apply_terminal_config"):
                 child.apply_terminal_config()
+            if hasattr(child, "title"):
+                page.set_title(child.title)
 
     def _setup_context_menu(self) -> None:
         """Create and bind the context menu and action group to the tab view."""

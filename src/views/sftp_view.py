@@ -171,6 +171,17 @@ class SftpTab(Gtk.Box):
     @property
     def title(self) -> str:
         """Tab title shown by TerminalTabView."""
+        try:
+            from views.terminal_view import get_terminal_config
+            cfg = get_terminal_config()
+            if (
+                cfg.get("tab_title_style") == "alias"
+                and self._conn.name
+                and self._conn.name.strip()
+            ):
+                return f"SFTP — {self._conn.name.strip()}"
+        except Exception:
+            pass
         user = self._conn.username
         host = self._conn.hostname
         return f"SFTP — {user}@{host}" if user else f"SFTP — {host}"

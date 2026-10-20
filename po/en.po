@@ -1262,6 +1262,14 @@ msgstr "Light Mode"
 msgid "Dark Mode"
 msgstr "Dark Mode"
 
+#: src/views/preferences_dialog.py:46
+msgid "Connection Metadata"
+msgstr "Connection Metadata"
+
+#: src/views/preferences_dialog.py:47
+msgid "Connection Alias"
+msgstr "Connection Alias"
+
 #. ── Group 1: Appearance ───────────────────────────────
 #: src/views/preferences_dialog.py:71
 msgid "Appearance"
@@ -1271,6 +1279,15 @@ msgstr "Appearance"
 #: src/views/preferences_dialog.py:74
 msgid "Color Scheme"
 msgstr "Color Scheme"
+
+#. Tab Title Style
+#: src/views/preferences_dialog.py:88
+msgid "Tab Title"
+msgstr "Tab Title"
+
+#: src/views/preferences_dialog.py:89
+msgid "Choose whether to display connection alias or metadata on tabs"
+msgstr "Choose whether to display connection alias or metadata on tabs"
 
 #: src/views/preferences_dialog.py:85
 msgid "Basic Terminal Settings"
